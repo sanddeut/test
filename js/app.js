@@ -416,7 +416,7 @@ async function handleInterjection(text) {
   showTyping(false);
   syncControls();
   const said = S.log.filter((e) => e.type === "agent_message").at(-1)?.text || "";
-  const o = await turn(text, { said, intents: highIntents(), hint: HIGH_HINT });
+  const o = await turn(text, { said, intents: highIntents(), hint: HIGH_HINT, fallback: "네, 송금을 이어서 진행할게요." });
   if (["set_amount", "set_memo", "set_source"].includes(o.intent)) {
     S.m.stops++;
     markIntervention("stop_text");
