@@ -230,3 +230,5 @@ mark.on { background: #ffe066; }
   .topbar { padding: 10px 16px; }
   .brand { font-size: 13px; }
 }
+.popup-btns.live span { cursor: pointer; color: #2f6fed; }
+.popup-btns.live span:hover { background: #f3f7ff; }

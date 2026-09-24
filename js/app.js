@@ -40,6 +40,8 @@ function newSession(cfg) {
     ivWaiter: null, // 중지 후 개입 대화가 입력을 기다릴 때
     resumeWaiters: [],
     pinResolve: null,
+    popupResolve: null,
+    pendingMemo: null,
     t0: performance.now(),
     startedAt: new Date().toISOString(),
     log: [],
@@ -140,18 +142,16 @@ function waitRunnerInput(options) {
   });
 }
 
-async function askChoice(options, question) {
+// 선택지를 제시하고 답을 받음. 텍스트면 LLM으로 해석하고, 스크립트 밖 말이면 LLM 응답 후 다시 대기
+// extra: 선택지 외에 이 단계에서 바로 받아들일 의도 (예: set_amount)
+async function askChoice(options, said, extra = [], hint) {
   for (;;) {
     const r = await waitRunnerInput(options);
     if (r.type === "button") return { id: r.id, via: "button" };
-    const res = await interpret("choice", r.text, {
-      condition: S.cond,
-      agent_question: question,
-      options: options.map((o) => ({ id: o.id, label: o.label })),
-    });
-    const id = res.output.choice_id;
-    if (options.some((o) => o.id === id)) return { id, via: "text", text: r.text };
-    await agentSay(res.output.reply || `${options.map((o) => `‘${o.label}’`).join(", ")} 중에서 골라주세요.`);
+    const ids = options.map((o) => o.id);
+    const o = await turn(r.text, { said, intents: [...ids, ...extra, "other"], hint });
+    if (ids.includes(o.intent) || extra.includes(o.intent)) return { id: o.intent, via: "text", text: r.text, out: o };
+    await agentSay(o.reply);
   }
 }
 
@@ -161,6 +161,32 @@ function waitText() {
     setChips([]);
     syncControls();
   }).then((r) => r.text);
+}
+
+function formSnapshot() {
+  return {
+    source_account: ACCOUNTS[S.form.source].label,
+    recipient: rcpt(S),
+    amount_won: S.form.amount ?? S.phone.pendingAmount ?? S.userAmount ?? null,
+    memo: S.form.memo ?? null,
+  };
+}
+
+// 대화 턴 해석: 의도 분류 + 값 추출 + 스크립트 밖 응답(reply)
+async function turn(text, { said, intents, hint, fallback }) {
+  const step = S.steps[S.stepIdx];
+  const res = await interpret("turn", text, {
+    condition: S.cond,
+    automation: S.automation === "high" ? "높은 자동화(승인 없이 자동 진행)" : "낮은 자동화(단계마다 승인 요청)",
+    step: step ? { label: step.label, guide: step.guide || null } : null,
+    agent_said: said,
+    intents,
+    reply_hint: hint || null,
+    current_transfer: formSnapshot(),
+    participant_task: SITUATION[S.complexity].task,
+    fallback_reply: fallback || null,
+  });
+  return res.output;
 }
 
 async function interpret(kind, text, context) {
@@ -273,43 +299,61 @@ async function handleStop(via, firstText) {
   showTyping(false);
   syncControls();
 
+  const B = S.complexity === "B";
+  const ask = S.steps[S.errorIdx].correction.highAsk;
+  let said = ask;
   let text = firstText;
-  if (text == null) {
-    await agentSay(S.steps[S.errorIdx].correction.highAsk);
-  }
+  if (text == null) await agentSay(ask);
+  else said = S.log.filter((e) => e.type === "agent_message").at(-1)?.text || ask;
+
   for (;;) {
-    if (text == null) {
-      text = await new Promise((r) => { S.ivWaiter = r; syncControls(); });
-    }
-    const res = await interpret("intervention", text, interventionContext());
-    const o = res.output;
+    if (text == null) text = await new Promise((r) => { S.ivWaiter = r; syncControls(); });
+    const o = await turn(text, {
+      said,
+      intents: ["set_amount", ...(B ? ["set_memo"] : []), "set_source", "continue", "cancel", "other"],
+      hint: "참가자가 도우미의 자동 진행을 멈추고 말한 상황입니다. 바꿀 내용이 분명하지 않으면 무엇을 바꾸고 싶은지 자연스럽게 물어보세요.",
+    });
     text = null;
-    if (o.action === "set_amount" && o.amount_won) {
+    if (o.intent === "set_amount" && o.amount_won) {
       setAmount(o.amount_won);
       logEvent("amount_changed", { amount: o.amount_won, via: `stop_${via}` });
       await agentSay(S.steps[S.errorIdx].correction.highDone(o.amount_won));
       break;
     }
-    if (o.action === "continue") {
+    if (o.intent === "set_memo" && o.memo) {
+      setMemo(o.memo, `stop_${via}`);
+      await agentSay(`받는 분 통장 메모를 ‘${o.memo}’으로 바꿨어요.`);
+      break;
+    }
+    if (o.intent === "set_source" && o.source_account) {
+      S.form.source = o.source_account;
+      logEvent("source_changed", { source: o.source_account, via: `stop_${via}` });
+      renderPhone();
+      await agentSay(`${ACCOUNTS[o.source_account].label}에서 출금할게요.`);
+      break;
+    }
+    if (o.intent === "continue") {
       await agentSay("계속 진행할게요.");
       break;
     }
-    if (o.action === "cancel") {
-      await agentSay("송금을 취소했어요.");
-      return finish("cancelled");
-    }
-    await agentSay(o.reply || "바꾸실 내용을 말씀해주세요.");
+    if (o.intent === "cancel") return cancelTransfer();
+    said = o.reply;
+    await agentSay(o.reply);
   }
   resume();
 }
 
-function interventionContext() {
-  return {
-    condition: S.cond,
-    current_step: S.steps[S.stepIdx]?.label,
-    current_amount_won: S.form.amount ?? S.phone.pendingAmount ?? null,
-    requested_task: SITUATION[S.complexity].task.join(" / "),
-  };
+function setMemo(memo, via) {
+  const memoIdx = S.steps.findIndex((s) => s.id === "memo");
+  if (S.stepIdx >= memoIdx) S.form.memo = memo;
+  else S.pendingMemo = memo;
+  logEvent("memo_changed", { memo, via });
+  renderPhone();
+}
+
+async function cancelTransfer() {
+  await agentSay("송금을 취소했어요.");
+  return finish("cancelled");
 }
 
 function startManual() {
@@ -389,47 +433,191 @@ async function run() {
 const resolveMsgs = (m) => (typeof m === "function" ? m(S) : m);
 
 // ---------- 낮은 자동화 ----------
+// 거부 유형별로 선택지 단계에서 바로 받아들일 수 있는 의도
+const REJECT_EXTRA = {
+  account: ["find_other", "set_account", "direct_input"],
+  memo: ["set_memo"],
+  final: ["set_amount", "set_memo", "set_source", "cancel"],
+};
+
 async function runLowStep(step) {
   if (step.kind === "password") return runPassword(step, step.low);
   if (step.kind === "error_amount") return runLowAmount(step);
 
+  let repeat = true;
   for (;;) {
     const msgs = resolveMsgs(step.low.messages);
-    for (const m of msgs) await agentSay(m);
+    if (repeat) for (const m of msgs) await agentSay(m);
+    repeat = true;
     if (!step.low.options) { step.apply(S); renderPhone(); break; }
 
-    const c = await askChoice(step.low.options, msgs.join(" "));
+    let extra = REJECT_EXTRA[step.low.reject] || [];
+    if (step.low.reject === "final" && S.complexity !== "B") extra = extra.filter((x) => x !== "set_memo");
+    const c = await askChoice(step.low.options, msgs.join(" "), extra);
     S.m.approvals++;
     logEvent("decision", { choice: c.id, via: c.via });
-    if (c.id !== "reject") {
+    if (c.id !== "reject" && step.low.options.some((o) => o.id === c.id)) {
       step.apply(S, c.id);
       renderPhone();
       break;
     }
-    const r = await lowCorrection();
+    const r = await handleReject(step, c, msgs.join(" "));
     if (r === "cancel") return false;
-    if (r === "continue") { step.apply(S); renderPhone(); break; }
-    // r === "retry": 같은 단계를 다시 물어봄 (금액 변경 등 반영)
+    if (r === "done") break;
+    if (r === "reask") repeat = false; // 같은 질문의 선택지로 돌아감 (문구 반복 없이)
+    // "retry": 바뀐 내용으로 같은 단계 문구를 다시 보여줌
   }
   if (step.kind === "done") return finish("completed");
   return true;
 }
 
-// 거부 후 "어떻게 바꿀까요?" 대화 (오류 단계 이외)
-async function lowCorrection() {
-  await agentSay("어떻게 바꿀까요?");
-  for (;;) {
+// 거부 후 처리. 반환: "done" | "retry" | "reask" | "cancel"
+async function handleReject(step, c, said) {
+  const type = step.low.reject;
+  let o = c.id !== "reject" ? c.out : null; // 선택지 단계에서 이미 구체적인 요청을 말한 경우
+
+  if (type === "app") {
+    // 어떤 앱을 말하든 정해진 프로토타입을 실행
+    await agentSay("어떤 앱으로 실행할까요?");
     const text = await waitText();
-    const o = (await interpret("intervention", text, interventionContext())).output;
-    if (o.action === "set_amount" && o.amount_won) {
+    logEvent("app_named", { text });
+    await agentSay(step.low.launched);
+    step.apply(S);
+    renderPhone();
+    return "done";
+  }
+
+  if (type === "account") {
+    const ask = "어떤 계좌로 송금할까요?";
+    if (!o) await agentSay(ask);
+    for (;;) {
+      if (!o) {
+        o = await turn(await waitText(), {
+          said: ask,
+          intents: ["find_other", "set_account", "direct_input", "approve", "cancel", "other"],
+          hint: "approve는 원래 제안한 김영숙님 계좌로 하겠다는 뜻입니다. 계좌번호를 말하면 set_account입니다.",
+        });
+      }
+      if (o.intent === "find_other") {
+        // 다른 계좌를 찾아도 같은 계좌만 나옴
+        logEvent("find_other_account");
+        return "retry";
+      }
+      if (o.intent === "set_account" && o.account_number) {
+        S.form.recipientCustom = o.account_number;
+        logEvent("recipient_changed", { account: o.account_number });
+        await agentSay(`입력하신 계좌(${o.account_number})로 송금할게요.`);
+        step.apply(S);
+        renderPhone();
+        return "done";
+      }
+      if (o.intent === "direct_input") {
+        await agentSay("송금할 계좌번호를 말씀해주세요.");
+        o = null;
+        continue;
+      }
+      if (o.intent === "approve") { step.apply(S); renderPhone(); return "done"; }
+      if (o.intent === "cancel") { await cancelTransfer(); return "cancel"; }
+      await agentSay(o.reply);
+      o = null;
+    }
+  }
+
+  if (type === "popup") {
+    const r = await turn(c.via === "button" ? "(참가자가 ‘거부’ 버튼을 눌렀어요)" : c.text, {
+      said,
+      intents: ["other"],
+      hint: "참가자가 도우미에게 팝업을 닫지 말라고 했습니다. 알겠다고 하고, 팝업 내용을 보시고 화면에서 직접 닫으시면 이어서 진행하겠다고 안내하세요.",
+      fallback: "알겠어요. 팝업 내용을 보시고 직접 닫으시면 이어서 진행할게요.",
+    });
+    await agentSay(r.reply);
+    for (;;) {
+      const res = await waitPopupClose();
+      if (res.type === "click") {
+        logEvent("popup_closed_by_user");
+        break;
+      }
+      const t = await turn(res.text, {
+        said: r.reply,
+        intents: ["approve", "other"],
+        hint: "approve는 도우미에게 팝업을 대신 닫아달라는 뜻입니다.",
+      });
+      if (t.intent === "approve") {
+        await agentSay("이벤트 안내 팝업을 닫았어요.");
+        break;
+      }
+      await agentSay(t.reply);
+    }
+    step.apply(S);
+    renderPhone();
+    return "done";
+  }
+
+  if (type === "memo") {
+    const ask = step.low.ask;
+    if (!o) await agentSay(ask);
+    for (;;) {
+      if (!o) {
+        o = await turn(await waitText(), {
+          said: ask,
+          intents: ["set_memo", "continue", "cancel", "other"],
+          hint: "memo에는 받는 분 통장에 남길 문구만 따옴표 없이 넣으세요. continue는 원래 메모대로 하겠다는 뜻입니다.",
+        });
+      }
+      if (o.intent === "set_memo" && o.memo) {
+        S.pendingMemo = o.memo;
+        logEvent("memo_changed", { memo: o.memo, via: "reject_text" });
+        return "retry";
+      }
+      if (o.intent === "continue") return "reask";
+      if (o.intent === "cancel") { await cancelTransfer(); return "cancel"; }
+      await agentSay(o.reply);
+      o = null;
+    }
+  }
+
+  if (type === "final") {
+    const ask = step.low.ask;
+    if (!o) await agentSay(ask);
+    if (!o) {
+      o = await turn(await waitText(), {
+        said: ask,
+        intents: ["set_amount", ...(S.complexity === "B" ? ["set_memo"] : []), "set_source", "continue", "cancel", "other"],
+        hint: "바꿀 수 있는 것은 송금액, 출금 계좌" + (S.complexity === "B" ? ", 메모" : "") + "입니다. 그 외 요청이면 짧게 답하고 최종 확인 단계로 자연스럽게 돌아오세요.",
+      });
+    }
+    if (o.intent === "set_amount" && o.amount_won) {
+      if (S.m.correctionVia == null && S.form.amount === ERROR_AMOUNT && o.amount_won !== ERROR_AMOUNT) S.m.correctionVia = "final_text";
       setAmount(o.amount_won);
-      logEvent("amount_changed", { amount: o.amount_won, via: "reject_text" });
+      logEvent("amount_changed", { amount: o.amount_won, via: "final" });
       return "retry";
     }
-    if (o.action === "continue") return "continue";
-    if (o.action === "cancel") { await agentSay("송금을 취소했어요."); finish("cancelled"); return "cancel"; }
-    await agentSay(o.reply || "바꾸실 내용을 말씀해주세요.");
+    if (o.intent === "set_memo" && o.memo) { setMemo(o.memo, "final"); return "retry"; }
+    if (o.intent === "set_source" && o.source_account) {
+      S.form.source = o.source_account;
+      logEvent("source_changed", { source: o.source_account, via: "final" });
+      renderPhone();
+      return "retry";
+    }
+    if (o.intent === "cancel") { await cancelTransfer(); return "cancel"; }
+    if (o.intent !== "continue") await agentSay(o.reply);
+    return "reask";
   }
+
+  return "reask";
+}
+
+// 참가자가 팝업의 '닫기'를 직접 누르거나, 말로 답할 때까지 대기
+function waitPopupClose() {
+  return new Promise((resolve) => {
+    const done = (r) => { S.popupResolve = null; S.waiter = null; S.phone.popupClosable = false; renderPhone(); syncControls(); resolve(r); };
+    S.phone.popupClosable = true;
+    S.popupResolve = () => done({ type: "click" });
+    S.waiter = { resolve: (r) => done(r), options: null };
+    setChips([]);
+    renderPhone();
+    syncControls();
+  });
 }
 
 async function runLowAmount(step) {
@@ -445,7 +633,7 @@ async function runLowAmount(step) {
   else logEvent("error_preempted", { amount: pending });
 
   for (;;) {
-    const c = await askChoice(step.low.options, question);
+    const c = await askChoice(step.low.options, question, ["set_amount"]);
     S.m.approvals++;
     logEvent("decision", { choice: c.id, via: c.via, pending_amount: pending });
     if (c.id === "approve") {
@@ -454,31 +642,33 @@ async function runLowAmount(step) {
     }
     if (S.m.errorShownAt != null && S.m.correctionVia == null) {
       S.m.errorResponseMs = now() - S.m.errorShownAt;
-      S.m.correctionVia = `reject_${c.via}`;
+      S.m.correctionVia = c.id === "set_amount" ? "reject_text" : `reject_${c.via}`;
     }
-    await agentSay(corr.lowAsk);
-    let decided = false;
-    for (;;) {
-      const text = await waitText();
-      const o = (await interpret("intervention", text, { ...interventionContext(), current_amount_won: pending })).output;
-      if (o.action === "set_amount" && o.amount_won) {
-        pending = o.amount_won;
-        S.phone.pendingAmount = pending;
-        renderPhone();
-        logEvent("amount_changed", { amount: pending, via: "reject_text" });
-        question = corr.lowConfirm(pending);
-        await agentSay(question);
-        break;
-      }
-      if (o.action === "continue") { decided = true; break; }
-      if (o.action === "cancel") { await agentSay("송금을 취소했어요."); return finish("cancelled"); }
-      await agentSay(o.reply || "바꾸실 금액을 말씀해주세요.");
+    let o = c.id === "set_amount" ? c.out : null;
+    if (!o) {
+      await agentSay(corr.lowAsk);
+      o = await turn(await waitText(), {
+        said: corr.lowAsk,
+        intents: ["set_amount", "continue", "cancel", "other"],
+        hint: "금액 외의 것을 바꾸고 싶다고 하면 그 말에 짧게 답하고, 지금은 송금액을 입력하는 단계라는 흐름으로 자연스럽게 돌아오세요.",
+      });
     }
-    if (decided) break;
+    if (o.intent === "set_amount" && o.amount_won) {
+      pending = o.amount_won;
+      S.phone.pendingAmount = pending;
+      renderPhone();
+      logEvent("amount_changed", { amount: pending, via: "reject_text" });
+      question = corr.lowConfirm(pending);
+      await agentSay(question);
+      continue;
+    }
+    if (o.intent === "continue") break;
+    if (o.intent === "cancel") return cancelTransfer();
+    await agentSay(o.reply); // 금액 외 요청 → 응답 후 같은 질문의 선택지로 복귀
   }
   S.form.amount = pending;
   S.phone.pendingAmount = null;
-  S.m.errorOutcome = pending === ERROR_AMOUNT ? "accepted" : "corrected";
+  S.m.amountStepDecision = pending === ERROR_AMOUNT ? "accepted" : "corrected";
   step.apply(S);
   renderPhone();
   return true;
@@ -533,7 +723,9 @@ async function runPassword(step, spec) {
       if (S.finished) return false;
       continue;
     }
-    break;
+    const o = await turn(r.text, { said: resolveMsgs(spec.messages).join(" "), intents: ["open", "other"] });
+    if (o.intent === "open") break;
+    await agentSay(o.reply);
   }
   S.pinOpen = true;
   syncControls();
@@ -548,7 +740,7 @@ async function runPassword(step, spec) {
   renderPhone();
   await sleep(1200);
   // 이 시점에 오류 결과 확정
-  if (S.m.errorOutcome == null) S.m.errorOutcome = S.form.amount === ERROR_AMOUNT ? "accepted" : "corrected";
+  S.m.errorOutcome = S.form.amount === ERROR_AMOUNT ? "accepted" : "corrected";
   return true;
 }
 
@@ -594,6 +786,7 @@ function renderPhone() {
     <div class="app">${body}</div>
     ${p.toast ? `<div class="toast">${esc(p.toast)}</div>` : ""}`;
   $("#screen").querySelectorAll("[data-pin]").forEach((b) => (b.onclick = () => pinPress(b.dataset.pin)));
+  $("#screen").querySelectorAll("[data-popup-close]").forEach((b) => (b.onclick = () => S.popupResolve && S.popupResolve()));
 }
 
 function homeScreen() {
@@ -644,7 +837,7 @@ function bankScreen() {
   }
   let overlay = "";
   if (p.popup) {
-    overlay = `<div class="popup-dim"><div class="popup"><div class="popup-art">🍂</div><b>가을맞이 적금 이벤트</b><p>지금 가입하면 최대 연 4.5% 우대금리!</p><div class="popup-btns"><span>오늘 하루 보지 않기</span><span>닫기</span></div></div></div>`;
+    overlay = `<div class="popup-dim"><div class="popup"><div class="popup-art">🍂</div><b>가을맞이 적금 이벤트</b><p>지금 가입하면 최대 연 4.5% 우대금리!</p><div class="popup-btns ${p.popupClosable ? "live" : ""}"><span ${p.popupClosable ? "data-popup-close" : ""}>오늘 하루 보지 않기</span><span ${p.popupClosable ? "data-popup-close" : ""}>닫기</span></div></div></div>`;
   }
   if (p.sheet === "confirm") {
     overlay = `<div class="sheet-dim"><div class="sheet"><h4>이체 정보 확인</h4>
@@ -721,6 +914,7 @@ function summary() {
     request_text: m.request?.text ?? null,
     request_amount_parsed: m.request?.amount_won ?? null,
     error_outcome: m.errorOutcome,
+    amount_step_decision: m.amountStepDecision ?? null,
     correction_via: m.correctionVia,
     error_response_ms: m.errorResponseMs,
     final_amount: m.finalAmount,
@@ -741,7 +935,7 @@ function renderSummary() {
   const items = [
     ["조건", S.cond],
     ["해석", s.llm],
-    ["오류 결과", label[s.error_outcome] || "-"],
+    ["오류 결과 (최종)", label[s.error_outcome] || "-"],
     ["개입 방식", s.correction_via || "-"],
     ["오류→반응", s.error_response_ms != null ? `${(s.error_response_ms / 1000).toFixed(1)}초` : "-"],
     ["최종 금액", s.final_amount != null ? won(s.final_amount) : "-"],
