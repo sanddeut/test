@@ -1009,7 +1009,7 @@ function readSetup() {
 
 function applyLLMSettings() {
   LLM.key = $("#api-key").value.trim();
-  LLM.model = $("#model").value.trim() || "gemini-2.5-flash";
+  LLM.model = $("#model").value.trim() || DEFAULT_MODEL;
   if ($("#remember-key").checked) store.set("gemini_key", LLM.key); else store.del("gemini_key");
   store.set("gemini_model", LLM.model);
   const chip = $("#llm-chip");
@@ -1124,7 +1124,9 @@ function init() {
   if (saved.showTask === false) $("#show-task").checked = false;
   const key = store.get("gemini_key", "");
   if (key) { $("#api-key").value = key; $("#remember-key").checked = true; }
-  $("#model").value = store.get("gemini_model", "gemini-2.5-flash");
+  // 이전 기본값(2.5 Flash)으로 저장돼 있으면 새 기본 모델로 바꿈
+  const savedModel = store.get("gemini_model", DEFAULT_MODEL);
+  $("#model").value = savedModel === "gemini-2.5-flash" ? DEFAULT_MODEL : savedModel;
   applyLLMSettings();
 
   $("#setup-form").onsubmit = (e) => { e.preventDefault(); start(); };

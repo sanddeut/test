@@ -4,7 +4,7 @@
 // 시나리오 고정 문구는 scenarios.js가 통제하고, LLM 응답(reply)은 스크립트에 없는 상황에서만 쓰입니다.
 
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3.5-flash";
 
 const LLM_SYSTEM = `당신은 스마트폰에서 송금을 대신 해주는 "AI 도우미" 연구 프로토타입의 언어 이해·응답 모듈입니다.
 참가자(주로 중장년층)가 도우미에게 한 말을 해석해 지정된 JSON 스키마로만 답합니다.
@@ -127,8 +127,26 @@ async function errorText(res) {
   }
 }
 
+// 모델 세대별 추론(thinking) 설정: 응답 지연을 줄이려고 최소로 둠
+function thinkingConfigFor(model) {
+  if (/^gemini-[3-9]/.test(model)) return { thinkingLevel: "minimal" }; // 3.x 이후: thinkingLevel
+  if (/2\.5-flash/.test(model)) return { thinkingBudget: 0 }; // 2.5 Flash: thinkingBudget
+  return null;
+}
+
 async function geminiCall(key, model, task, schema, text, context) {
   const prompt = `${task}\n\n<context>\n${JSON.stringify(context, null, 2)}\n</context>\n\n<participant_utterance>\n${text}\n</participant_utterance>`;
+  const thinking = thinkingConfigFor(model);
+  try {
+    return await geminiRequest(key, model, prompt, schema, thinking);
+  } catch (err) {
+    // 모델이 해당 thinking 설정을 지원하지 않으면 설정 없이 한 번 더 시도
+    if (thinking && /thinking/i.test(String(err.message))) return geminiRequest(key, model, prompt, schema, null);
+    throw err;
+  }
+}
+
+async function geminiRequest(key, model, prompt, schema, thinking) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 20000);
   try {
@@ -139,12 +157,11 @@ async function geminiCall(key, model, task, schema, text, context) {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: LLM_SYSTEM }] },
         contents: [{ role: "user", parts: [{ text: prompt }] }],
+        // Gemini 3.x는 temperature 등 샘플링 값을 기본값으로 두는 것을 권장
         generationConfig: {
-          temperature: 0.3,
           responseMimeType: "application/json",
           responseSchema: schema,
-          // 2.5 Flash 계열은 추론(thinking)을 꺼서 응답 지연을 줄임
-          ...(/2\.5-flash/.test(model) ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+          ...(thinking ? { thinkingConfig: thinking } : {}),
         },
       }),
     });
