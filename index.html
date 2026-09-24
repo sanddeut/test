@@ -2,7 +2,8 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f8fa">
   <title>송금 에이전트 프로토타입</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -67,40 +68,53 @@
   </main>
 
   <!-- ============ 실험 화면 ============ -->
-  <main id="stage" class="stage" hidden>
-    <aside id="task-card" class="card task-card">
+  <main id="stage" class="app-shell" hidden>
+    <!-- 상황·과업 카드: 데스크톱에서는 옆에, 모바일에서는 하단 시트 -->
+    <div id="task-dim" class="task-dim"></div>
+    <aside id="task-card" class="task-card">
       <div class="cond-title" id="cond-title"></div>
       <h2>상황</h2>
       <div id="task-situation"></div>
       <h2>과업 <small>AI에게 아래 과업을 요청해주세요</small></h2>
       <ul id="task-list"></ul>
+      <button type="button" id="btn-task-close" class="task-close">확인</button>
     </aside>
 
-    <div class="phone">
-      <div class="phone-notch"></div>
-      <div id="screen" class="screen"></div>
-      <section class="agent-panel">
-        <div class="agent-head">
-          <span class="agent-avatar">AI</span>
-          <b>AI 도우미</b>
-          <span id="agent-state" class="agent-state" data-state="idle">대기</span>
-        </div>
-        <div id="chat" class="chat" aria-live="polite"></div>
-        <div id="manual-bar" class="manual-bar" hidden>
-          <span>위 화면에서 직접 고칠 수 있어요</span>
-          <button id="btn-manual-done" type="button">AI에게 다시 맡기기</button>
-        </div>
-        <div id="chips" class="chips"></div>
-        <div id="controls" class="controls" hidden>
-          <button id="btn-stop" type="button" class="ctl stop">■ 중지</button>
-          <button id="btn-manual" type="button" class="ctl manual">✋ 직접조작</button>
-        </div>
-        <form id="composer" class="composer" autocomplete="off">
-          <button id="mic" type="button" class="mic" title="음성 입력">🎤</button>
-          <input id="msg" placeholder="여기에 말씀하세요">
-          <button id="send" type="submit" class="send">보내기</button>
-        </form>
-      </section>
+    <div class="phone" data-view="chat">
+      <!-- 진행 화면 헤더 -->
+      <div class="pv-head only-progress">
+        <button type="button" class="icon-btn task-btn" title="과업 보기">📋</button>
+        <b id="pv-title" class="secret">작업 진행 중</b>
+        <button type="button" class="icon-btn" id="btn-open-chat" title="대화창">💬</button>
+      </div>
+      <!-- 직접 작업 안내 -->
+      <div class="direct-bar only-direct">
+        <span id="direct-msg"></span>
+        <button type="button" id="btn-manual-done" hidden>AI에게 맡기기</button>
+      </div>
+      <!-- 대화창 헤더 -->
+      <div class="chat-head only-chat">
+        <button type="button" class="icon-btn task-btn" title="과업 보기">📋</button>
+        <span class="agent-avatar">AI</span><b class="secret">AI 도우미</b>
+        <button type="button" class="pill-btn" id="btn-close-chat">작업 화면 보기</button>
+      </div>
+
+      <div class="screen-box only-screen"><div class="screen-clip"><div id="screen" class="screen"></div></div></div>
+
+      <div id="pv-status" class="pv-status only-progress" aria-live="polite"></div>
+      <div id="pv-chips" class="pv-chips only-progress"></div>
+      <div class="pv-bottom only-progress">
+        <button id="btn-stop" type="button" class="txt-btn">중지</button>
+        <button id="btn-manual" type="button" class="primary-btn">직접 작업</button>
+      </div>
+
+      <div id="chat" class="chat only-chat" aria-live="polite"></div>
+      <div id="chips" class="chips only-chat"></div>
+      <form id="composer" class="composer only-chat" autocomplete="off">
+        <button id="mic" type="button" class="mic" title="음성 입력">🎤</button>
+        <input id="msg" placeholder="AI에게 말하기…">
+        <button id="send" type="submit" class="send" title="보내기">↑</button>
+      </form>
     </div>
   </main>
 
@@ -129,6 +143,7 @@
 
   <script src="js/scenarios.js"></script>
   <script src="js/llm.js"></script>
+  <script src="js/phone.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

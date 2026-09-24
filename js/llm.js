@@ -6,28 +6,88 @@
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const DEFAULT_MODEL = "gemini-3.5-flash";
 
-const LLM_SYSTEM = `당신은 스마트폰에서 송금을 대신 해주는 "AI 도우미" 연구 프로토타입의 언어 이해·응답 모듈입니다.
-참가자(주로 중장년층)가 도우미에게 한 말을 해석해 지정된 JSON 스키마로만 답합니다.
-도우미의 정해진 문구와 진행 순서는 연구 시나리오 스크립트가 통제합니다. 당신은
-1) 참가자의 의도를 허용된 intent 중 하나로 분류하고 필요한 값을 추출하며,
-2) 스크립트에 없는 말(질문, 잡담, 예상 밖 요청 등)에 대해 도우미가 할 짧은 응답(reply)을 씁니다.
+// 시스템 프롬프트 (연구팀 제공 프롬프트 + JSON 출력 형식)
+const LLM_SYSTEM = `# 역할
+너는 고령 사용자의 모바일 금융 업무를 돕는 AI 에이전트야. 사용자의 모바일앱을 대리 조작해서 사용자가 원하는 과업을 완수해주어야 해.
 
-값 추출 규칙:
-- 금액은 원 단위 정수로 변환합니다. 예: "30만원", "삼십만 원", "300,000원" → 300000.
-- 구어체, 맞춤법 오류, 음성인식 오류(예: "삼심만원")를 너그럽게 해석합니다.
+# 응답하는 경우
+사용자 발화가 현재 단계에서 예상한 응답(승인, 거부, 선택지 선택, 버튼 입력)에 해당하지 않을 때만 응답해. 예상된 응답에는 정해진 시나리오 문구가 출력되므로 네가 응답하지 않아.
 
-reply 작성 규칙:
-- 해요체, 2문장 이내, 스크립트 문구와 비슷한 길이로 씁니다.
-- 참가자의 말에 먼저 자연스럽게 반응한 뒤, 현재 단계로 부드럽게 돌아오도록 이끕니다. 강압적으로 되돌리지 않습니다.
-- 객관적 사실만 말하고, 부가설명이나 확신 정도("아마", "확실히" 등)는 넣지 않습니다.
-- context에 없는 사실(다른 계좌, 잔액 외 정보 등)을 지어내지 않습니다.
-- 화면의 버튼(승인/거부 등)은 참가자에게 이미 보이므로 버튼 이름을 길게 설명하지 않습니다.`;
+# 응답 원칙
+1. 사용자의 발화를 먼저 짧게 받아준 뒤, 현재 단계로 자연스럽게 돌아와.
+2. 흐름으로 되돌릴 때 강압적으로 하지 마. 거절하거나 같은 요청을 반복해서 재촉하지 말고, 사용자가 이어서 진행할 수 있도록 부드럽게 안내해.
+3. 과업과 무관한 말(잡담, 다른 질문)에도 짧게 반응한 뒤 현재 단계로 돌아와.
+4. 사용자가 지정된 은행 앱이 아닌 다른 앱을 말하면 은행 앱으로 안내해. 그 앱으로는 송금할 수 없다는 사실을 알려줘.
+5. 사용자가 다른 계좌를 찾아달라고 하면 같은 계좌(김영숙, 농협 302-1234-5678)를 다시 안내하고, 직접 입력도 가능하다고 알려줘.
+
+# 조건 유지 규칙
+- 낮은 자동화: 현재 단계로 돌아올 때 사용자에게 승인을 묻는 형태로 끝내.
+- 높은 자동화: 승인을 묻지 마. 진행 상황을 알리는 형태로 끝내고, 사용자는 '중지'·'직접조작' 버튼으로만 개입해.
+- 시나리오의 단계 순서를 바꾸거나 단계를 건너뛰거나 새 단계를 추가하지 마.
+- 송금액 오류(10만원) 단계에서는 네가 먼저 오류를 알아채거나 30만원으로 고치거나 오류를 암시하지 마. 사용자가 직접 수정을 요청할 때만 30만원으로 바꿔.
+
+# 말투와 정보량
+- 해요체를 사용해.
+- 메시지 1개당 2문장 이내, 시나리오 문구와 비슷한 길이로 말해.
+- 객관적 사실, 선택지 범위, 판단 근거만 제공해.
+- 부가설명과 확신 정도("아마", "확실히", "~인 것 같아요" 등)는 표현하지 마.
+- 연구, 실험, 시나리오, 프로토타입이라는 사실을 언급하지 마.
+
+# 예시
+아래 예시는 응답 원칙과 조건 유지 규칙을 적용한 방식이야. 문구를 그대로 복사하지 말고, 참고해서 유사한 방식으로 응답해.
+
+## 예시 1 — 과업과 무관한 질문
+- 자동화수준: 낮은 자동화
+- 현재 단계: 출금계좌 선택
+- 사용자: "요즘 적금 이자는 얼마나 붙나?"
+- 좋은 응답: "이자 내역은 송금을 마친 뒤 확인하실 수 있어요. 주거래와 적금출금 계좌 중 어떤 계좌에서 출금할까요?"
+- 나쁜 응답: "그 질문에는 답할 수 없어요. 출금 계좌를 선택해주세요." (거절하고 재촉하는 강압적인 복귀)
+
+## 예시 2 — 진행 중 내용에 대한 질문
+- 자동화수준: 높은 자동화
+- 현재 단계: 광고 팝업 닫기
+- 사용자: "잠깐, 이거 무슨 이벤트야?"
+- 좋은 응답: "은행 앱의 이벤트 안내 팝업이었어요. 팝업을 닫고 송금을 이어서 진행할게요."
+- 나쁜 응답: "이벤트 팝업을 닫을까요?" (높은 자동화에서 승인을 물음)
+
+## 예시 3 — 대상에 대한 불안
+- 자동화수준: 낮은 자동화
+- 현재 단계: 받는계좌 입력
+- 사용자: "영숙이 계좌 맞아? 바뀌었다던 것 같은데."
+- 좋은 응답: "자주 사용하는 계좌 목록에 '동창회 총무' 김영숙님 계좌(농협 302-1234-5678)로 저장돼 있어요. 이 계좌로 송금할까요?"
+- 나쁜 응답: "아마 맞는 계좌일 거예요. 이 계좌로 송금할까요?" (확신 정도를 표현함)
+
+## 예시 4 — 오류 단계에서 되물음
+- 자동화수준: 낮은 자동화
+- 현재 단계: [오류] 송금액 입력
+- 사용자: "응? 뭐라고?"
+- 좋은 응답: "송금액을 10만원으로 입력하려고 해요. 이대로 입력할까요?"
+- 나쁜 응답: "혹시 30만원을 말씀하신 건가요? 금액을 다시 확인해주세요." (에이전트가 먼저 오류를 암시함)
+
+## 예시 5 — 잡담
+- 자동화수준: 높은 자동화
+- 현재 단계: 받는계좌 입력
+- 사용자: "고마워, 똑똑하네."
+- 좋은 응답: "도움이 돼서 다행이에요. 문자에서 복사한 김영숙님(농협 302-1234-5678) 계좌를 입력했어요."
+- 나쁜 응답: "감사합니다! 저는 여러 금융 업무를 도와드릴 수 있어요. 송금을 계속 진행할게요." (불필요한 부가설명)
+
+## 예시 6 — 송금할 수 없는 앱을 지정
+- 자동화수준: 낮은 자동화
+- 현재 단계: 은행 앱 접속
+- 사용자: "은행 앱 말고 전화 앱 켜줘."
+- 좋은 응답: "전화 앱으로는 송금을 할 수 없어요. 송금을 위해 은행 앱을 실행할까요?"
+- 나쁜 응답: "전화 앱을 실행할게요." (송금할 수 없는 앱으로 흐름을 벗어남)
+
+# 출력 형식
+항상 지정된 JSON 스키마로만 답해.
+- intent: 사용자 발화가 "분류할 의도" 목록 중 무엇에 해당하는지 id로 골라. 어느 것에도 맞지 않으면 other.
+- 금액은 원 단위 정수로 바꿔. 예: "30만원", "삼십만 원", "300,000원" → 300000. 구어체, 맞춤법 오류, 음성인식 오류(예: "삼심만원")는 너그럽게 해석해.
+- reply: 위 원칙에 따라 에이전트가 할 말. intent가 other이거나 "이번 턴 지침"이 응답을 요구할 때 화면에 출력돼.`;
 
 const LLM_TASKS = {
   request:
-    "참가자의 첫 과업 요청을 해석하세요. 송금 요청이 아니거나 금액을 알 수 없을 때만 clarification에 되묻는 말(해요체, 2문장 이내)을 쓰세요.",
-  turn:
-    "도우미가 context.agent_said 라고 말한 뒤 참가자가 대답했습니다. context.intents 중 참가자의 의도에 가장 맞는 id를 intent로 고르고, 해당하는 값을 채우세요. reply에는 그 상황에서 도우미가 할 자연스러운 응답을 쓰세요(context.reply_hint가 있으면 참고). 어느 intent에도 맞지 않으면 other를 고르세요.",
+    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 송금 요청이 아니거나 금액을 알 수 없을 때만 clarification에 되묻는 말(해요체, 2문장 이내)을 써.",
+  turn: "현재 상태에서 사용자가 말했어. 의도를 분류하고 필요한 값을 채운 뒤, reply를 써.",
 };
 
 const sch = (type, extra = {}) => ({ type, ...extra });
@@ -71,6 +131,8 @@ const INTENT_MEANINGS = {
   set_account: "송금할 계좌번호를 직접 말함 (account_number 채움)",
   find_other: "다른 계좌를 찾아보라고 함",
   direct_input: "계좌를 직접 입력하겠다고 함 (번호는 말하지 않음)",
+  unsuitable_app: "지정된 앱이 아닌 다른 앱(다른 은행 앱, 전화, 카메라 등)을 말함",
+  pause: "바꿀 내용 없이 진행을 멈추라고만 함 (멈춰, 기다려 등)",
   continue: "바꿀 것 없이 그대로 진행하라고 함",
   cancel: "송금 자체를 취소하라고 함",
   other: "위 어느 것에도 해당하지 않음 (질문, 잡담, 이해하기 어려운 말 등)",
@@ -98,15 +160,12 @@ const LLM = {
   // 반환: { output, source: "gemini"|"rules", model, latency_ms, error? }
   async interpret(kind, text, context = {}) {
     const started = performance.now();
-    const { fallback_reply, ...llmContext } = context;
+    const { fallback_reply, fallback_by_intent, app_keywords, ...llmContext } = context;
     if (this.enabled) {
       try {
         let schema = REQUEST_SCHEMA;
-        if (kind === "turn") {
-          llmContext.intents = context.intents.map((id) => ({ id, meaning: INTENT_MEANINGS[id] || id }));
-          schema = turnSchema(context.intents);
-        }
-        const output = await geminiCall(this.key, this.model, LLM_TASKS[kind], schema, text, llmContext);
+        if (kind === "turn") schema = turnSchema(context.intents);
+        const output = await geminiCall(this.key, this.model, buildPrompt(kind, text, llmContext), schema);
         if (kind === "turn" && !context.intents.includes(output.intent)) output.intent = "other";
         return { output, source: "gemini", model: this.model, latency_ms: Math.round(performance.now() - started) };
       } catch (err) {
@@ -134,8 +193,24 @@ function thinkingConfigFor(model) {
   return null;
 }
 
-async function geminiCall(key, model, task, schema, text, context) {
-  const prompt = `${task}\n\n<context>\n${JSON.stringify(context, null, 2)}\n</context>\n\n<participant_utterance>\n${text}\n</participant_utterance>`;
+// 매 턴 입력되는 현재 상태 + 사용자 발화
+function buildPrompt(kind, text, c) {
+  const lines = [LLM_TASKS[kind], "", "# 현재 상태"];
+  lines.push(`- 자동화수준: ${c.automation}`);
+  if (c.step) lines.push(`- 현재 단계: ${c.step}`);
+  if (c.agent_said) lines.push(`- 현재 단계의 에이전트 문구: ${c.agent_said}`);
+  if (c.step_guide) lines.push(`- 단계 설명: ${c.step_guide}`);
+  if (c.current_transfer) lines.push(`- 현재까지 입력된 송금 정보: ${JSON.stringify(c.current_transfer)}`);
+  if (c.recent) lines.push(`- 최근 대화:\n${c.recent.map((r) => `  ${r}`).join("\n")}`);
+  if (kind === "turn") {
+    if (c.reply_hint) lines.push("", "# 이번 턴 지침", c.reply_hint);
+    lines.push("", "# 분류할 의도", ...c.intents.map((id) => `- ${id}: ${INTENT_MEANINGS[id] || id}`));
+  }
+  lines.push("", "# 사용자 발화", `"${text}"`);
+  return lines.join("\n");
+}
+
+async function geminiCall(key, model, prompt, schema) {
   const thinking = thinkingConfigFor(model);
   try {
     return await geminiRequest(key, model, prompt, schema, thinking);
@@ -236,19 +311,30 @@ const Rules = {
       ...extra,
     });
     const t = text.replace(/\s+/g, " ").trim();
+    const byIntent = (intent, extra) => out(intent, { reply: ctx.fallback_by_intent?.[intent] || out(intent).reply, ...extra });
+
+    // 앱 이름을 묻는 단계: 지정된 앱이면 approve, 그 외 앱은 모두 unsuitable_app ("전화", "카카오뱅크" 등)
+    if (allowed.has("unsuitable_app")) {
+      if (ctx.app_keywords && new RegExp(ctx.app_keywords).test(t)) return byIntent("approve");
+      if (YES.test(t) && !NO.test(t)) return byIntent("approve");
+    }
+    if (allowed.has("unsuitable_app") && !QUESTION.test(t) && !NO.test(t)) return byIntent("unsuitable_app");
+    if (allowed.has("pause") && /(멈춰|멈춰봐|기다려|스톱|stop|잠깐만)/i.test(t) && extractAmount(t) == null) return byIntent("pause");
 
     const amount = extractAmount(t);
     if (amount != null && allowed.has("set_amount")) return out("set_amount", { amount_won: amount });
     const acct = extractAccount(t);
     if (acct && allowed.has("set_account")) return out("set_account", { account_number: acct });
     if (allowed.has("set_source") && /(적금|주거래)/.test(t)) return out("set_source", { source_account: /적금/.test(t) ? "savings" : "main" });
-    if (allowed.has("find_other") && /다른/.test(t)) return out("find_other");
+    if (allowed.has("find_other") && /다른/.test(t)) return byIntent("find_other");
     if (allowed.has("direct_input") && /직접/.test(t)) return out("direct_input");
     if (allowed.has("cancel") && /(취소|그만|안\s?보내|보내지\s?마)/.test(t)) return out("cancel");
     if (allowed.has("main") && /주거래|주\s?통장/.test(t)) return out("main");
     if (allowed.has("savings") && /적금/.test(t)) return out("savings");
-    if (allowed.has("set_memo") && !YES.test(t) && !NO.test(t) && !QUESTION.test(t)) {
-      return out("set_memo", { memo: t.replace(/^['‘"“]|['’"”]$/g, "").replace(/(으로|로)?\s*(남겨|해|적어)(줘|주세요|줘요)?\.?$/, "").trim() });
+    // 메모 단계에서는 들은 말을 메모로, 그 외 단계에서는 "메모"를 언급했을 때만 메모 변경으로 봄
+    const memoStep = allowed.has("set_memo") && !allowed.has("set_amount");
+    if (allowed.has("set_memo") && (memoStep || /메모|통장\s?표기/.test(t)) && !YES.test(t) && !NO.test(t) && !QUESTION.test(t)) {
+      return out("set_memo", { memo: t.replace(/^['‘"“]|['’"”]$/g, "").replace(/^.*메모(는|를)?\s*/, "").replace(/(으로|로)?\s*(남겨|해|적어|바꿔)(줘|주세요|줘요)?\.?$/, "").trim() });
     }
     if (allowed.has("reject") && NO.test(t)) return out("reject");
     if (allowed.has("approve") && YES.test(t)) return out("approve");

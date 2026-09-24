@@ -76,7 +76,10 @@ function buildSteps(complexity, participantName) {
         id: "sms_open",
         label: "문자 앱 실행",
         guide: "총무가 보낸 문자를 읽기 위해 문자 앱을 여는 단계",
-        low: { messages: ["문자 앱을 실행할까요?"], options: APPROVE, reject: "app", launched: "문자 앱을 실행할게요." },
+        low: {
+          messages: ["문자 앱을 실행할까요?"], options: APPROVE, reject: "app", launched: "문자 앱을 실행할게요.",
+          app: { target: "문자 앱", purpose: "총무 문자 확인", keywords: "문자|메시지" },
+        },
         high: { messages: ["문자 앱을 실행할게요."] },
         apply: (s) => { s.phone.app = "sms_list"; },
       },
@@ -115,14 +118,16 @@ function buildSteps(complexity, participantName) {
       options: APPROVE,
       reject: "app",
       launched: B ? "이제 은행 앱을 실행할게요." : "은행 앱을 실행할게요.",
+      app: { target: "은행 앱", purpose: "송금", keywords: "마음은행|^은행|은행\\s?앱" },
     },
     high: { messages: [B ? "이제 은행 앱을 실행할게요." : "은행 앱을 실행할게요."] },
     apply: (s) => {
       s.phone.app = "bank";
+      s.phone.bankView = "home";
       s.phone.toast = null;
       // 광고 팝업은 높은 복잡도(B)에서만 뜸
       if (B) s.phone.popup = true;
-      else { s.phone.bankView = "transfer"; s.phone.focus = "source"; }
+      else s.phone.focus = "source";
     },
   });
 
@@ -133,7 +138,7 @@ function buildSteps(complexity, participantName) {
       guide: "은행 앱에 뜬 이벤트 광고 팝업을 닫는 단계. 참가자가 닫지 말라고 하면, 팝업 내용을 보고 화면의 ‘닫기’를 직접 누르면 이어서 진행한다고 안내",
       low: { messages: ["이벤트 안내 팝업을 닫을까요?"], options: APPROVE, reject: "popup" },
       high: { messages: ["이벤트 안내 팝업을 닫았어요."], applyFirst: true },
-      apply: (s) => { s.phone.popup = false; s.phone.bankView = "transfer"; s.phone.focus = "source"; },
+      apply: (s) => { s.phone.popup = false; s.phone.focus = "source"; },
     });
   }
 
@@ -151,6 +156,8 @@ function buildSteps(complexity, participantName) {
     high: { messages: ["2개의 계좌를 발견했어요.", "말씀하신 ‘주거래 통장’에서 출금할게요."] },
     apply: (s, choice) => {
       s.form.source = choice === "savings" ? "savings" : "main";
+      s.phone.tapped = s.form.source; // 선택한 계좌 카드의 [이체]를 누름
+      s.phone.bankView = "to";
       s.phone.focus = "recipient";
     },
   });
@@ -164,7 +171,7 @@ function buildSteps(complexity, participantName) {
         messages: (s) => [s.form.recipientCustom ? `${rcpt(s)}를 입력할게요.` : "문자에서 복사한 김영숙님(농협 302-1234-5678) 계좌를 입력할게요."],
       },
       high: { messages: ["문자에서 복사한 김영숙님(농협 302-1234-5678) 계좌를 입력했어요."], applyFirst: true },
-      apply: (s) => { s.form.recipient = true; s.phone.focus = "amount"; },
+      apply: (s) => { s.form.recipient = true; s.phone.bankView = "acct_input"; s.phone.focus = null; },
     });
   } else {
     steps.push({
@@ -179,7 +186,7 @@ function buildSteps(complexity, participantName) {
       high: {
         messages: ["자주 사용하는 계좌에서 ‘동창회 총무’ 김영숙님 계좌(농협 302-1234-5678)를 찾았어요.", "이 계좌로 송금할게요."],
       },
-      apply: (s) => { s.form.recipient = true; s.phone.focus = "amount"; },
+      apply: (s) => { s.form.recipient = true; s.phone.bankView = "amount"; s.phone.focus = "amount"; },
     });
   }
 
@@ -197,7 +204,7 @@ function buildSteps(complexity, participantName) {
       highAsk: "진행을 멈췄어요. 어떻게 바꿀까요?",
       highDone: (amt) => (B ? `송금액 ${won(amt)}을 입력했어요.` : `요청하신 금액인 ${won(amt)}을 입력했어요.`),
     },
-    apply: (s) => { s.phone.focus = B ? "memo" : null; },
+    apply: (s) => { s.phone.bankView = "detail"; s.phone.focus = B ? "memo" : null; },
   });
 
   if (B) {
@@ -249,7 +256,7 @@ function buildSteps(complexity, participantName) {
       label: "완료 안내",
       low: { messages: (s) => [`${rcpt(s)}으로 ${won(s.form.amount)}을 보냈어요.`] },
       high: { messages: (s) => [`${rcpt(s)}으로 ${won(s.form.amount)}을 보냈어요.`] },
-      apply: (s) => { s.phone.sheet = null; s.phone.bankView = "complete"; },
+      apply: (s) => { s.phone.sheet = null; s.phone.bankView = "complete"; s.phone.focus = null; },
     },
   );
 

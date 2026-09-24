@@ -85,6 +85,14 @@ function appendBubble(role, text) {
   chat().scrollTop = chat().scrollHeight;
 }
 
+// 진행 화면 하단 상태 문구 (최근 에이전트 발화)
+function setStatus(text, thinking = false) {
+  const el = $("#pv-status");
+  if (!el) return;
+  if (text != null) el.textContent = text;
+  el.classList.toggle("thinking", thinking);
+}
+
 function showTyping(on) {
   let t = $("#typing");
   if (on && !t) {
@@ -95,6 +103,7 @@ function showTyping(on) {
     chat().appendChild(t);
     chat().scrollTop = chat().scrollHeight;
   } else if (!on && t) t.remove();
+  setStatus(null, on);
 }
 
 // gated=true: 러너가 말할 때. 중지 중이면 재개될 때까지 기다렸다가 말함
@@ -109,19 +118,27 @@ async function agentSay(text, { gated = false } = {}) {
     if (!gated || !S.paused) break;
   }
   appendBubble("agent", text);
+  // 진행 화면 문구: 같은 단계의 연속 문구는 최근 2개까지 함께 보여줌 (예: "최종 확인해주세요" + 송금 내용)
+  const same = S.statusStep === S.stepIdx && S.statusLines;
+  S.statusLines = same ? [...S.statusLines, text].slice(-2) : [text];
+  S.statusStep = S.stepIdx;
+  setStatus(S.statusLines.join("\n"));
   logEvent("agent_message", { text });
 }
 
+// 선택지 버튼: 진행 화면(축소 화면 아래)과 대화창 양쪽에 표시
 function setChips(options, onPick) {
-  const box = $("#chips");
-  box.innerHTML = "";
-  (options || []).forEach((o) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = `chip ${o.id === "reject" ? "chip-ghost" : ""}`;
-    b.textContent = o.label;
-    b.onclick = () => onPick(o);
-    box.appendChild(b);
+  ["#chips", "#pv-chips"].forEach((sel) => {
+    const box = $(sel);
+    box.innerHTML = "";
+    (options || []).forEach((o) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = `chip ${o.id === "reject" ? "chip-ghost" : ""}`;
+      b.textContent = o.label;
+      b.onclick = () => onPick(o);
+      box.appendChild(b);
+    });
   });
   syncControls();
 }
@@ -130,6 +147,7 @@ function setChips(options, onPick) {
 function waitRunnerInput(options) {
   return new Promise((resolve) => {
     S.waiter = { resolve, options };
+    S.chatOpen = false; // 단순 선택은 대화창을 닫고 축소 화면 아래 버튼으로 노출
     setChips(options, (o) => {
       if (S.paused || !S.waiter) return;
       S.waiter = null;
@@ -172,19 +190,29 @@ function formSnapshot() {
   };
 }
 
+// 최근 대화 몇 줄 (LLM이 맥락을 알 수 있게)
+function recentDialog(n = 6) {
+  return S.log
+    .filter((e) => e.type === "agent_message" || e.type === "user_text" || e.type === "user_button")
+    .slice(-n)
+    .map((e) => (e.type === "agent_message" ? `에이전트: ${e.text}` : `사용자: ${e.text ?? `[${e.label} 버튼]`}`));
+}
+
 // 대화 턴 해석: 의도 분류 + 값 추출 + 스크립트 밖 응답(reply)
-async function turn(text, { said, intents, hint, fallback }) {
+async function turn(text, { said, intents, hint, fallback, fallbackBy, appKeywords }) {
   const step = S.steps[S.stepIdx];
   const res = await interpret("turn", text, {
-    condition: S.cond,
-    automation: S.automation === "high" ? "높은 자동화(승인 없이 자동 진행)" : "낮은 자동화(단계마다 승인 요청)",
-    step: step ? { label: step.label, guide: step.guide || null } : null,
+    automation: S.automation === "high" ? "높은 자동화" : "낮은 자동화",
+    step: step ? `${S.stepIdx + 1}. ${step.label}` : "과업 요청",
+    step_guide: step?.guide || null,
     agent_said: said,
+    current_transfer: formSnapshot(),
+    recent: recentDialog(),
     intents,
     reply_hint: hint || null,
-    current_transfer: formSnapshot(),
-    participant_task: SITUATION[S.complexity].task,
     fallback_reply: fallback || null,
+    fallback_by_intent: fallbackBy || null,
+    app_keywords: appKeywords || null,
   });
   return res.output;
 }
@@ -221,10 +249,10 @@ function onSubmit(e) {
     logEvent("user_text", { text });
     w.resolve({ type: "text", text });
   } else if (S.automation === "high" && S.running && !S.paused && !S.pinOpen) {
-    // 높은 자동화: 진행 중에 말을 걸면 중지로 간주
+    // 높은 자동화: 진행 중에 말을 걸면 잠시 멈추고 해석 (수정 요청이면 반영, 그 외엔 응답 후 계속 진행)
     appendBubble("user", text);
     logEvent("user_text", { text });
-    handleStop("text", text);
+    handleInterjection(text);
   }
   syncControls();
 }
@@ -237,19 +265,81 @@ function syncControls() {
   $("#msg").disabled = !canTalk;
   $("#send").disabled = !canTalk;
   $("#mic").disabled = !canTalk;
-  $("#msg").placeholder = canTalk ? "여기에 말씀하세요" : S.finished ? "과업이 끝났어요" : S.manual ? "직접 조작 중이에요" : "AI가 진행 중이에요";
-  document.querySelectorAll("#chips .chip").forEach((b) => (b.disabled = S.paused));
+  $("#msg").placeholder = canTalk ? "AI에게 말하기…" : S.finished ? "과업이 끝났어요" : S.manual ? "직접 작업 중이에요" : "AI가 작업 중이에요";
+  document.querySelectorAll("#chips .chip, #pv-chips .chip").forEach((b) => (b.disabled = S.paused));
 
   const high = S.automation === "high";
-  $("#controls").hidden = !high || S.finished;
   const live = high && S.running && !S.finished && !S.pinOpen;
+  $("#btn-stop").hidden = !high;
+  $("#btn-manual").hidden = !high;
   $("#btn-stop").disabled = !live || S.paused;
   $("#btn-manual").disabled = !live || S.paused;
-  $("#manual-bar").hidden = !S.manual;
+  $("#pv-title").textContent = S.finished ? "작업 완료" : S.paused && !S.manual ? "작업 멈춤" : "작업 진행 중";
+  syncView();
+}
 
-  const st = S.finished ? "완료" : S.manual ? "직접 조작 중" : S.paused ? "멈춤" : S.running ? "진행 중" : "대기";
-  $("#agent-state").textContent = st;
-  $("#agent-state").dataset.state = S.finished ? "done" : S.paused ? "paused" : S.running ? "running" : "idle";
+// 화면 전환
+// - direct  : 직접 작업·비밀번호 입력·팝업 직접 닫기 → 앱 화면을 실제 크기로
+// - chat    : 말로 답해야 할 때(과업 요청, "어떻게 바꿀까요?" 등) → 대화창 전체 화면
+// - progress: 그 외 → 앱 화면을 축소해 진행 상황을 보여주고, 단순 선택은 버튼으로 바로 노출
+function wantedView() {
+  if (!S) return "chat";
+  if (S.manual || S.pinOpen || S.phone.popupClosable) return "direct";
+  if (S.ivWaiter) return "chat";
+  if (S.waiter && !S.waiter.options) return "chat";
+  if (!S.running || S.finished) return "chat";
+  return S.chatOpen ? "chat" : "progress"; // 참가자가 직접 대화창을 연 경우에만 대화창
+}
+
+function syncView() {
+  const v = wantedView();
+  const phone = $(".phone");
+  if (phone.dataset.view !== v) {
+    phone.dataset.view = v;
+    if (S) logEvent("view", { view: v });
+    chat().scrollTop = chat().scrollHeight;
+  }
+  requestAnimationFrame(fitScreen);
+  const bar = $("#direct-msg");
+  if (bar && S) {
+    bar.textContent = S.manual ? "직접 작업 중이에요. 다 고치셨으면 AI에게 맡겨주세요." : S.pinOpen ? "계좌 비밀번호를 직접 입력해주세요." : "팝업 내용을 보시고 직접 닫아주세요.";
+    $("#btn-manual-done").hidden = !S.manual;
+  }
+}
+
+// 진행 화면: 앱을 기기 전체 크기로 렌더링한 뒤, 남은 공간에 맞게 축소
+function fitScreen() {
+  const phone = $(".phone");
+  if (!phone || $("#stage").hidden) return;
+  const cs = getComputedStyle(phone);
+  const W = phone.clientWidth;
+  const H = phone.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  phone.style.setProperty("--app-w", `${W}px`);
+  phone.style.setProperty("--app-h", `${H}px`);
+  const clip = $(".screen-clip");
+  if (phone.dataset.view === "progress") {
+    const box = $(".screen-box");
+    const scale = Math.max(0.3, Math.min(0.72, (box.clientHeight - 12) / H, (box.clientWidth * 0.88) / W));
+    phone.style.setProperty("--scale", scale.toFixed(4));
+    clip.style.width = `${Math.floor(W * scale)}px`;
+    clip.style.height = `${Math.floor(H * scale)}px`;
+  } else {
+    clip.style.width = "";
+    clip.style.height = "";
+  }
+}
+
+function openTask(on) {
+  $("#task-card").classList.toggle("open", on);
+  $("#task-dim").classList.toggle("open", on);
+  if (S) logEvent(on ? "task_open" : "task_close");
+}
+
+function openChat(on) {
+  if (!S) return;
+  S.chatOpen = on;
+  logEvent(on ? "chat_open" : "chat_close");
+  syncView();
 }
 
 // =====================================================================
@@ -290,7 +380,60 @@ function setAmount(amt) {
   renderPhone();
 }
 
-async function handleStop(via, firstText) {
+// 높은 자동화에서 말한 내용 해석. 수정 요청은 반영하고, 그 외에는 짧게 응답한 뒤 진행 상황을 알리고 계속 진행
+function highIntents() {
+  return ["set_amount", ...(S.complexity === "B" ? ["set_memo"] : []), "set_source", "pause", "continue", "cancel", "other"];
+}
+const HIGH_HINT =
+  "높은 자동화에서는 사용자의 답을 기다리지 않고 자동으로 진행해. other/continue이면 reply는 발화를 짧게 받아준 뒤 현재 진행 상황을 알리는 형태로 끝내고, 승인을 묻지 마.";
+
+async function applyHighChange(o, via) {
+  if (o.intent === "set_amount" && o.amount_won) {
+    setAmount(o.amount_won);
+    logEvent("amount_changed", { amount: o.amount_won, via });
+    await agentSay(S.steps[S.errorIdx].correction.highDone(o.amount_won));
+    return true;
+  }
+  if (o.intent === "set_memo" && o.memo) {
+    setMemo(o.memo, via);
+    await agentSay(`받는 분 통장 메모를 ‘${o.memo}’으로 바꿨어요.`);
+    return true;
+  }
+  if (o.intent === "set_source" && o.source_account) {
+    S.form.source = o.source_account;
+    logEvent("source_changed", { source: o.source_account, via });
+    renderPhone();
+    await agentSay(`${ACCOUNTS[o.source_account].label}에서 출금할게요.`);
+    return true;
+  }
+  return false;
+}
+
+async function handleInterjection(text) {
+  if (S.paused || S.finished) return;
+  S.paused = true; // 해석하는 동안 진행을 잠시 보류
+  S.m.interjections = (S.m.interjections || 0) + 1;
+  showTyping(false);
+  syncControls();
+  const said = S.log.filter((e) => e.type === "agent_message").at(-1)?.text || "";
+  const o = await turn(text, { said, intents: highIntents(), hint: HIGH_HINT });
+  if (["set_amount", "set_memo", "set_source"].includes(o.intent)) {
+    S.m.stops++;
+    markIntervention("stop_text");
+    logEvent("stop", { via: "text" });
+    if (await applyHighChange(o, "stop_text")) return resume();
+  }
+  if (o.intent === "pause") {
+    S.paused = false;
+    return handleStop("text");
+  }
+  if (o.intent === "cancel") return cancelTransfer();
+  await agentSay(o.reply);
+  resume();
+}
+
+// 중지 버튼(또는 "멈춰") → "진행을 멈췄어요. 어떻게 바꿀까요?" 후 개입 대화
+async function handleStop(via) {
   if (S.paused || S.finished) return;
   S.paused = true;
   S.m.stops++;
@@ -299,46 +442,21 @@ async function handleStop(via, firstText) {
   showTyping(false);
   syncControls();
 
-  const B = S.complexity === "B";
-  const ask = S.steps[S.errorIdx].correction.highAsk;
-  let said = ask;
-  let text = firstText;
-  if (text == null) await agentSay(ask);
-  else said = S.log.filter((e) => e.type === "agent_message").at(-1)?.text || ask;
-
+  let said = S.steps[S.errorIdx].correction.highAsk;
+  await agentSay(said);
   for (;;) {
-    if (text == null) text = await new Promise((r) => { S.ivWaiter = r; syncControls(); });
+    const text = await new Promise((r) => { S.ivWaiter = r; syncControls(); });
     const o = await turn(text, {
       said,
-      intents: ["set_amount", ...(B ? ["set_memo"] : []), "set_source", "continue", "cancel", "other"],
-      hint: "참가자가 도우미의 자동 진행을 멈추고 말한 상황입니다. 바꿀 내용이 분명하지 않으면 무엇을 바꾸고 싶은지 자연스럽게 물어보세요.",
+      intents: highIntents().filter((x) => x !== "pause"),
+      hint: HIGH_HINT + " 사용자가 중지 버튼으로 진행을 멈춘 상태야. 바꿀 내용이 분명하지 않은 말이면 reply로 짧게 응답하고 이어서 진행한다고 알려.",
     });
-    text = null;
-    if (o.intent === "set_amount" && o.amount_won) {
-      setAmount(o.amount_won);
-      logEvent("amount_changed", { amount: o.amount_won, via: `stop_${via}` });
-      await agentSay(S.steps[S.errorIdx].correction.highDone(o.amount_won));
-      break;
-    }
-    if (o.intent === "set_memo" && o.memo) {
-      setMemo(o.memo, `stop_${via}`);
-      await agentSay(`받는 분 통장 메모를 ‘${o.memo}’으로 바꿨어요.`);
-      break;
-    }
-    if (o.intent === "set_source" && o.source_account) {
-      S.form.source = o.source_account;
-      logEvent("source_changed", { source: o.source_account, via: `stop_${via}` });
-      renderPhone();
-      await agentSay(`${ACCOUNTS[o.source_account].label}에서 출금할게요.`);
-      break;
-    }
-    if (o.intent === "continue") {
-      await agentSay("계속 진행할게요.");
-      break;
-    }
+    if (await applyHighChange(o, `stop_${via}`)) break;
     if (o.intent === "cancel") return cancelTransfer();
+    if (o.intent === "continue") { await agentSay("계속 진행할게요."); break; }
     said = o.reply;
     await agentSay(o.reply);
+    break; // 높은 자동화: 응답 후 진행 재개
   }
   resume();
 }
@@ -364,6 +482,8 @@ function startManual() {
   markIntervention("manual");
   logEvent("manual_start");
   S.manualSnapshot = { ...S.form, sheet: S.phone.sheet };
+  S.manualAmount = String(S.form.amount ?? S.phone.pendingAmount ?? S.userAmount ?? "");
+  S.manualMemo = null;
   S.phone.sheet = null; // 확인 시트가 떠 있으면 내려서 수정 가능하게
   showTyping(false);
   renderPhone();
@@ -373,17 +493,12 @@ function startManual() {
 async function endManual() {
   if (!S.manual) return;
   const snap = S.manualSnapshot;
-  const amtInput = $("#m-amount");
-  const memoInput = $("#m-memo");
-  const srcInput = document.querySelector('input[name="m-source"]:checked');
   const changes = {};
-  if (amtInput) {
-    const v = Number(String(amtInput.value).replace(/[^\d]/g, ""));
-    const cur = S.form.amount ?? S.userAmount ?? null;
-    if (v && v !== cur) { changes.amount = v; setAmount(v); }
-  }
-  if (memoInput && memoInput.value !== (S.form.memo ?? "")) { changes.memo = memoInput.value; S.form.memo = memoInput.value; }
-  if (srcInput && srcInput.value !== S.form.source) { changes.source = srcInput.value; S.form.source = srcInput.value; }
+  const v = Number(S.manualAmount || 0);
+  const cur = S.form.amount ?? S.userAmount ?? null;
+  if (S.phone.app === "bank" && v && v !== cur) { changes.amount = v; setAmount(v); }
+  if (S.manualMemo != null && S.manualMemo !== (S.form.memo ?? "")) { changes.memo = S.manualMemo; setMemo(S.manualMemo, "manual"); }
+  if (S.form.source !== snap.source) { changes.source = S.form.source; S.phone.tapped = S.form.source; }
   S.phone.sheet = snap.sheet;
   S.manual = false;
   logEvent("manual_end", { changes });
@@ -477,14 +592,41 @@ async function handleReject(step, c, said) {
   let o = c.id !== "reject" ? c.out : null; // 선택지 단계에서 이미 구체적인 요청을 말한 경우
 
   if (type === "app") {
-    // 어떤 앱을 말하든 정해진 프로토타입을 실행
-    await agentSay("어떤 앱으로 실행할까요?");
-    const text = await waitText();
-    logEvent("app_named", { text });
-    await agentSay(step.low.launched);
-    step.apply(S);
-    renderPhone();
-    return "done";
+    // 지정된 앱이 아닌 다른 앱(다른 은행 앱 포함)을 말하면 그 앱으로는 할 수 없다고 알리고 지정된 앱 실행을 다시 물음
+    const app = step.low.app;
+    const ask = "어떤 앱으로 실행할까요?";
+    const launch = async () => {
+      await agentSay(step.low.launched);
+      step.apply(S);
+      renderPhone();
+      return "done";
+    };
+    const opts = {
+      intents: ["approve", "unsuitable_app", "other"],
+      hint:
+        `지정된 앱은 ${app.target}이고, 이 단계의 목적은 ${app.purpose}이야. 사용자가 ${app.target}을 실행하라고 하면 approve야. ` +
+        `그 외의 앱(다른 은행 앱 포함)을 말하면 unsuitable_app이고, reply는 그 앱으로는 ${app.purpose}을 할 수 없다는 사실을 알린 뒤 ${app.target}을 실행할지 묻는 형태로 써.`,
+      appKeywords: app.keywords,
+      fallbackBy: {
+        unsuitable_app: `그 앱으로는 ${app.purpose}을 할 수 없어요. ${app.purpose}을 위해 ${app.target}을 실행할까요?`,
+        other: `${app.purpose}을 위해서는 ${app.target}을 실행해야 해요. ${app.target}을 실행할까요?`,
+      },
+    };
+    await agentSay(ask);
+    let said = ask;
+    let o = null;
+    for (;;) {
+      if (!o) o = await turn(await waitText(), { ...opts, said });
+      logEvent("app_named", { intent: o.intent });
+      if (o.intent === "approve") return launch();
+      // 지정되지 않은 앱 / 기타 → 응답 후 지정된 앱 실행 여부를 다시 물음
+      said = o.reply;
+      await agentSay(o.reply);
+      const c = await askChoice(APPROVE, said, ["unsuitable_app"], opts.hint);
+      if (c.id === "approve") return launch();
+      if (c.id === "reject") { await agentSay(ask); said = ask; o = null; continue; }
+      o = c.out;
+    }
   }
 
   if (type === "account") {
@@ -495,13 +637,15 @@ async function handleReject(step, c, said) {
         o = await turn(await waitText(), {
           said: ask,
           intents: ["find_other", "set_account", "direct_input", "approve", "cancel", "other"],
-          hint: "approve는 원래 제안한 김영숙님 계좌로 하겠다는 뜻입니다. 계좌번호를 말하면 set_account입니다.",
+          hint: "approve는 원래 제안한 김영숙님 계좌로 하겠다는 뜻이야. 계좌번호를 말하면 set_account야. find_other이면 reply는 찾은 계좌가 같은 계좌(김영숙, 농협 302-1234-5678)라는 사실과 계좌번호를 직접 말해도 된다는 것을 알리고, 이 계좌로 송금할지 묻는 형태로 써.",
+          fallbackBy: { find_other: "찾은 계좌는 김영숙님(농협 302-1234-5678) 계좌뿐이고, 계좌번호를 직접 말씀해주셔도 돼요. 이 계좌로 송금할까요?" },
         });
       }
       if (o.intent === "find_other") {
-        // 다른 계좌를 찾아도 같은 계좌만 나옴
+        // 다른 계좌를 찾아도 같은 계좌만 나옴 → 같은 계좌와 직접 입력 가능을 안내하고 승인을 다시 물음
         logEvent("find_other_account");
-        return "retry";
+        await agentSay(o.reply);
+        return "reask";
       }
       if (o.intent === "set_account" && o.account_number) {
         S.form.recipientCustom = o.account_number;
@@ -625,6 +769,7 @@ async function runLowAmount(step) {
   let pending = S.userAmount ?? ERROR_AMOUNT;
   const preempted = S.userAmount != null;
   S.phone.pendingAmount = pending;
+  S.phone.bankView = "amount";
   renderPhone();
 
   let question = preempted ? corr.lowConfirm(pending) : step.low.messages[0];
@@ -690,6 +835,9 @@ async function runHighStep(step) {
     } else {
       S.form.amount = ERROR_AMOUNT;
     }
+    S.phone.bankView = "amount";
+    renderPhone();
+    await sleep(700); // 금액이 입력되는 화면을 잠깐 보여줌
     applyFirst = true;
   }
 
@@ -719,7 +867,7 @@ async function runPassword(step, spec) {
     if (r.type === "button") break;
     if (S.automation === "high") {
       // 높은 자동화: 말을 걸면 중지로 간주하고 개입 대화 후 다시 대기
-      await handleStop("text", r.text);
+      await handleInterjection(r.text);
       if (S.finished) return false;
       continue;
     }
@@ -773,121 +921,6 @@ function finish(status) {
 // =====================================================================
 // 폰 화면
 // =====================================================================
-function renderPhone() {
-  if (!S) return;
-  const p = S.phone;
-  let body = "";
-  if (p.app === "home") body = homeScreen();
-  else if (p.app === "sms_list") body = smsListScreen();
-  else if (p.app === "sms_detail") body = smsDetailScreen();
-  else if (p.app === "bank") body = bankScreen();
-  $("#screen").innerHTML = `
-    <div class="statusbar"><span>9:41</span><span class="sb-icons">●●● ▲ ▮</span></div>
-    <div class="app">${body}</div>
-    ${p.toast ? `<div class="toast">${esc(p.toast)}</div>` : ""}`;
-  $("#screen").querySelectorAll("[data-pin]").forEach((b) => (b.onclick = () => pinPress(b.dataset.pin)));
-  $("#screen").querySelectorAll("[data-popup-close]").forEach((b) => (b.onclick = () => S.popupResolve && S.popupResolve()));
-}
-
-function homeScreen() {
-  const apps = [
-    ["문자", "💬", "#34c759"], ["마음은행", "₩", "#2f6fed"], ["전화", "📞", "#30b650"], ["카메라", "📷", "#8e8e93"],
-    ["캘린더", "📅", "#ff9500"], ["사진", "🌄", "#af52de"], ["설정", "⚙️", "#636366"], ["지도", "🗺️", "#00a3a3"],
-  ];
-  return `<div class="home">${apps
-    .map(([n, i, c]) => `<div class="app-icon"><div class="ai" style="background:${c}">${i}</div><span>${n}</span></div>`)
-    .join("")}</div>`;
-}
-
-function smsListScreen() {
-  const rows = [
-    ["김영숙", "안녕하세요, 30기 총무 김영숙이에요. 올해 동창회 회비…", "오전 9:12", true],
-    ["우리딸", "엄마 주말에 갈게요~", "어제"],
-    ["택배알림", "[배송완료] 고객님의 상품이 문 앞에 배송되었습니다.", "어제"],
-    ["마음은행", "[마음은행] 9월 카드 결제 예정 금액 안내", "9월 20일"],
-    ["건강보험공단", "건강검진 대상자 안내", "9월 18일"],
-  ];
-  return `<div class="appbar">메시지</div><div class="sms-list">${rows
-    .map(([n, t, d, unread]) => `<div class="sms-row ${unread ? "unread" : ""}"><div class="avatar">${esc(n[0])}</div><div class="sms-main"><b>${esc(n)}</b><p>${esc(t)}</p></div><time>${d}</time></div>`)
-    .join("")}</div>`;
-}
-
-function smsDetailScreen() {
-  const text = esc(SMS_TEXT(S)).replace(
-    "농협 302-1234-5678",
-    `<mark class="${S.phone.smsHighlight ? "on" : ""}">농협 302-1234-5678</mark>`,
-  );
-  return `<div class="appbar"><span class="back">‹</span> 김영숙</div>
-    <div class="sms-thread"><div class="sms-date">오늘 오전 9:12</div><div class="sms-bubble">${text.replace(/\n/g, "<br>")}</div></div>`;
-}
-
-function bankScreen() {
-  const p = S.phone;
-  const f = S.form;
-  let view = "";
-  if (p.bankView === "home") {
-    view = `<div class="bank-home">
-      ${Object.values(ACCOUNTS).map((a) => `<div class="acct-card"><small>${a.label}</small><div>${a.number}</div><b>${a.balance.toLocaleString("ko-KR")}원</b></div>`).join("")}
-      <div class="bank-menu"><span>이체</span><span>조회</span><span>공과금</span><span>상품</span></div></div>`;
-  } else if (p.bankView === "transfer") {
-    view = transferForm();
-  } else if (p.bankView === "complete") {
-    view = `<div class="bank-done"><div class="check">✓</div><h3>이체 완료</h3>
-      <p>김영숙(농협 302-1234-5678)</p><b>${won(f.amount)}</b>${f.memo ? `<p class="muted">받는 분 통장 표시: ${esc(f.memo)}</p>` : ""}</div>`;
-  }
-  let overlay = "";
-  if (p.popup) {
-    overlay = `<div class="popup-dim"><div class="popup"><div class="popup-art">🍂</div><b>가을맞이 적금 이벤트</b><p>지금 가입하면 최대 연 4.5% 우대금리!</p><div class="popup-btns ${p.popupClosable ? "live" : ""}"><span ${p.popupClosable ? "data-popup-close" : ""}>오늘 하루 보지 않기</span><span ${p.popupClosable ? "data-popup-close" : ""}>닫기</span></div></div></div>`;
-  }
-  if (p.sheet === "confirm") {
-    overlay = `<div class="sheet-dim"><div class="sheet"><h4>이체 정보 확인</h4>
-      ${row("출금 계좌", ACCOUNTS[f.source].label)}${row("받는 분", "김영숙 · 농협 302-1234-5678")}${row("보낼 금액", won(f.amount))}${S.complexity === "B" ? row("받는 분 통장 표시", f.memo || "-") : ""}
-      <div class="btn-primary">이체하기</div></div></div>`;
-  } else if (p.sheet === "pin") {
-    if (S.pinOpen) {
-      const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
-      overlay = `<div class="sheet-dim"><div class="sheet pin"><h4>계좌 비밀번호</h4><p class="muted">비밀번호 4자리를 입력해주세요</p>
-        <div class="dots">${[0, 1, 2, 3].map((i) => `<i class="${i < p.pin.length ? "on" : ""}"></i>`).join("")}</div>
-        <div class="keypad">${keys.map((k) => (k ? `<button type="button" data-pin="${k}">${k === "del" ? "⌫" : k}</button>` : "<span></span>")).join("")}</div></div></div>`;
-    }
-  } else if (p.sheet === "sending") {
-    overlay = `<div class="sheet-dim"><div class="sheet"><div class="spinner"></div><p style="text-align:center">이체 중이에요…</p></div></div>`;
-  }
-  return `<div class="appbar bank-bar">마음은행 ${p.bankView === "transfer" ? "<small>· 이체</small>" : ""}</div>${view}${overlay}`;
-}
-
-function row(k, v) {
-  return `<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`;
-}
-
-function transferForm() {
-  const f = S.form;
-  const p = S.phone;
-  const man = S.manual;
-  const foc = (k) => (p.focus === k && !man ? "focus" : "");
-  const src = man
-    ? Object.entries(ACCOUNTS).map(([k, a]) => `<label class="src-opt ${f.source === k ? "sel" : ""}"><input type="radio" name="m-source" value="${k}" ${f.source === k ? "checked" : ""}> ${a.label}<small>${a.balance.toLocaleString("ko-KR")}원</small></label>`).join("")
-    : Object.entries(ACCOUNTS).map(([k, a]) => `<div class="src-opt ${f.source === k && p.focus !== "source" ? "sel" : ""}">${a.label}<small>${a.balance.toLocaleString("ko-KR")}원</small></div>`).join("");
-  const rcpt = f.recipient
-    ? `<b>김영숙</b> · 농협 302-1234-5678 <span class="tag">${S.complexity === "A" ? "자주 쓰는 계좌" : "문자에서 붙여넣음"}</span>`
-    : `<span class="ph">계좌번호 입력</span>`;
-  const shownAmt = f.amount ?? p.pendingAmount ?? S.userAmount;
-  const amt = man
-    ? `<input id="m-amount" inputmode="numeric" value="${shownAmt ?? ""}" placeholder="금액(원)"><small class="muted">원 단위 숫자로 입력</small>`
-    : shownAmt != null
-      ? `<b class="${f.amount == null ? "pending" : ""}">${won(shownAmt)}</b>${f.amount == null ? ' <span class="tag warn">입력 대기</span>' : ""}`
-      : `<span class="ph">금액 입력</span>`;
-  const memo = S.complexity === "B"
-    ? `<div class="field ${foc("memo")}"><label>받는 분 통장 표시</label>${man ? `<input id="m-memo" value="${esc(f.memo ?? "")}" placeholder="메모">` : f.memo ? `<b>${esc(f.memo)}</b>` : '<span class="ph">메모 (선택)</span>'}</div>`
-    : "";
-  return `<div class="transfer ${man ? "manual" : ""}">
-    <div class="field ${foc("source")}"><label>출금 계좌</label><div class="src">${src}</div></div>
-    <div class="field ${foc("recipient")}"><label>받는 분</label><div>${rcpt}</div></div>
-    <div class="field ${foc("amount")}"><label>보낼 금액</label><div>${amt}</div></div>
-    ${memo}
-    <div class="btn-primary ${man ? "" : "dim"}">다음</div></div>`;
-}
-
 function renderStepper() {
   const el = $("#stepper");
   if (!el) return;
@@ -920,6 +953,7 @@ function summary() {
     final_amount: m.finalAmount,
     approvals: m.approvals,
     stops: m.stops,
+    interjections: m.interjections || 0,
     manual_controls: m.manuals,
     llm_calls: m.llmCalls,
     llm_fallbacks: m.llmFallbacks,
@@ -1058,15 +1092,21 @@ function start() {
 
   const sit = SITUATION[S.complexity];
   $("#task-card").hidden = !cfg.showTask;
+  document.querySelectorAll(".task-btn").forEach((b) => (b.hidden = !cfg.showTask));
   $("#task-situation").innerHTML = sit.situation.map((t) => `<p>${esc(t)}</p>`).join("");
   $("#task-list").innerHTML = sit.task.map((t) => `<li>${esc(t.replace("OOO", cfg.name))}</li>`).join("");
   $("#cond-title").textContent = CONDITIONS[S.cond].title;
 
   chat().innerHTML = "";
   $("#chips").innerHTML = "";
+  $("#pv-chips").innerHTML = "";
+  setStatus("");
   $("#log tbody").innerHTML = "";
   $("#setup").hidden = true;
   $("#stage").hidden = false;
+  document.body.classList.add("in-session");
+  document.body.classList.remove("drawer-open");
+  if (cfg.showTask) openTask(true); // 시작할 때 상황·과업 먼저 보여줌 (모바일)
   renderPhone();
   renderStepper();
   logEvent("session_start", { condition: S.cond, participant: cfg.pid, llm: LLM.enabled ? LLM.model : "rules", delay_ms: cfg.delay });
@@ -1085,6 +1125,8 @@ function backToSetup() {
   S = null;
   $("#stage").hidden = true;
   $("#setup").hidden = false;
+  document.body.classList.remove("in-session");
+  openTask(false);
 }
 
 // =====================================================================
@@ -1138,6 +1180,21 @@ function init() {
   $("#btn-stop").onclick = () => S && handleStop("button");
   $("#btn-manual").onclick = () => S && startManual();
   $("#btn-manual-done").onclick = () => S && endManual();
+  $("#btn-open-chat").onclick = () => openChat(true);
+  document.querySelectorAll(".task-btn").forEach((b) => (b.onclick = () => openTask(true)));
+  $("#btn-task-close").onclick = () => openTask(false);
+  $("#task-dim").onclick = () => openTask(false);
+  // 연구자 패널: 세션 중에는 상단 제목을 세 번 연속 탭 (또는 Ctrl + .)
+  document.querySelectorAll(".secret").forEach((el) => {
+    let taps = [];
+    el.addEventListener("click", () => {
+      const t = Date.now();
+      taps = [...taps.filter((x) => t - x < 800), t];
+      if (taps.length >= 3) { taps = []; document.body.classList.toggle("drawer-open"); }
+    });
+  });
+  window.addEventListener("resize", fitScreen);
+  $("#btn-close-chat").onclick = () => openChat(false);
   $("#btn-researcher").onclick = () => document.body.classList.toggle("drawer-open");
   $("#btn-close-drawer").onclick = () => document.body.classList.remove("drawer-open");
   $("#btn-reset").onclick = backToSetup;
