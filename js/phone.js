@@ -5,7 +5,7 @@
 
 const BANK_NAME = "마음은행";
 // 진행 속도 배율 (설정 화면의 「진행 속도」, 클수록 느림)
-let PACE = 1.8;
+let PACE = 2.2;
 // 구글 Material Symbols 아이콘
 const mi = (name, cls = "") => `<span class="ms ${cls}">${name}</span>`;
 const won0 = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;

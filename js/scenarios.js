@@ -210,8 +210,8 @@ function buildSteps(complexity, participantName) {
         id: "sms_find",
         label: "총무 문자 찾기",
         guide: "문자 목록에서 총무 김영숙님의 문자를 찾는 단계",
-        low: { messages: msg("sms_find") },
-        high: { messages: msg("sms_find") },
+        low: { messages: msg("sms_find"), split: 1 },
+        high: { messages: msg("sms_find"), split: 1 },
         act: async (s) => { await tap(".sms-row.unread"); s.phone.app = "sms_detail"; renderPhone(); },
         apply: (s) => { s.phone.app = "sms_detail"; },
       },
@@ -220,7 +220,7 @@ function buildSteps(complexity, participantName) {
         label: "문자 속 계좌번호 찾아 복사하기",
         guide: "문자에서 회비 입금 계좌(김영숙 농협 302-1234-5678)를 찾아 송금할 계좌로 정하는 단계. 다른 계좌를 찾아달라고 해도 문자에 있는 계좌는 이것뿐임",
         low: { messages: msg("sms_account"), options: APPROVE, reject: "account" },
-        high: { messages: msg("sms_account"), applyFirst: true },
+        high: { messages: msg("sms_account"), split: 1 },
         pre: async (s) => { await actSleep(300); s.phone.smsHighlight = true; renderPhone(); await actSleep(400); },
         act: async (s) => { s.phone.smsHighlight = true; await tap("mark", { hold: 700 }); s.phone.toast = "계좌번호를 복사했어요"; renderPhone(); await actSleep(500); },
         apply: (s) => { s.phone.smsHighlight = true; s.phone.toast = "계좌번호를 복사했어요"; },
@@ -321,12 +321,9 @@ function buildSteps(complexity, participantName) {
         await tap(".line-select");
         p.bankPicked = s.form.recipientCustom ? BANK_NAME : "농협";
         renderPhone();
-        await tap(".bk-btn");
-        s.form.recipient = true;
-        p.bankView = "amount";
-        renderPhone();
+        s.form.recipient = true; // 입력한 계좌 화면에서 멈춤 ([확인]은 송금액 단계에서 누름)
       },
-      apply: (s) => { s.form.recipient = true; s.phone.bankView = "amount"; s.phone.focus = null; },
+      apply: (s) => { s.form.recipient = true; s.phone.focus = null; },
     });
   } else {
     steps.push({
@@ -383,6 +380,13 @@ function buildSteps(complexity, participantName) {
       highAsk: (s) => line("stop.ask", s),
       highDone: (s, amt) => line("change.amount", s, { amount: amt }),
     },
+    // 계좌번호 입력 화면에 있으면 [확인]을 눌러 금액 화면으로
+    pre: async (s) => {
+      if (s.phone.bankView !== "acct_input") return;
+      await tap(".bk-btn");
+      s.phone.bankView = "amount";
+      renderPhone();
+    },
     act: async (s) => {
       s.phone.bankView = "amount";
       renderPhone();
@@ -401,6 +405,7 @@ function buildSteps(complexity, participantName) {
       guide: `받는 분 통장에 표시될 메모를 정하는 단계. 기본 메모는 ‘${memo}’`,
       defaultMemo: memo,
       low: { messages: msg("memo"), options: APPROVE, reject: "memo", ask: "memo.ask" },
+      pre: async (s) => { s.phone.focus = "memo"; renderPhone(); await actSleep(300); },
       high: { messages: msg("memo"), applyFirst: true },
       act: async (s) => {
         const text = s.pendingMemo ?? memo;
@@ -454,8 +459,8 @@ function buildSteps(complexity, participantName) {
       id: "done",
       kind: "done",
       label: "완료 안내",
-      low: { messages: msg("done") },
-      high: { messages: msg("done") },
+      low: { messages: msg("done"), applyFirst: true },
+      high: { messages: msg("done"), applyFirst: true },
       apply: (s) => { s.phone.sheet = null; s.phone.bankView = "complete"; s.phone.focus = null; },
     },
   );

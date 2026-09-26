@@ -142,7 +142,7 @@ async function agentSay(text, { gated = false } = {}) {
   S.statusLines = same ? [...S.statusLines, text].slice(-2) : [text];
   S.statusStep = S.stepIdx;
   setStatus(S.statusLines.join("\n"));
-  logEvent("agent_message", { text });
+  logEvent("agent_message", { text, screen: screenKey(S.phone) + (S.phone.typedAmount ? `|${S.phone.typedAmount}` : "") });
 }
 
 // 시나리오 문구(키)를 말풍선으로: 여러 줄이면 줄마다 말풍선 하나
@@ -357,7 +357,7 @@ function syncView() {
   requestAnimationFrame(fitScreen);
   const bar = $("#direct-msg");
   if (bar && S) {
-    bar.textContent = S.manual ? "직접 조작 중이에요. 다 고치셨으면 AI에게 맡겨주세요." : "팝업 내용을 보시고 직접 닫아주세요.";
+    bar.textContent = S.manual ? "직접 조작 중입니다." : "팝업 내용을 보시고 직접 닫아주세요.";
     $("#btn-manual-done").hidden = !S.manual;
     $(".direct-bar").classList.toggle("off", Boolean(S.pinOpen)); // 비밀번호 입력 때는 안내 띠 없이 앱 화면만
   }
@@ -533,6 +533,7 @@ async function handleStop(via) {
   const saved = S.waiter?.options ? { options: S.waiter.options, onPick: S.waiter.onPick } : null;
   syncControls();
 
+  S.statusLines = null; // 진행 문구를 새로 시작
   let said = await sayKey("stop.ask");
   for (;;) {
     setChips([{ id: "resume", label: "계속하기" }], (o) => {
@@ -559,7 +560,9 @@ async function handleStop(via) {
   }
   S.stopped = false;
   setChips([]);
+  S.statusLines = null;
   await sayKey("stop.continue");
+  S.statusLines = null; // 재개 후 다음 문구는 새로 표시
   finishIntervention(saved);
 }
 
@@ -621,7 +624,9 @@ async function endManual() {
   logEvent("manual_end", { changes });
   syncControls();
   renderPhone();
+  S.statusLines = null;
   await sayKey("manual.resume");
+  S.statusLines = null;
   finishIntervention(null);
 }
 
@@ -677,7 +682,7 @@ async function doApply(step, choice) {
 }
 
 // 화면이 바뀐 뒤 잠시 머무름 (로딩이 끝난 뒤부터)
-async function dwell(ms = 900) {
+async function dwell(ms = 1500) {
   await waitLoading();
   await sleep(ms * PACE);
   if (S.automation === "high") await gate();
@@ -688,7 +693,7 @@ async function doPre(step) {
   if (!step.pre) return;
   setActing(true);
   try { await step.pre(S); } finally { setActing(false); }
-  await dwell(600);
+  await dwell(1000);
 }
 
 // ---------- 낮은 자동화 ----------
@@ -704,6 +709,16 @@ async function runLowStep(step) {
   if (step.kind === "error_amount") return runLowAmount(step);
 
   await doPre(step);
+  if (!step.low.options) {
+    // 안내만 하는 단계: 문구와 화면 조작 순서를 맞춤
+    const msgs = resolveMsgs(step.low.messages);
+    const split = step.low.split ?? (step.low.applyFirst ? 0 : msgs.length);
+    for (const m of msgs.slice(0, split)) await agentSay(m);
+    await doApply(step);
+    for (const m of msgs.slice(split)) await agentSay(m);
+    if (step.kind === "done") return finish("completed");
+    return true;
+  }
   let repeat = true;
   for (;;) {
     const msgs = resolveMsgs(step.low.messages);
@@ -910,6 +925,7 @@ function waitPopupClose() {
 }
 
 async function runLowAmount(step) {
+  await doPre(step);
   const corr = step.correction;
   let pending = S.userAmount ?? ERROR_AMOUNT;
   const preempted = S.userAmount != null;
@@ -991,17 +1007,23 @@ async function runHighStep(step) {
 
   await gate();
   await doPre(step);
-  if (applyFirst) {
+  const say = async (list) => {
+    for (const m of list) {
+      await agentSay(m, { gated: true });
+      if (step.kind === "error_amount" && S.userAmount == null && S.m.errorShownAt == null) S.m.errorShownAt = now();
+    }
+  };
+  const split = step.high.split;
+  if (split != null) {
+    // 앞 문구 → 화면 조작 → 뒤 문구 (예: "문자 목록 확인 중 …" → 문자 열기 → "찾았어요")
+    await say(msgs.slice(0, split));
     await gate();
     await doApply(step);
-  }
-  for (const m of msgs) {
-    await agentSay(m, { gated: true });
-    if (step.kind === "error_amount" && S.userAmount == null && S.m.errorShownAt == null) S.m.errorShownAt = now();
-  }
-  if (!applyFirst) {
-    await gate();
-    await doApply(step);
+    await say(msgs.slice(split));
+  } else {
+    if (applyFirst) { await gate(); await doApply(step); }
+    await say(msgs);
+    if (!applyFirst) { await gate(); await doApply(step); }
   }
   if (step.kind === "done") return finish("completed");
   return true;
@@ -1214,16 +1236,7 @@ function applyLLMSettings() {
   chip.dataset.on = LLM.enabled ? "1" : "0";
 }
 
-// 모바일에서 주소창 없이 전체화면으로 (세션 시작 버튼을 누를 때 요청, 지원하지 않으면 무시)
-function enterFullscreen() {
-  const el = document.documentElement;
-  const req = el.requestFullscreen || el.webkitRequestFullscreen;
-  if (!req || document.fullscreenElement || !matchMedia("(pointer: coarse)").matches) return;
-  try { const r = req.call(el, { navigationUI: "hide" }); if (r?.catch) r.catch(() => {}); } catch { /* 무시 */ }
-}
-
 function start() {
-  enterFullscreen();
   applyLLMSettings();
   const cfg = readSetup();
   store.set("setup", { pid: cfg.pid, name: cfg.name, condition: cfg.condition, delay: cfg.delay, showTask: cfg.showTask, pace: cfg.pace });
@@ -1284,7 +1297,6 @@ function setPrompt(text, { from } = {}) {
 function renderPromptMeta() {
   const edited = LLM.prompt.trim() !== DEFAULT_PROMPT.trim();
   const meta = `버전 ${LLM.promptVersion} · ${edited ? "수정됨" : "기본값"} · ${LLM.prompt.length.toLocaleString("ko-KR")}자`;
-  $("#prompt-meta").textContent = meta;
   $("#prompt-live-meta").textContent = meta;
 }
 
@@ -1325,8 +1337,6 @@ function saveScripts() {
 
 function renderScriptMeta() {
   const n = Object.keys(SCRIPT_OVERRIDES[scriptCond] || {}).length;
-  const total = Object.values(SCRIPT_OVERRIDES).reduce((a, o) => a + Object.keys(o).length, 0);
-  $("#script-meta").textContent = total ? `${total}개 수정됨` : "기본값";
   document.querySelectorAll("#script-tabs button").forEach((b) => {
     const m = Object.keys(SCRIPT_OVERRIDES[b.dataset.cond] || {}).length;
     b.textContent = b.dataset.cond + (m ? " •" : "");

@@ -451,3 +451,13 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .pv-chips .choice { padding: 9px 14px; font-size: 15px; }
 .pv-chips .choice .c-main small { font-size: 12.5px; }
 .pv-chips .chip:not(.choice):not(.open-card) { padding: 8px 20px; font-size: 15px; }
+
+/* 하단 버튼 크기 축소 */
+.pv-bottom .txt-btn { font-size: 15px; padding: 8px 12px; }
+.pv-bottom .primary-btn { font-size: 15px; padding: 9px 20px; }
+/* 출금계좌 등 목록형 선택지는 높게 */
+.pv-chips .choice { padding: 15px 16px; font-size: 16px; }
+/* 안내 문구: 단어 단위로, 줄 길이를 고르게 줄바꿈 */
+.pv-status, .bubble, .task-card p, .choice .c-main b { word-break: keep-all; overflow-wrap: break-word; }
+.pv-status { text-wrap: balance; }
+.pv-status { padding-left: 28px; padding-right: 28px; }
