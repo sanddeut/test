@@ -82,6 +82,7 @@ const scrollChat = () => requestAnimationFrame(() => { const c = chat(); c.scrol
 // 진행 화면에 있을 때 나온 말은 대화창에 쌓지 않고 보관했다가, 대화창으로 넘어갈 때 같은 단계의 마지막 몇 개만 이어서 보여줌
 // (갤럭시 에이전트처럼 대화창에는 진행 로그 대신 대화만 남김)
 function appendBubble(role, text) {
+  if (S && role === "user") S.statusLines = null; // 참가자가 답하면 진행 문구를 새로 시작
   if (S && wantedView() !== "chat") {
     S.unflushed = [...(S.unflushed || []), { role, text, step: S.stepIdx }].slice(-6);
     return;
@@ -330,7 +331,7 @@ function syncControls() {
 // - progress: 그 외 → 앱 화면을 축소해 진행 상황을 보여주고, 단순 선택은 버튼으로 바로 노출
 function wantedView() {
   if (!S) return "chat";
-  if (S.manual || S.pinOpen || S.phone.popupClosable) return "direct";
+  if (S.manual || S.pinOpen || S.phone.popupClosable || S.awaitDoneConfirm) return "direct";
   if (S.pwWait) return "chat";
   if (S.ivWaiter || S.stopped) return "chat";
   if (S.waiter && !S.waiter.options) return "chat";
@@ -368,7 +369,7 @@ function syncView() {
   if (bar && S) {
     bar.textContent = S.manual ? "직접 조작 중입니다." : "팝업 내용을 보시고 직접 닫아주세요.";
     $("#btn-manual-done").hidden = !S.manual;
-    $(".direct-bar").classList.toggle("off", Boolean(S.pinOpen)); // 비밀번호 입력 때는 안내 띠 없이 앱 화면만
+    $(".direct-bar").classList.toggle("off", Boolean(S.pinOpen || S.awaitDoneConfirm)); // 비밀번호 입력·완료 화면은 안내 띠 없이 앱 화면만
   }
 }
 
@@ -655,6 +656,8 @@ async function run() {
     const o = res.output;
     if (o.is_transfer_request && !(o.amount_won == null && o.clarification)) {
       S.m.request = { text, ...o };
+      showTyping(true);
+      await sleep(1800 * PACE); // 요청을 처리하는 것처럼 "…"을 잠시 보여줌
       break;
     }
     await agentSay(o.clarification || "송금하실 분과 금액을 말씀해주세요.");
@@ -1106,10 +1109,20 @@ function finish(status) {
   S.m.finishedAt = now();
   logEvent("session_end", { status, summary: summary() });
   S.status = status;
+  // 이체 완료 화면은 참가자가 [확인]을 누를 때까지 그대로 둠 → 누르면 대화창으로
+  if (status === "completed") S.awaitDoneConfirm = true;
   setChips([]);
   syncControls();
   saveSession();
   return false;
+}
+
+function confirmDone() {
+  if (!S?.awaitDoneConfirm) return;
+  S.awaitDoneConfirm = false;
+  logEvent("done_confirm");
+  saveSession();
+  syncControls();
 }
 
 // =====================================================================
@@ -1469,6 +1482,18 @@ function init() {
     });
   });
   window.addEventListener("resize", fitScreen);
+  // 키보드가 올라오면 보이는 영역 높이에 맞춰 화면(입력칸 포함)이 함께 올라오게 함
+  const vv = window.visualViewport;
+  if (vv) {
+    const fitViewport = () => {
+      document.documentElement.style.setProperty("--vvh", `${Math.round(vv.height)}px`);
+      window.scrollTo(0, 0);
+      fitScreen();
+      scrollChat();
+    };
+    vv.addEventListener("resize", fitViewport);
+    fitViewport();
+  }
   $("#btn-researcher").onclick = () => document.body.classList.toggle("drawer-open");
   $("#btn-close-drawer").onclick = () => document.body.classList.remove("drawer-open");
   $("#btn-reset").onclick = backToSetup;

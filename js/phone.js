@@ -69,6 +69,12 @@ function renderPhone() {
   else if (p.app === "sms_list") body = smsListScreen();
   else if (p.app === "sms_detail") body = smsDetailScreen();
   else if (p.app === "bank") body = bankScreen();
+  if (p.toast && p.toastShown !== p.toast) {
+    // 알림(토스트)은 2초 뒤 사라짐
+    p.toastShown = p.toast;
+    clearTimeout(p.toastTimer);
+    p.toastTimer = setTimeout(() => { p.toast = null; p.toastShown = null; renderPhone(); }, 2000);
+  }
   $("#screen").innerHTML = `${body}${p.toast ? `<div class="toast">${esc(p.toast)}</div>` : ""}${loadingOverlay(p)}`;
   bindPhone();
   if (typeof syncView === "function") syncView();
@@ -78,6 +84,7 @@ function bindPhone() {
   const sc = $("#screen");
   sc.querySelectorAll("[data-pin]").forEach((b) => (b.onclick = () => pinPress(b.dataset.pin)));
   sc.querySelectorAll("[data-popup-close]").forEach((b) => (b.onclick = () => S.popupResolve && S.popupResolve()));
+  sc.querySelectorAll("[data-done-confirm]").forEach((b) => (b.onclick = () => confirmDone()));
   sc.querySelectorAll("[data-key]").forEach((b) => (b.onclick = () => manualKey(b.dataset.key)));
   sc.querySelectorAll("[data-src-toggle]").forEach((b) => (b.onclick = () => manualToggleSource()));
   const memo = sc.querySelector("#m-memo");
@@ -268,7 +275,7 @@ function bankComplete() {
       <div><span>받는 분</span><b>${f.recipientCustom ? esc(f.recipientCustom) : "농협 302-1234-5678"}</b></div>
       ${S.complexity === "B" ? `<div><span>받는 분 통장표기</span><b>${esc(f.memo || S.cfg.name)}</b></div>` : ""}
     </div>
-    <div class="bk-btn">확인</div>
+    <div class="bk-btn" data-done-confirm>확인</div>
   </div>`;
 }
 
