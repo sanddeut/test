@@ -212,6 +212,7 @@ function waitRunnerInput(options) {
 // 선택지를 제시하고 답을 받음. 텍스트면 LLM으로 해석하고, 스크립트 밖 말이면 LLM 응답 후 다시 대기
 // extra: 선택지 외에 이 단계에서 바로 받아들일 의도 (예: set_amount)
 async function askChoice(options, said, extra = [], hint) {
+  S.lastQuestion = said;
   for (;;) {
     const r = await waitRunnerInput(options);
     if (r.type === "reask") return { id: "__reask", via: "stop" };
@@ -572,20 +573,24 @@ async function handleStop(via) {
   setChips([]);
   S.statusLines = null;
   await sayKey("stop.continue");
-  S.statusLines = null; // 재개 후 다음 문구는 새로 표시
-  finishIntervention(saved);
+  await finishIntervention(saved);
 }
 
 // 중지·직접 조작이 끝난 뒤 원래 단계로 돌아감. 낮은 자동화에서 내용이 바뀌었으면 질문을 다시 함
-function finishIntervention(saved) {
+async function finishIntervention(saved) {
   const reask = S.needReask && S.waiter;
   S.needReask = false;
+  // "계속 진행할게요." / "이어서 진행할게요."를 잠시 보여준 뒤 이어감 (그동안 선택지는 숨김)
+  await sleep(2500 * PACE);
   resume();
   if (reask) {
     const w = S.waiter; S.waiter = null;
     w.resolve({ type: "reask" });
   } else if (saved && S.waiter) {
-    setChips(saved.options, saved.onPick);
+    // 멈추기 전 질문을 다시 보여주고 선택지를 함께 띄움
+    S.statusLines = null;
+    if (S.lastQuestion) await agentSay(S.lastQuestion);
+    if (S.waiter) setChips(saved.options, saved.onPick);
   }
 }
 
@@ -615,6 +620,7 @@ function startManual() {
   S.manualAmount = String(S.form.amount ?? S.phone.pendingAmount ?? S.userAmount ?? "");
   S.manualMemo = null;
   S.phone.sheet = null; // 확인 시트가 떠 있으면 내려서 수정 가능하게
+  setChips([]); // 직접 조작이 끝나고 질문을 다시 할 때까지 선택지 숨김
   showTyping(false);
   renderPhone();
   syncControls();
@@ -636,8 +642,8 @@ async function endManual() {
   renderPhone();
   S.statusLines = null;
   await sayKey("manual.resume");
-  S.statusLines = null;
-  finishIntervention(null);
+  const w = S.waiter;
+  await finishIntervention(w?.options ? { options: w.options, onPick: w.onPick } : null);
 }
 
 // =====================================================================

@@ -54,9 +54,10 @@ function rcpt(s) {
   return s.form.recipientCustom ? `입력하신 계좌(${s.form.recipientCustom})` : "김영숙(농협 302-1234-5678)";
 }
 
+// 승인/거부 버튼 순서: 거부(왼쪽) · 승인(오른쪽)
 const APPROVE = [
-  { id: "approve", label: "승인" },
   { id: "reject", label: "거부" },
+  { id: "approve", label: "승인" },
 ];
 
 // =====================================================================
