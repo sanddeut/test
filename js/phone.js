@@ -22,10 +22,15 @@ function startLoading(p) {
   const prev = p.lastKey;
   p.lastKey = key;
   if (!prev || prev === key || S.manual || p.sheet === "pin" || p.sheet === "sending") return;
-  const [prevApp] = prev.split("|");
+  let [prevApp] = prev.split("|");
+  const family = (a) => (a.startsWith("sms") ? "sms" : a);
+  if (family(prevApp) === family(p.app) && prevApp !== p.app) prevApp = "__same";
   let type = null;
   let ms = 0;
-  if (p.app !== prevApp && p.app !== "home") {
+  if (prevApp === "__same") {
+    type = "spinner"; // 같은 앱 안에서 화면 이동 (문자 목록 → 문자 보기)
+    ms = 900;
+  } else if (p.app !== prevApp && p.app !== "home") {
     type = p.app === "bank" ? "splash-bank" : "splash-app";
     ms = p.app === "bank" ? 2200 : 1400; // 앱 스플래시
   } else if (!p.sheet && p.app === "bank") {

@@ -461,3 +461,18 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .pv-status, .bubble, .task-card p, .choice .c-main b { word-break: keep-all; overflow-wrap: break-word; }
 .pv-status { text-wrap: balance; }
 .pv-status { padding-left: 28px; padding-right: 28px; }
+
+/* 진행 화면 배경: 위 옅은 회색 → 아래 옅은 파란색 */
+.phone[data-view="progress"] { background: linear-gradient(180deg, #f4f5f7 0%, #eef2f8 45%, #e3edfb 100%); }
+
+/* 대화창 ↔ 진행 화면 전환 */
+@keyframes trans-zoom-in { from { opacity: 0; transform: scale(.82) translateY(40px); } to { opacity: 1; transform: none; } }
+@keyframes trans-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes trans-chat-in { from { opacity: 0; transform: translateY(60px); } to { opacity: 1; transform: none; } }
+.phone[data-trans="progress"] .screen-box { animation: trans-zoom-in 1.1s cubic-bezier(.2, .8, .2, 1) both; }
+.phone[data-trans="progress"] .pv-head { animation: fadein .9s ease both; }
+.phone[data-trans="progress"] .pv-panel { animation: trans-rise 1s .35s cubic-bezier(.2, .8, .2, 1) both; }
+.phone[data-trans="progress"] .pv-bottom { animation: trans-rise 1s .5s cubic-bezier(.2, .8, .2, 1) both; }
+.phone[data-trans="chat"] .chat { animation: trans-chat-in 1.1s cubic-bezier(.2, .8, .2, 1) both; }
+.phone[data-trans="chat"] .chat-head { animation: fadein .9s ease both; }
+.phone[data-trans="chat"] .composer { animation: trans-rise 1s .3s cubic-bezier(.2, .8, .2, 1) both; }

@@ -127,7 +127,10 @@ function showTyping(on) {
 
 // gated=true: 러너가 말할 때. 중지 중이면 재개될 때까지 기다렸다가 말함
 async function agentSay(text, { gated = false } = {}) {
-  const typingMs = Math.min(1600, 450 + text.length * 14) * PACE;
+  const inChat = wantedView() === "chat";
+  // 진행 화면에서는 화면 로딩(스플래시·스피너)이 끝난 뒤에 문구를 띄움
+  if (!inChat) await waitLoading();
+  const typingMs = (inChat ? Math.min(1600, 450 + text.length * 14) : 150) * PACE;
   for (;;) {
     if (gated) await gate();
     if (S.finished && gated) return;
@@ -348,6 +351,12 @@ function syncView() {
     phone.dataset.view = v;
     if (S) logEvent("view", { view: v });
     if (v === "chat") flushUnflushed();
+    // 대화창 ↔ 진행 화면 전환 효과 (길고 분명하게)
+    if ((prev === "chat" && v === "progress") || (prev === "progress" && v === "chat")) {
+      phone.dataset.trans = v;
+      clearTimeout(S?.transTimer);
+      if (S) S.transTimer = setTimeout(() => delete phone.dataset.trans, 1400);
+    }
     scrollChat();
     if (zoom) {
       fitScreen();
@@ -678,7 +687,6 @@ async function doApply(step, choice) {
   }
   step.apply(S, choice);
   renderPhone();
-  if (step.act) await dwell(); // 바뀐 화면을 충분히 보여줌
 }
 
 // 화면이 바뀐 뒤 잠시 머무름 (로딩이 끝난 뒤부터)
@@ -693,7 +701,7 @@ async function doPre(step) {
   if (!step.pre) return;
   setActing(true);
   try { await step.pre(S); } finally { setActing(false); }
-  await dwell(1400);
+  await dwell(400);
 }
 
 // ---------- 낮은 자동화 ----------
@@ -717,6 +725,7 @@ async function runLowStep(step) {
     await doApply(step);
     for (const m of msgs.slice(split)) await agentSay(m);
     if (step.kind === "done") return finish("completed");
+    await dwell();
     return true;
   }
   let repeat = true;
@@ -734,6 +743,7 @@ async function runLowStep(step) {
     logEvent("decision", { choice: c.id, via: c.via });
     if (c.id !== "reject" && step.low.options.some((o) => o.id === c.id)) {
       await doApply(step, c.id);
+      if (step.act) await dwell(1000);
       break;
     }
     const r = await handleReject(step, c, msgs.join(" "));
@@ -982,7 +992,8 @@ async function runLowAmount(step) {
   S.form.amount = pending;
   S.phone.pendingAmount = null;
   S.m.amountStepDecision = pending === ERROR_AMOUNT ? "accepted" : "corrected";
-  await doApply(step); // 승인 후 키패드로 금액을 입력
+  await doApply(step); // 승인 후 금액 입력
+  await dwell(1000);
   return true;
 }
 
@@ -1025,6 +1036,7 @@ async function runHighStep(step) {
     await say(msgs);
     if (!applyFirst) { await gate(); await doApply(step); }
   }
+  if (step.kind !== "done") await dwell(); // 문구와 바뀐 화면을 함께 충분히 보여줌
   if (step.kind === "done") return finish("completed");
   return true;
 }
