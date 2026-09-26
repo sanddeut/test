@@ -1236,7 +1236,18 @@ function applyLLMSettings() {
   chip.dataset.on = LLM.enabled ? "1" : "0";
 }
 
+// 모바일에서 주소창 없이 전체화면으로 (세션 시작 버튼을 누를 때 요청, 지원하지 않으면 무시)
+// 홈 화면에 추가한 앱으로 열었으면 이미 전체화면이라 요청하지 않음
+function enterFullscreen() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  const installed = matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches;
+  if (!req || installed || document.fullscreenElement || !matchMedia("(pointer: coarse)").matches) return;
+  try { const r = req.call(el, { navigationUI: "hide" }); if (r?.catch) r.catch(() => {}); } catch { /* 무시 */ }
+}
+
 function start() {
+  enterFullscreen();
   applyLLMSettings();
   const cfg = readSetup();
   store.set("setup", { pid: cfg.pid, name: cfg.name, condition: cfg.condition, delay: cfg.delay, showTask: cfg.showTask, pace: cfg.pace });
