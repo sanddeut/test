@@ -63,6 +63,35 @@
         <p id="llm-test" class="test-out" aria-live="polite"></p>
       </fieldset>
 
+      <fieldset>
+        <legend>프롬프트</legend>
+        <p class="hint">참가자가 예상 밖의 말을 했을 때 에이전트가 어떻게 답할지 정하는 프롬프트예요. 고치면 이 브라우저에 바로 저장돼요. 응답 형식(JSON) 지시는 자동으로 뒤에 붙어요.</p>
+        <textarea id="prompt" class="prompt-box" rows="16" spellcheck="false"></textarea>
+        <div class="prompt-meta"><span id="prompt-meta"></span>
+          <div class="btn-row wrap">
+            <button id="btn-prompt-reset" type="button" class="btn-ghost">기본값으로</button>
+            <button id="btn-prompt-save" type="button" class="btn-ghost">파일로 저장</button>
+            <button id="btn-prompt-load" type="button" class="btn-ghost">파일 불러오기</button>
+            <input id="prompt-file" type="file" accept=".txt,.md,text/plain" hidden>
+          </div>
+        </div>
+
+        <div class="pt">
+          <b class="pt-title">프롬프트 테스트</b>
+          <p class="hint">세션을 돌리지 않고, 특정 단계에서 참가자가 한 말에 에이전트가 어떻게 답하는지 바로 확인해요.</p>
+          <div class="grid2">
+            <label>조건<select id="pt-cond"><option>A1</option><option>A2</option><option>B1</option><option>B2</option></select></label>
+            <label>단계<select id="pt-step"></select></label>
+          </div>
+          <p class="pt-said" id="pt-said"></p>
+          <div class="pt-row">
+            <input id="pt-text" placeholder="참가자 발화 예: 요즘 적금 이자는 얼마나 붙나?" autocomplete="off">
+            <button id="btn-pt-run" type="button" class="btn-ghost">보내기</button>
+          </div>
+          <div id="pt-out" class="pt-out"></div>
+        </div>
+      </fieldset>
+
       <button type="submit" class="btn-start">세션 시작</button>
     </form>
   </main>
@@ -135,6 +164,9 @@
       <button id="btn-clear" type="button" class="btn-ghost danger">기록 지우기</button>
       <button id="btn-reset" type="button" class="btn-ghost">설정으로 / 새 세션</button>
     </div>
+    <h3>프롬프트 <small id="prompt-live-meta"></small></h3>
+    <textarea id="prompt-live" class="prompt-box" rows="10" spellcheck="false"></textarea>
+    <div class="btn-row"><button id="btn-prompt-apply" type="button" class="btn-ghost">적용 (다음 응답부터)</button><span id="prompt-apply-msg" class="test-out"></span></div>
     <h3>이벤트 로그</h3>
     <div id="log-wrap" class="log-wrap">
       <table id="log"><thead><tr><th>초</th><th>단계</th><th>이벤트</th><th>내용</th></tr></thead><tbody></tbody></table>

@@ -6,8 +6,8 @@
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const DEFAULT_MODEL = "gemini-3.5-flash";
 
-// 시스템 프롬프트 (연구팀 제공 프롬프트 + JSON 출력 형식)
-const LLM_SYSTEM = `# 역할
+// 기본 프롬프트 (연구팀 제공). 설정 화면에서 수정할 수 있고, 수정본은 브라우저에 저장됨
+const DEFAULT_PROMPT = `# 역할
 너는 고령 사용자의 모바일 금융 업무를 돕는 AI 에이전트야. 사용자의 모바일앱을 대리 조작해서 사용자가 원하는 과업을 완수해주어야 해.
 
 # 응답하는 경우
@@ -76,9 +76,10 @@ const LLM_SYSTEM = `# 역할
 - 현재 단계: 은행 앱 접속
 - 사용자: "은행 앱 말고 전화 앱 켜줘."
 - 좋은 응답: "전화 앱으로는 송금을 할 수 없어요. 송금을 위해 은행 앱을 실행할까요?"
-- 나쁜 응답: "전화 앱을 실행할게요." (송금할 수 없는 앱으로 흐름을 벗어남)
+- 나쁜 응답: "전화 앱을 실행할게요." (송금할 수 없는 앱으로 흐름을 벗어남)`;
 
-# 출력 형식
+// 출력 형식 (편집 불가: 앱이 응답을 해석하는 데 필요해서 프롬프트 뒤에 항상 붙임)
+const OUTPUT_FORMAT = `# 출력 형식
 항상 지정된 JSON 스키마로만 답해.
 - intent: 사용자 발화가 "분류할 의도" 목록 중 무엇에 해당하는지 id로 골라. 어느 것에도 맞지 않으면 other.
 - 금액은 원 단위 정수로 바꿔. 예: "30만원", "삼십만 원", "300,000원" → 300000. 구어체, 맞춤법 오류, 음성인식 오류(예: "삼심만원")는 너그럽게 해석해.
@@ -138,9 +139,24 @@ const INTENT_MEANINGS = {
   other: "위 어느 것에도 해당하지 않음 (질문, 잡담, 이해하기 어려운 말 등)",
 };
 
+// 프롬프트 버전 표시용 짧은 해시
+function promptVersion(text) {
+  let h = 5381;
+  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) >>> 0;
+  return h.toString(16).padStart(8, "0").slice(0, 6);
+}
+
 const LLM = {
   key: "",
   model: DEFAULT_MODEL,
+  prompt: DEFAULT_PROMPT,
+
+  get system() {
+    return `${this.prompt.trim()}\n\n${OUTPUT_FORMAT}`;
+  },
+  get promptVersion() {
+    return promptVersion(this.prompt.trim());
+  },
 
   get enabled() {
     return Boolean(this.key);
@@ -230,7 +246,7 @@ async function geminiRequest(key, model, prompt, schema, thinking) {
       signal: ctrl.signal,
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: LLM_SYSTEM }] },
+        systemInstruction: { parts: [{ text: LLM.system }] },
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         // Gemini 3.x는 temperature 등 샘플링 값을 기본값으로 두는 것을 권장
         generationConfig: {

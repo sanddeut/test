@@ -942,6 +942,7 @@ function summary() {
     complexity: S.complexity,
     automation: S.automation,
     llm: LLM.enabled ? LLM.model : "rules",
+    prompt_version: S.promptVersion ?? null,
     started_at: S.startedAt,
     status: S.status || (S.finished ? "ended" : "in_progress"),
     request_text: m.request?.text ?? null,
@@ -1109,7 +1110,9 @@ function start() {
   if (cfg.showTask) openTask(true); // 시작할 때 상황·과업 먼저 보여줌 (모바일)
   renderPhone();
   renderStepper();
-  logEvent("session_start", { condition: S.cond, participant: cfg.pid, llm: LLM.enabled ? LLM.model : "rules", delay_ms: cfg.delay });
+  S.promptVersion = LLM.promptVersion;
+  $("#prompt-live").value = LLM.prompt;
+  logEvent("session_start", { condition: S.cond, participant: cfg.pid, llm: LLM.enabled ? LLM.model : "rules", delay_ms: cfg.delay, prompt_version: LLM.promptVersion, prompt: LLM.prompt });
   run().catch((e) => { console.error(e); logEvent("error", { message: String(e) }); });
 }
 
@@ -1127,6 +1130,150 @@ function backToSetup() {
   $("#setup").hidden = false;
   document.body.classList.remove("in-session");
   openTask(false);
+}
+
+// =====================================================================
+// 프롬프트 편집 · 테스트
+// =====================================================================
+function setPrompt(text, { from } = {}) {
+  LLM.prompt = text;
+  if (text.trim() === DEFAULT_PROMPT.trim()) store.del("prompt"); else store.set("prompt", text);
+  if (from !== "setup") $("#prompt").value = text;
+  if (from !== "live") $("#prompt-live").value = text;
+  renderPromptMeta();
+}
+
+function renderPromptMeta() {
+  const edited = LLM.prompt.trim() !== DEFAULT_PROMPT.trim();
+  const meta = `버전 ${LLM.promptVersion} · ${edited ? "수정됨" : "기본값"} · ${LLM.prompt.length.toLocaleString("ko-KR")}자`;
+  $("#prompt-meta").textContent = meta;
+  $("#prompt-live-meta").textContent = meta;
+}
+
+function initPrompt() {
+  const saved = store.get("prompt", null);
+  setPrompt(typeof saved === "string" && saved.trim() ? saved : DEFAULT_PROMPT);
+  $("#prompt").oninput = () => setPrompt($("#prompt").value, { from: "setup" });
+  $("#btn-prompt-reset").onclick = () => {
+    if (LLM.prompt.trim() === DEFAULT_PROMPT.trim() || confirm("수정한 프롬프트를 지우고 기본값으로 되돌릴까요?")) setPrompt(DEFAULT_PROMPT);
+  };
+  $("#btn-prompt-save").onclick = () => download(`prompt_${LLM.promptVersion}.txt`, LLM.prompt, "text/plain");
+  $("#btn-prompt-load").onclick = () => $("#prompt-file").click();
+  $("#prompt-file").onchange = async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setPrompt(await f.text());
+    e.target.value = "";
+  };
+  $("#btn-prompt-apply").onclick = () => {
+    const before = LLM.promptVersion;
+    setPrompt($("#prompt-live").value, { from: "live" });
+    $("#prompt-apply-msg").textContent = before === LLM.promptVersion ? "바뀐 내용이 없어요" : `버전 ${LLM.promptVersion} 적용됨`;
+    $("#prompt-apply-msg").dataset.ok = "1";
+    if (S && before !== LLM.promptVersion) logEvent("prompt_changed", { version: LLM.promptVersion, prompt: LLM.prompt });
+  };
+
+  // 프롬프트 테스트
+  $("#pt-cond").onchange = fillTestSteps;
+  $("#pt-step").onchange = showTestSaid;
+  $("#btn-pt-run").onclick = runPromptTest;
+  $("#pt-text").onkeydown = (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); runPromptTest(); } };
+  fillTestSteps();
+}
+
+// 테스트용 가짜 상태 (단계 문구 함수가 참조하는 값)
+function testState(cond, idx, steps) {
+  const errorIdx = steps.findIndex((x) => x.kind === "error_amount");
+  return {
+    form: { source: "main", amount: idx > errorIdx ? ERROR_AMOUNT : null, recipientCustom: null, memo: null, recipient: idx > errorIdx - 1 },
+    phone: { pendingAmount: idx === errorIdx ? ERROR_AMOUNT : null },
+    pendingMemo: null,
+    cfg: { name: $("#pname").value.trim() || "OOO" },
+  };
+}
+
+function testSteps() {
+  const cond = $("#pt-cond").value;
+  return { cond, c: CONDITIONS[cond], steps: buildSteps(CONDITIONS[cond].complexity, $("#pname").value.trim() || "OOO") };
+}
+
+function fillTestSteps() {
+  const { steps } = testSteps();
+  $("#pt-step").innerHTML = steps
+    .filter((x) => x.kind !== "done")
+    .map((x, i) => `<option value="${i}">${i + 1}. ${esc(x.label)}</option>`)
+    .join("");
+  showTestSaid();
+}
+
+function testSaid(step, c, fake) {
+  const spec = c.automation === "low" ? step.low : step.high;
+  const m = spec.messages;
+  return (typeof m === "function" ? m(fake) : m).join("\n");
+}
+
+function showTestSaid() {
+  const { c, steps } = testSteps();
+  const i = Number($("#pt-step").value || 0);
+  const step = steps[i];
+  $("#pt-said").textContent = `에이전트: ${testSaid(step, c, testState(null, i, steps))}`;
+}
+
+async function runPromptTest() {
+  const text = $("#pt-text").value.trim();
+  if (!text) return;
+  applyLLMSettings();
+  const { cond, c, steps } = testSteps();
+  const i = Number($("#pt-step").value || 0);
+  const step = steps[i];
+  const fake = testState(cond, i, steps);
+  const said = testSaid(step, c, fake);
+  const B = c.complexity === "B";
+
+  // 실제 세션과 같은 방식으로 이 단계에서 받아들이는 의도 구성
+  let expected = [];
+  let intents;
+  let hint = null;
+  if (c.automation === "low") {
+    expected = (step.low.options || []).map((o) => o.id);
+    if (step.kind === "password") expected = ["open"];
+    let extra = REJECT_EXTRA[step.low.reject] || [];
+    if (step.kind === "error_amount") extra = ["set_amount"];
+    if (step.low.reject === "final" && !B) extra = extra.filter((x) => x !== "set_memo");
+    intents = [...expected, ...extra, "other"];
+  } else {
+    intents = ["set_amount", ...(B ? ["set_memo"] : []), "set_source", "pause", "continue", "cancel", "other"];
+    hint = HIGH_HINT;
+  }
+
+  const box = document.createElement("div");
+  box.className = "pt-item";
+  box.innerHTML = `<div class="u">[${cond} · ${i + 1}. ${esc(step.label)}] 참가자: “${esc(text)}”</div><div class="r">…</div>`;
+  $("#pt-out").prepend(box);
+  $("#pt-text").value = "";
+
+  const res = await LLM.interpret("turn", text, {
+    automation: c.automation === "high" ? "높은 자동화" : "낮은 자동화",
+    step: `${i + 1}. ${step.label}`,
+    step_guide: step.guide || null,
+    agent_said: said,
+    current_transfer: {
+      source_account: ACCOUNTS[fake.form.source].label,
+      recipient: "김영숙(농협 302-1234-5678)",
+      amount_won: fake.form.amount ?? fake.phone.pendingAmount ?? null,
+      memo: null,
+    },
+    recent: [`에이전트: ${said}`],
+    intents,
+    reply_hint: hint,
+  });
+  const o = res.output;
+  const isExpected = expected.includes(o.intent);
+  box.classList.toggle("expected", isExpected);
+  const values = ["amount_won", "memo", "source_account", "account_number"].filter((k) => o[k] != null).map((k) => `${k}=${o[k]}`).join(", ");
+  box.innerHTML = `<div class="u">[${cond} · ${i + 1}. ${esc(step.label)}] 참가자: “${esc(text)}”</div>
+    <div class="r">${isExpected ? "(예상된 응답 → 정해진 스크립트대로 진행, 아래 응답은 쓰이지 않아요)<br>" : ""}에이전트: ${esc(o.reply || "")}</div>
+    <div class="m">의도 ${esc(o.intent)}${values ? ` · ${esc(values)}` : ""} · ${res.source === "gemini" ? `${esc(res.model)} ${res.latency_ms}ms` : `규칙 기반${res.error ? ` (Gemini 오류: ${esc(res.error)})` : ""}`} · 프롬프트 ${LLM.promptVersion}</div>`;
 }
 
 // =====================================================================
@@ -1204,6 +1351,7 @@ function init() {
   $("#btn-clear").onclick = () => { if (confirm("이 브라우저에 저장된 모든 세션 기록을 지울까요?")) { store.del("sessions"); renderSessionCount(); } };
   document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === ".") document.body.classList.toggle("drawer-open"); });
   setupMic();
+  initPrompt();
   renderSessionCount();
 }
 

@@ -67,6 +67,22 @@ label.check { flex-direction: row; align-items: center; gap: 8px; }
 .test-out[data-ok="0"] { color: var(--warn); }
 .btn-start { width: 100%; margin-top: 16px; padding: 13px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 700; font-size: 16px; }
 
+.prompt-box { width: 100%; border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 10px; padding: 10px 12px; font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical; }
+.prompt-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 14px; font-size: 12.5px; color: var(--muted); }
+.pt { border: 1px dashed var(--line); border-radius: 12px; padding: 12px 14px; }
+.pt-title { font-size: 14px; }
+.pt select, .pt-row input { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 11px; font-size: 14px; color: var(--text); }
+.pt-said { font-size: 13px; color: var(--muted); background: var(--bg); border-radius: 8px; padding: 8px 10px; margin: 0 0 10px; white-space: pre-line; }
+.pt-row { display: flex; gap: 8px; }
+.pt-row input { flex: 1; min-width: 0; }
+.pt-out { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.pt-item { background: var(--bg); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; line-height: 1.5; }
+.pt-item .u { color: var(--muted); }
+.pt-item .r { font-size: 15px; margin: 4px 0; }
+.pt-item .m { font-size: 12px; color: var(--muted); }
+.pt-item.expected .r { color: var(--muted); font-style: italic; }
+.drawer .prompt-box { font-size: 12px; }
+
 /* ---------- 실험 화면 (모바일 퍼스트: 화면 전체가 에이전트 화면) ---------- */
 body.in-session .topbar { display: none; }
 .app-shell { display: flex; justify-content: center; height: 100dvh; background: var(--stage-bg); }
