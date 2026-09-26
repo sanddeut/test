@@ -26,6 +26,9 @@
       <p id="msg" class="test-out" aria-live="polite"></p>
       <p class="hint">공유 링크를 한 번 열면 그 기기에 키가 저장되고, 주소창에서 키 부분은 바로 지워져요. 키가 담겨 있으니 보여드릴 분께만 보내세요.</p>
       <input id="share-link" class="share-link" readonly hidden>
+      <p class="hint">프롬프트·시나리오 문구를 이 브라우저에서 고쳤다면, 아래 버튼으로 복사해 개발 요청 시 붙여넣으면 코드 기본값으로 반영할 수 있어요.</p>
+      <div class="btn-row wrap"><button type="button" id="btn-export" class="btn-ghost">고친 문구 복사</button></div>
+      <textarea id="export-out" class="prompt-box" rows="6" readonly hidden></textarea>
       <a class="btn-start" href="index.html" style="display:block;text-align:center;text-decoration:none">프로토타입으로 가기</a>
     </form>
   </main>
@@ -56,6 +59,15 @@
       out.value = url; out.hidden = false; out.select();
       try { await navigator.clipboard.writeText(url); msg("공유 링크를 복사했어요."); }
       catch { msg("아래 링크를 길게 눌러 복사하세요."); }
+    };
+    $("#btn-export").onclick = async () => {
+      const prompt = get("prompt", null), overrides = get("script_overrides", null);
+      if (prompt == null && !overrides) { msg("이 브라우저에는 고친 문구가 없어요. 모두 기본값이에요.", false); return; }
+      const text = JSON.stringify({ prompt, script_overrides: overrides }, null, 1);
+      const out = $("#export-out");
+      out.value = text; out.hidden = false; out.select();
+      try { await navigator.clipboard.writeText(text); msg("고친 문구를 복사했어요. 그대로 붙여넣어 보내주세요."); }
+      catch { msg("아래 칸을 길게 눌러 전체 선택 후 복사하세요."); }
     };
     $("#btn-clear").onclick = () => { del("gemini_key"); $("#key").value = ""; msg("이 브라우저에서 키를 지웠어요."); };
   </script>
