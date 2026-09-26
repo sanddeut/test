@@ -690,6 +690,7 @@ async function doApply(step, choice) {
   }
   step.apply(S, choice);
   renderPhone();
+  if (step.act) S.statusLines = null; // 화면이 바뀌었으니 이전 안내 문구는 지우고 새로 시작
 }
 
 // 화면이 바뀐 뒤 잠시 머무름 (로딩이 끝난 뒤부터)
