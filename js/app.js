@@ -1259,9 +1259,12 @@ function readSetup() {
 }
 
 function applyLLMSettings() {
-  LLM.key = $("#api-key").value.trim();
-  LLM.model = $("#model").value.trim() || DEFAULT_MODEL;
-  if ($("#remember-key").checked) store.set("gemini_key", LLM.key); else store.del("gemini_key");
+  // 키와 모델은 key.html(연구자 전용)에서 저장하거나, 키가 담긴 공유 링크로 받음
+  LLM.key = store.get("gemini_key", "") || "";
+  const savedModel = store.get("gemini_model", DEFAULT_MODEL);
+  LLM.model = savedModel === "gemini-2.5-flash" ? DEFAULT_MODEL : savedModel || DEFAULT_MODEL;
+  const st = $("#llm-status-text");
+  if (st) st.textContent = LLM.enabled ? `Gemini 연결됨 · ${LLM.model}` : "API 키 없음 · 규칙 기반 해석으로 동작";
   store.set("gemini_model", LLM.model);
   const chip = $("#llm-chip");
   chip.textContent = LLM.enabled ? `Gemini · ${LLM.model}` : "규칙 기반 해석";
@@ -1458,21 +1461,75 @@ function setupMic() {
 // =====================================================================
 // 초기화
 // =====================================================================
+// ---------- 공유 링크로 API 키 전달 ----------
+// 링크 형식: .../#k=<base64url(JSON {k: 키, m: 모델})>
+function b64url(str) {
+  return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function unb64url(str) {
+  return decodeURIComponent(escape(atob(str.replace(/-/g, "+").replace(/_/g, "/"))));
+}
+
+function readKeyFromLink() {
+  const m = location.hash.match(/[#&]k=([\w-]+)/);
+  if (!m) return false;
+  try {
+    const cfg = JSON.parse(unb64url(m[1]));
+    if (cfg.k) store.set("gemini_key", cfg.k);
+    if (cfg.m) store.set("gemini_model", cfg.m);
+  } catch { /* 잘못된 링크 */ }
+  history.replaceState(null, "", location.pathname + location.search); // 주소창에서 키 지움
+  return true;
+}
+
+// ---------- 앱으로 설치 ----------
+let installEvent = null;
+function setupInstall() {
+  const installed = matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches || navigator.standalone;
+  if (installed) return;
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  const btn = $("#btn-install");
+  const hint = $("#install-hint");
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    installEvent = e;
+    btn.hidden = false;
+    hint.hidden = true;
+  });
+  btn.onclick = async () => {
+    if (!installEvent) return;
+    installEvent.prompt();
+    await installEvent.userChoice.catch(() => {});
+    installEvent = null;
+    btn.hidden = true;
+  };
+  window.addEventListener("appinstalled", () => { btn.hidden = true; hint.hidden = true; });
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (ios) {
+    hint.textContent = "앱으로 설치하려면 사파리 아래 공유 버튼 → 「홈 화면에 추가」를 누르세요.";
+    hint.hidden = false;
+  } else if (matchMedia("(pointer: coarse)").matches) {
+    // 설치 창을 띄울 수 없는 경우를 위한 안내 (잠시 뒤에도 설치 버튼이 없으면 표시)
+    setTimeout(() => {
+      if (!installEvent) {
+        hint.textContent = "앱으로 설치하려면 크롬 오른쪽 위 ⋮ 메뉴 → 「홈 화면에 추가」를 누르세요.";
+        hint.hidden = false;
+      }
+    }, 2500);
+  }
+}
+
 function init() {
+  const fromLink = readKeyFromLink();
+  if (fromLink) $("#key-loaded").hidden = false;
+  setupInstall();
   const saved = store.get("setup", {});
   if (saved.pid) $("#pid").value = saved.pid;
   if (saved.name) $("#pname").value = saved.name;
   if (saved.condition) { const r = document.querySelector(`input[name="cond"][value="${saved.condition}"]`); if (r) r.checked = true; }
-  const key = store.get("gemini_key", "");
-  if (key) { $("#api-key").value = key; $("#remember-key").checked = true; }
-  // 이전 기본값(2.5 Flash)으로 저장돼 있으면 새 기본 모델로 바꿈
-  const savedModel = store.get("gemini_model", DEFAULT_MODEL);
-  $("#model").value = savedModel === "gemini-2.5-flash" ? DEFAULT_MODEL : savedModel;
   applyLLMSettings();
 
   $("#setup-form").onsubmit = (e) => { e.preventDefault(); start(); };
-  $("#api-key").onchange = applyLLMSettings;
-  $("#model").onchange = applyLLMSettings;
   $("#composer").onsubmit = onSubmit;
   $("#btn-stop").onclick = () => S && handleStop("button");
   $("#btn-manual").onclick = () => S && startManual();

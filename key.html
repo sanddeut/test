@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Gemini 키 설정</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..600,0..1,0&display=block" rel="stylesheet">
+  <script>document.write('<link rel="stylesheet" href="css/style.css?v=' + Date.now() + '">');</script>
+</head>
+<body>
+  <main class="setup">
+    <form class="card setup-card" id="key-form" autocomplete="off">
+      <h1>Gemini 키 설정</h1>
+      <p class="hint">연구자 전용 페이지예요. 여기서 넣은 키는 이 브라우저에 저장되고, 프로토타입 페이지에서 자동으로 쓰여요. 키가 없으면 프로토타입은 규칙 기반 해석으로 동작해요.</p>
+      <label>Gemini API 키<input id="key" type="password" placeholder="AIza…" spellcheck="false"></label>
+      <label>모델<input id="model" spellcheck="false"></label>
+      <div class="btn-row wrap">
+        <button type="submit" class="btn-ghost">저장</button>
+        <button type="button" id="btn-share" class="btn-ghost">키가 담긴 공유 링크 복사</button>
+        <button type="button" id="btn-clear" class="btn-ghost danger">이 브라우저에서 키 지우기</button>
+      </div>
+      <p id="msg" class="test-out" aria-live="polite"></p>
+      <p class="hint">공유 링크를 한 번 열면 그 기기에 키가 저장되고, 주소창에서 키 부분은 바로 지워져요. 키가 담겨 있으니 보여드릴 분께만 보내세요.</p>
+      <input id="share-link" class="share-link" readonly hidden>
+      <a class="btn-start" href="index.html" style="display:block;text-align:center;text-decoration:none">프로토타입으로 가기</a>
+    </form>
+  </main>
+  <script>
+    const DEFAULT_MODEL = "gemini-3.5-flash";
+    const get = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
+    const set = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+    const del = (k) => { try { localStorage.removeItem(k); } catch {} };
+    const $ = (s) => document.querySelector(s);
+    const b64url = (str) => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const msg = (t, ok = true) => { $("#msg").textContent = t; $("#msg").dataset.ok = ok ? "1" : "0"; };
+    $("#key").value = get("gemini_key", "");
+    $("#model").value = get("gemini_model", DEFAULT_MODEL);
+    function save() {
+      const k = $("#key").value.trim();
+      const m = $("#model").value.trim() || DEFAULT_MODEL;
+      if (k) set("gemini_key", k); else del("gemini_key");
+      set("gemini_model", m);
+      return { k, m };
+    }
+    $("#key-form").onsubmit = (e) => { e.preventDefault(); const { k } = save(); msg(k ? "저장했어요." : "키가 비어 있어요. 규칙 기반 해석으로 동작해요.", Boolean(k)); };
+    $("#btn-share").onclick = async () => {
+      const { k, m } = save();
+      if (!k) { msg("먼저 키를 입력해주세요.", false); return; }
+      const base = location.href.replace(/key\.html.*$/, "");
+      const url = `${base}#k=${b64url(JSON.stringify({ k, m }))}`;
+      const out = $("#share-link");
+      out.value = url; out.hidden = false; out.select();
+      try { await navigator.clipboard.writeText(url); msg("공유 링크를 복사했어요."); }
+      catch { msg("아래 링크를 길게 눌러 복사하세요."); }
+    };
+    $("#btn-clear").onclick = () => { del("gemini_key"); $("#key").value = ""; msg("이 브라우저에서 키를 지웠어요."); };
+  </script>
+</body>
+</html>

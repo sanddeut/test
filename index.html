@@ -31,7 +31,9 @@
   <!-- ============ 설정 화면 (연구자용) ============ -->
   <main id="setup" class="setup">
     <form id="setup-form" class="card setup-card">
-      <h1>세션 설정</h1>
+      <div class="setup-head"><h1>세션 설정</h1><button id="btn-install" type="button" class="btn-ghost" hidden><span class="ms">install_mobile</span> 앱으로 설치</button></div>
+      <p id="install-hint" class="hint" hidden></p>
+      <p id="key-loaded" class="hint ok" hidden>공유 링크로 API 키를 불러왔어요.</p>
 
       <fieldset>
         <legend>참가자</legend>
@@ -51,15 +53,10 @@
         </div>
       </fieldset>
 
-      <details class="acc">
-        <summary>LLM (Gemini)</summary>
-        <p class="hint">참가자의 말을 해석하고, 스크립트 밖의 말에 답하는 데 사용해요. 키가 없으면 규칙 기반 해석으로 동작해요.</p>
-        <label>Gemini API 키
-          <input id="api-key" type="password" placeholder="AIza…" autocomplete="off" spellcheck="false">
-        </label>
-        <label class="check"><input id="remember-key" type="checkbox"> 이 브라우저에 키 저장</label>
-        <label>모델<input id="model" spellcheck="false"></label>
-      </details>
+      <div class="llm-status">
+        <span class="ms">smart_toy</span>
+        <span id="llm-status-text">Gemini 연결 확인 중…</span>
+      </div>
 
 
       <details class="acc">
