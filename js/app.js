@@ -126,6 +126,13 @@ async function agentSay(text, { gated = false } = {}) {
   logEvent("agent_message", { text });
 }
 
+// 시나리오 문구(키)를 말풍선으로: 여러 줄이면 줄마다 말풍선 하나
+async function sayKey(key, vars, opts) {
+  const ls = lines(key, S, vars);
+  for (const t of ls) await agentSay(t, opts);
+  return ls.join(" ");
+}
+
 // 선택지 버튼: 진행 화면(축소 화면 아래)과 대화창 양쪽에 표시
 // 승인/거부·단일 버튼은 알약 버튼, 그 외 여러 선택지는 세로 목록(stacked list)
 function setChips(options, onPick) {
@@ -279,7 +286,7 @@ function syncControls() {
   $("#msg").disabled = !canTalk;
   $("#send").disabled = !canTalk;
   $("#mic").disabled = !canTalk;
-  $("#msg").placeholder = canTalk ? "AI에게 말하기…" : S.finished ? "과업이 끝났어요" : S.manual ? "직접 작업 중이에요" : "AI가 작업 중이에요";
+  $("#msg").placeholder = canTalk ? "AI에게 말하기…" : S.finished ? "과업이 끝났어요" : S.manual ? "직접 조작 중이에요" : "AI가 작업 중이에요";
   document.querySelectorAll("#chips .chip, #pv-chips .chip").forEach((b) => (b.disabled = S.paused));
 
   const high = S.automation === "high";
@@ -309,15 +316,24 @@ function wantedView() {
 function syncView() {
   const v = wantedView();
   const phone = $(".phone");
-  if (phone.dataset.view !== v) {
+  const prev = phone.dataset.view;
+  if (prev !== v) {
+    // 축소 화면 ↔ 실제 크기 화면 전환은 크기가 자연스럽게 커지고 작아지도록 애니메이션
+    const zoom = ["progress", "direct"].includes(prev) && ["progress", "direct"].includes(v);
+    const clip = $(".screen-clip");
+    const before = zoom ? clip.getBoundingClientRect() : null;
     phone.dataset.view = v;
     if (S) logEvent("view", { view: v });
     chat().scrollTop = chat().scrollHeight;
+    if (zoom) {
+      fitScreen();
+      animateZoom(clip, before);
+    }
   }
   requestAnimationFrame(fitScreen);
   const bar = $("#direct-msg");
   if (bar && S) {
-    bar.textContent = S.manual ? "직접 작업 중이에요. 다 고치셨으면 AI에게 맡겨주세요." : S.pinOpen ? "계좌 비밀번호를 직접 입력해주세요." : "팝업 내용을 보시고 직접 닫아주세요.";
+    bar.textContent = S.manual ? "직접 조작 중이에요. 다 고치셨으면 AI에게 맡겨주세요." : S.pinOpen ? "계좌 비밀번호를 직접 입력해주세요." : "팝업 내용을 보시고 직접 닫아주세요.";
     $("#btn-manual-done").hidden = !S.manual;
   }
 }
@@ -342,6 +358,24 @@ function fitScreen() {
     clip.style.width = "";
     clip.style.height = "";
   }
+}
+
+// FLIP: 이전 위치·크기에서 새 위치·크기로 부드럽게 이동
+function animateZoom(el, before) {
+  const after = el.getBoundingClientRect();
+  if (!before.width || !after.width) return;
+  const sx = before.width / after.width;
+  const sy = before.height / after.height;
+  const dx = before.left - after.left;
+  const dy = before.top - after.top;
+  el.style.transition = "none";
+  el.style.transformOrigin = "0 0";
+  el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+  el.getBoundingClientRect(); // 강제 리플로우
+  el.style.transition = "transform .7s cubic-bezier(.2, .8, .2, 1), border-radius .7s";
+  el.style.transform = "";
+  const done = () => { el.style.transition = ""; el.style.transform = ""; el.removeEventListener("transitionend", done); };
+  el.addEventListener("transitionend", done);
 }
 
 function openTask(on) {
@@ -406,19 +440,19 @@ async function applyHighChange(o, via) {
   if (o.intent === "set_amount" && o.amount_won) {
     setAmount(o.amount_won);
     logEvent("amount_changed", { amount: o.amount_won, via });
-    await agentSay(S.steps[S.errorIdx].correction.highDone(o.amount_won));
+    await sayKey("change.amount", { amount: o.amount_won });
     return true;
   }
   if (o.intent === "set_memo" && o.memo) {
     setMemo(o.memo, via);
-    await agentSay(`받는 분 통장 메모를 ‘${o.memo}’으로 바꿨어요.`);
+    await sayKey("change.memo", { memo: o.memo });
     return true;
   }
   if (o.intent === "set_source" && o.source_account) {
     S.form.source = o.source_account;
     logEvent("source_changed", { source: o.source_account, via });
     renderPhone();
-    await agentSay(`${ACCOUNTS[o.source_account].label}에서 출금할게요.`);
+    await sayKey("change.source");
     return true;
   }
   return false;
@@ -457,8 +491,7 @@ async function handleStop(via) {
   showTyping(false);
   syncControls();
 
-  let said = S.steps[S.errorIdx].correction.highAsk;
-  await agentSay(said);
+  let said = await sayKey("stop.ask");
   for (;;) {
     const text = await new Promise((r) => { S.ivWaiter = r; syncControls(); });
     const o = await turn(text, {
@@ -468,7 +501,7 @@ async function handleStop(via) {
     });
     if (await applyHighChange(o, `stop_${via}`)) break;
     if (o.intent === "cancel") return cancelTransfer();
-    if (o.intent === "continue") { await agentSay("계속 진행할게요."); break; }
+    if (o.intent === "continue") { await sayKey("stop.continue"); break; }
     said = o.reply;
     await agentSay(o.reply);
     break; // 높은 자동화: 응답 후 진행 재개
@@ -485,7 +518,7 @@ function setMemo(memo, via) {
 }
 
 async function cancelTransfer() {
-  await agentSay("송금을 취소했어요.");
+  await sayKey("cancel");
   return finish("cancelled");
 }
 
@@ -519,7 +552,7 @@ async function endManual() {
   logEvent("manual_end", { changes });
   syncControls();
   renderPhone();
-  await agentSay("이어서 진행할게요.");
+  await sayKey("manual.resume");
   resume();
 }
 
@@ -528,7 +561,7 @@ async function endManual() {
 // =====================================================================
 async function run() {
   syncControls();
-  await agentSay("무엇을 도와드릴까요?");
+  await sayKey("greet");
   // 1) 과업 요청 해석
   for (;;) {
     const text = await waitText();
@@ -609,9 +642,9 @@ async function handleReject(step, c, said) {
   if (type === "app") {
     // 지정된 앱이 아닌 다른 앱(다른 은행 앱 포함)을 말하면 그 앱으로는 할 수 없다고 알리고 지정된 앱 실행을 다시 물음
     const app = step.low.app;
-    const ask = "어떤 앱으로 실행할까요?";
+    const ask = line("app.which", S);
     const launch = async () => {
-      await agentSay(step.low.launched);
+      await sayKey(step.low.launched);
       step.apply(S);
       renderPhone();
       return "done";
@@ -645,7 +678,7 @@ async function handleReject(step, c, said) {
   }
 
   if (type === "account") {
-    const ask = "어떤 계좌로 송금할까요?";
+    const ask = line("account.ask", S);
     if (!o) await agentSay(ask);
     for (;;) {
       if (!o) {
@@ -665,13 +698,13 @@ async function handleReject(step, c, said) {
       if (o.intent === "set_account" && o.account_number) {
         S.form.recipientCustom = o.account_number;
         logEvent("recipient_changed", { account: o.account_number });
-        await agentSay(`입력하신 계좌(${o.account_number})로 송금할게요.`);
+        await sayKey("account.custom", { account: o.account_number });
         step.apply(S);
         renderPhone();
         return "done";
       }
       if (o.intent === "direct_input") {
-        await agentSay("송금할 계좌번호를 말씀해주세요.");
+        await sayKey("account.direct");
         o = null;
         continue;
       }
@@ -702,7 +735,7 @@ async function handleReject(step, c, said) {
         hint: "approve는 도우미에게 팝업을 대신 닫아달라는 뜻입니다.",
       });
       if (t.intent === "approve") {
-        await agentSay("이벤트 안내 팝업을 닫았어요.");
+        await sayKey("popup.closed");
         break;
       }
       await agentSay(t.reply);
@@ -713,7 +746,7 @@ async function handleReject(step, c, said) {
   }
 
   if (type === "memo") {
-    const ask = step.low.ask;
+    const ask = line(step.low.ask, S);
     if (!o) await agentSay(ask);
     for (;;) {
       if (!o) {
@@ -736,7 +769,7 @@ async function handleReject(step, c, said) {
   }
 
   if (type === "final") {
-    const ask = step.low.ask;
+    const ask = line(step.low.ask, S);
     if (!o) await agentSay(ask);
     if (!o) {
       o = await turn(await waitText(), {
@@ -787,8 +820,9 @@ async function runLowAmount(step) {
   S.phone.bankView = "amount";
   renderPhone();
 
-  let question = preempted ? corr.lowConfirm(pending) : step.low.messages[0];
-  await agentSay(question);
+  const qLines = preempted ? [corr.lowConfirm(S, pending)] : resolveMsgs(step.low.messages);
+  for (const t of qLines) await agentSay(t);
+  let question = qLines.join(" ");
   if (!preempted) S.m.errorShownAt = now();
   else logEvent("error_preempted", { amount: pending });
 
@@ -806,9 +840,9 @@ async function runLowAmount(step) {
     }
     let o = c.id === "set_amount" ? c.out : null;
     if (!o) {
-      await agentSay(corr.lowAsk);
+      await agentSay(corr.lowAsk(S));
       o = await turn(await waitText(), {
-        said: corr.lowAsk,
+        said: corr.lowAsk(S),
         intents: ["set_amount", "continue", "cancel", "other"],
         hint: "금액 외의 것을 바꾸고 싶다고 하면 그 말에 짧게 답하고, 지금은 송금액을 입력하는 단계라는 흐름으로 자연스럽게 돌아오세요.",
       });
@@ -818,7 +852,7 @@ async function runLowAmount(step) {
       S.phone.pendingAmount = pending;
       renderPhone();
       logEvent("amount_changed", { amount: pending, via: "reject_text" });
-      question = corr.lowConfirm(pending);
+      question = corr.lowConfirm(S, pending);
       await agentSay(question);
       continue;
     }
@@ -845,7 +879,7 @@ async function runHighStep(step) {
     await gate();
     if (S.userAmount != null) {
       S.form.amount = S.userAmount;
-      msgs = [step.correction.highDone(S.userAmount)];
+      msgs = lines("change.amount", S, { amount: S.userAmount });
       logEvent("error_preempted", { amount: S.userAmount });
     } else {
       S.form.amount = ERROR_AMOUNT;
@@ -890,6 +924,10 @@ async function runPassword(step, spec) {
     if (o.intent === "open") break;
     await agentSay(o.reply);
   }
+  // 화면 열기 → 잠깐 뒤 실제 크기 화면으로 천천히 전환, 비밀번호 창은 그다음 아래에서 올라옴
+  setStatus("비밀번호 입력 화면을 여는 중이에요", true);
+  await sleep(600);
+  setStatus(null, false);
   S.pinOpen = true;
   syncControls();
   S.phone.pin = "";
@@ -958,6 +996,7 @@ function summary() {
     automation: S.automation,
     llm: LLM.enabled ? LLM.model : "rules",
     prompt_version: S.promptVersion ?? null,
+    script_version: S.scriptVersion ?? null,
     started_at: S.startedAt,
     status: S.status || (S.finished ? "ended" : "in_progress"),
     request_text: m.request?.text ?? null,
@@ -1108,7 +1147,6 @@ function start() {
 
   const sit = SITUATION[S.complexity];
   $("#task-card").hidden = !cfg.showTask;
-  document.querySelectorAll(".task-btn").forEach((b) => (b.hidden = !cfg.showTask));
   $("#task-situation").innerHTML = sit.situation.map((t) => `<p>${esc(t)}</p>`).join("");
   $("#task-list").innerHTML = sit.task.map((t) => `<li>${esc(t.replace("OOO", cfg.name))}</li>`).join("");
   $("#cond-title").textContent = CONDITIONS[S.cond].title;
@@ -1126,8 +1164,9 @@ function start() {
   renderPhone();
   renderStepper();
   S.promptVersion = LLM.promptVersion;
+  S.scriptVersion = scriptVersion(S.cond);
   $("#prompt-live").value = LLM.prompt;
-  logEvent("session_start", { condition: S.cond, participant: cfg.pid, llm: LLM.enabled ? LLM.model : "rules", delay_ms: cfg.delay, prompt_version: LLM.promptVersion, prompt: LLM.prompt });
+  logEvent("session_start", { condition: S.cond, participant: cfg.pid, llm: LLM.enabled ? LLM.model : "rules", delay_ms: cfg.delay, prompt_version: LLM.promptVersion, prompt: LLM.prompt, script_version: S.scriptVersion, script_overrides: SCRIPT_OVERRIDES[S.cond] || null });
   run().catch((e) => { console.error(e); logEvent("error", { message: String(e) }); });
 }
 
@@ -1191,6 +1230,108 @@ function initPrompt() {
 }
 
 // =====================================================================
+// 시나리오 문구 편집
+// =====================================================================
+let scriptCond = "A1";
+
+function scriptVersion(cond) {
+  const o = SCRIPT_OVERRIDES[cond];
+  return o && Object.keys(o).length ? promptVersion(JSON.stringify(o)) : "기본";
+}
+
+function saveScripts() {
+  // 기본값과 같은 항목은 지움
+  for (const cond of Object.keys(SCRIPT_OVERRIDES)) {
+    const defs = Object.fromEntries(scriptDefaults(cond).map((d) => [d.key, d.text]));
+    for (const [k, v] of Object.entries(SCRIPT_OVERRIDES[cond])) if (v === defs[k]) delete SCRIPT_OVERRIDES[cond][k];
+    if (!Object.keys(SCRIPT_OVERRIDES[cond]).length) delete SCRIPT_OVERRIDES[cond];
+  }
+  if (Object.keys(SCRIPT_OVERRIDES).length) store.set("script_overrides", SCRIPT_OVERRIDES);
+  else store.del("script_overrides");
+}
+
+function renderScriptMeta() {
+  const n = Object.keys(SCRIPT_OVERRIDES[scriptCond] || {}).length;
+  $("#script-meta").textContent = `${scriptCond} · ${n ? `${n}개 수정됨 · 버전 ${scriptVersion(scriptCond)}` : "기본값"}`;
+  document.querySelectorAll("#script-tabs button").forEach((b) => {
+    const m = Object.keys(SCRIPT_OVERRIDES[b.dataset.cond] || {}).length;
+    b.textContent = b.dataset.cond + (m ? " •" : "");
+  });
+}
+
+function renderScriptEditor() {
+  document.querySelectorAll("#script-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.cond === scriptCond));
+  let html = "";
+  let group = null;
+  for (const d of scriptDefaults(scriptCond)) {
+    if (d.group !== group) { group = d.group; html += `<div class="script-group">${esc(group)}</div>`; }
+    const cur = scriptText(scriptCond, d.key);
+    const edited = cur !== d.text;
+    html += `<div class="script-row ${edited ? "edited" : ""}" data-key="${d.key}">
+      <label><span>${esc(d.label)}</span>${edited ? '<button type="button" class="undo">기본값</button>' : ""}</label>
+      <textarea rows="${Math.max(1, cur.split("\n").length)}">${esc(cur)}</textarea></div>`;
+  }
+  $("#script-list").innerHTML = html;
+  const fit = (ta) => { ta.style.height = "auto"; ta.style.height = `${ta.scrollHeight + 2}px`; };
+  $("#script-list").querySelectorAll(".script-row").forEach((row) => {
+    const key = row.dataset.key;
+    const ta = row.querySelector("textarea");
+    requestAnimationFrame(() => fit(ta));
+    ta.oninput = () => {
+      fit(ta);
+      SCRIPT_OVERRIDES[scriptCond] = SCRIPT_OVERRIDES[scriptCond] || {};
+      SCRIPT_OVERRIDES[scriptCond][key] = ta.value;
+      saveScripts();
+      const def = scriptDefaults(scriptCond).find((x) => x.key === key).text;
+      row.classList.toggle("edited", ta.value !== def);
+      renderScriptMeta();
+    };
+    const undo = row.querySelector(".undo");
+    if (undo) undo.onclick = () => {
+      delete SCRIPT_OVERRIDES[scriptCond]?.[key];
+      saveScripts();
+      renderScriptEditor();
+    };
+  });
+  renderScriptMeta();
+}
+
+function initScripts() {
+  const saved = store.get("script_overrides", null);
+  SCRIPT_OVERRIDES = saved && typeof saved === "object" ? saved : {};
+  document.querySelectorAll("#script-tabs button").forEach((b) => (b.onclick = () => { scriptCond = b.dataset.cond; renderScriptEditor(); }));
+  $("#btn-script-reset").onclick = () => {
+    if (!SCRIPT_OVERRIDES[scriptCond] || confirm(`${scriptCond} 조건의 수정한 문구를 모두 기본값으로 되돌릴까요?`)) {
+      delete SCRIPT_OVERRIDES[scriptCond];
+      saveScripts();
+      renderScriptEditor();
+    }
+  };
+  $("#btn-script-save").onclick = () => {
+    // 모든 조건의 현재 문구 전체를 저장 (기본값 포함)
+    const all = {};
+    for (const c of Object.keys(CONDITIONS)) all[c] = Object.fromEntries(scriptDefaults(c).map((d) => [d.key, scriptText(c, d.key)]));
+    download(`scenario_script_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(all, null, 2), "application/json");
+  };
+  $("#btn-script-load").onclick = () => $("#script-file").click();
+  $("#script-file").onchange = async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      SCRIPT_OVERRIDES = {};
+      for (const c of Object.keys(CONDITIONS)) if (data[c]) SCRIPT_OVERRIDES[c] = { ...data[c] };
+      saveScripts();
+      renderScriptEditor();
+    } catch {
+      alert("문구 파일을 읽지 못했어요. 「파일로 저장」으로 만든 JSON 파일인지 확인해주세요.");
+    }
+    e.target.value = "";
+  };
+  renderScriptEditor();
+}
+
+// =====================================================================
 // 음성 입력 (브라우저 지원 시)
 // =====================================================================
 function setupMic() {
@@ -1241,8 +1382,6 @@ function init() {
   $("#btn-stop").onclick = () => S && handleStop("button");
   $("#btn-manual").onclick = () => S && startManual();
   $("#btn-manual-done").onclick = () => S && endManual();
-  $("#btn-open-chat").onclick = () => openChat(true);
-  document.querySelectorAll(".task-btn").forEach((b) => (b.onclick = () => openTask(true)));
   $("#btn-task-close").onclick = () => openTask(false);
   $("#task-dim").onclick = () => openTask(false);
   // 연구자 패널: 세션 중에는 상단 제목을 세 번 연속 탭 (또는 Ctrl + .)
@@ -1266,6 +1405,7 @@ function init() {
   document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === ".") document.body.classList.toggle("drawer-open"); });
   setupMic();
   initPrompt();
+  initScripts();
   renderSessionCount();
 }
 

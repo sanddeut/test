@@ -254,14 +254,18 @@ function bankComplete() {
 function bankOverlay() {
   const p = S.phone;
   const f = S.form;
+  // 시트·팝업이 처음 나타날 때만 등장 애니메이션 (키패드 입력 등 다시 그릴 때는 그대로)
+  const cur = `${p.popup ? "popup" : ""}|${p.sheet === "pin" && !S.pinOpen ? "" : p.sheet || ""}`;
+  const enter = cur !== p.overlayShown ? "enter" : "";
+  p.overlayShown = cur;
   if (p.popup) {
     const live = p.popupClosable;
-    return `<div class="dim center"><div class="evt">
+    return `<div class="dim center ${enter}"><div class="evt">
       <div class="evt-art">🍂🎁</div><b>가을맞이 정기적금 이벤트</b><p>지금 가입하면 최대 연 4.5% 우대금리!</p>
       <div class="evt-btns ${live ? "live" : ""}"><span ${live ? "data-popup-close" : ""}>오늘 하루 보지 않기</span><span ${live ? "data-popup-close" : ""}>닫기</span></div></div></div>`;
   }
   if (p.sheet === "confirm") {
-    return `<div class="dim"><div class="sheet">
+    return `<div class="dim ${enter}"><div class="sheet ${enter}">
       <h3>${f.recipientCustom ? "입력하신 계좌로" : "김영숙님께"}<br><em>${won0(f.amount)}</em>을 이체할까요?</h3>
       <div class="kv"><span>출금 계좌</span><b>${ACCOUNTS[f.source].label}</b></div>
       <div class="kv"><span>받는 계좌</span><b>${f.recipientCustom ? esc(f.recipientCustom) : "농협 302-1234-5678"}</b></div>
@@ -270,7 +274,7 @@ function bankOverlay() {
   }
   if (p.sheet === "pin" && S.pinOpen) {
     const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
-    return `<div class="dim"><div class="sheet pin"><h3>계좌 비밀번호</h3><p class="muted">비밀번호 4자리를 입력해주세요</p>
+    return `<div class="dim ${enter}"><div class="sheet pin ${enter}"><h3>계좌 비밀번호</h3><p class="muted">비밀번호 4자리를 입력해주세요</p>
       <div class="dots">${[0, 1, 2, 3].map((i) => `<i class="${i < p.pin.length ? "on" : ""}"></i>`).join("")}</div>
       <div class="keypad">${keys.map((k) => (k ? `<button type="button" data-pin="${k}">${k === "del" ? "⌫" : k}</button>` : "<span></span>")).join("")}</div></div></div>`;
   }

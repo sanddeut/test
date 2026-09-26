@@ -77,6 +77,23 @@
         </div>
       </fieldset>
 
+      <fieldset>
+        <legend>시나리오 문구</legend>
+        <p class="hint">에이전트가 정해진 순서대로 말하는 문구예요. 조건을 골라 고치면 이 브라우저에 바로 저장돼요. 한 줄이 말풍선 하나예요. 자리표시자 <code>{금액}</code> <code>{이름}</code> <code>{메모}</code> <code>{출금계좌}</code> <code>{받는분}</code> <code>{계좌번호}</code>는 진행 중 실제 값으로 바뀌어요.</p>
+        <div class="seg-tabs" id="script-tabs">
+          <button type="button" data-cond="A1" class="on">A1</button><button type="button" data-cond="A2">A2</button><button type="button" data-cond="B1">B1</button><button type="button" data-cond="B2">B2</button>
+        </div>
+        <div id="script-list" class="script-list"></div>
+        <div class="prompt-meta"><span id="script-meta"></span>
+          <div class="btn-row wrap">
+            <button id="btn-script-reset" type="button" class="btn-ghost">이 조건 기본값으로</button>
+            <button id="btn-script-save" type="button" class="btn-ghost">파일로 저장</button>
+            <button id="btn-script-load" type="button" class="btn-ghost">파일 불러오기</button>
+            <input id="script-file" type="file" accept=".json,application/json" hidden>
+          </div>
+        </div>
+      </fieldset>
+
       <button type="submit" class="btn-start">세션 시작</button>
     </form>
   </main>
@@ -97,9 +114,7 @@
     <div class="phone" data-view="chat">
       <!-- 진행 화면 헤더 -->
       <div class="pv-head only-progress">
-        <button type="button" class="icon-btn task-btn" title="과업 보기">📋</button>
         <b id="pv-title" class="secret">작업 진행 중</b>
-        <button type="button" class="icon-btn" id="btn-open-chat" title="대화창">💬</button>
       </div>
       <!-- 직접 작업 안내 -->
       <div class="direct-bar only-direct">
@@ -108,18 +123,20 @@
       </div>
       <!-- 대화창 헤더 -->
       <div class="chat-head only-chat">
-        <button type="button" class="icon-btn task-btn" title="과업 보기">📋</button>
         <span class="agent-avatar">AI</span><b class="secret">AI 도우미</b>
         <button type="button" class="pill-btn" id="btn-close-chat">작업 화면 보기</button>
       </div>
 
       <div class="screen-box only-screen"><div class="screen-clip"><div id="screen" class="screen"></div></div></div>
 
-      <div id="pv-status" class="pv-status only-progress" aria-live="polite"></div>
-      <div id="pv-chips" class="pv-chips only-progress"></div>
+      <!-- 진행 문구 + 선택지: 높이를 고정해 축소 화면 크기가 바뀌지 않게 함 -->
+      <div class="pv-panel only-progress">
+        <div id="pv-status" class="pv-status" aria-live="polite"></div>
+        <div id="pv-chips" class="pv-chips"></div>
+      </div>
       <div class="pv-bottom only-progress">
         <button id="btn-stop" type="button" class="txt-btn">중지</button>
-        <button id="btn-manual" type="button" class="primary-btn">직접 작업</button>
+        <button id="btn-manual" type="button" class="primary-btn">직접 조작</button>
       </div>
 
       <div id="chat" class="chat only-chat" aria-live="polite"></div>
