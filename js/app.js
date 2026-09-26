@@ -689,7 +689,13 @@ async function run() {
 const resolveMsgs = (m) => (typeof m === "function" ? m(S) : m);
 
 // 단계 조작: act가 있으면 화면에서 누르고 입력하는 과정을 보여주며 진행, 없으면 바로 반영
-async function doApply(step, choice) {
+// announced=true: 바로 앞에서 이 조작을 알리는 문구("~할게요")를 말한 경우 → 조작 중에도 그 문구를 유지
+async function doApply(step, choice, { announced = false } = {}) {
+  if (step.act && !announced) {
+    // 새 조작이 시작되면 이전 문구(이미 답한 질문, 이전 결과)는 지우고 "…" 표시
+    S.statusLines = null;
+    setStatus("", true);
+  }
   if (step.act) {
     setActing(true);
     try { await step.act(S, choice); } finally { setActing(false); }
@@ -713,11 +719,12 @@ async function dwell(ms = 1800) {
 // 단계 준비: 문구를 말하기 전에 화면에서 찾는 과정 (예: 자주 탭으로 이동)
 async function doPre(step) {
   if (!step.pre) return;
-  const before = screenKey(S.phone);
+  // 새 단계의 준비 동작이 시작되면 이전 단계 문구는 지우고 "…" 표시
+  S.statusLines = null;
+  setStatus("", true);
   setActing(true);
   try { await step.pre(S); } finally { setActing(false); }
-  if (screenKey(S.phone) !== before) { S.statusLines = null; setStatus("", true); } // 화면이 바뀌면 이전 문구 지움
-  await dwell(400);
+  await dwell(150);
 }
 
 // ---------- 낮은 자동화 ----------
@@ -738,7 +745,7 @@ async function runLowStep(step) {
     const msgs = resolveMsgs(step.low.messages);
     const split = step.low.split ?? (step.low.applyFirst ? 0 : msgs.length);
     for (const m of msgs.slice(0, split)) await agentSay(m);
-    await doApply(step);
+    await doApply(step, undefined, { announced: split > 0 });
     for (const m of msgs.slice(split)) await agentSay(m);
     if (step.kind === "done") return finish("completed");
     await dwell();
@@ -1047,7 +1054,7 @@ async function runHighStep(step) {
     // 앞 문구 → 화면 조작 → 뒤 문구 (예: "문자 목록 확인 중 …" → 문자 열기 → "찾았어요")
     await say(msgs.slice(0, split));
     await gate();
-    await doApply(step);
+    await doApply(step, undefined, { announced: true });
     await say(msgs.slice(split));
     await read();
   } else if (applyFirst) {
@@ -1061,7 +1068,7 @@ async function runHighStep(step) {
     await say(msgs);
     await read();
     await gate();
-    await doApply(step);
+    await doApply(step, undefined, { announced: true });
     await dwell(900);
   }
   if (step.kind === "done") return finish("completed");

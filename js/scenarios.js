@@ -188,6 +188,15 @@ const line = (key, s, vars) => lines(key, s, vars).join("\n");
 // - high.messages / high.applyFirst : 높은 자동화 (applyFirst=true면 화면 조작 후 “~했어요” 안내)
 // - guide : 스크립트 밖 응답을 LLM이 만들 때 참고할 단계 설명
 // - apply(state, choiceId) : 폰 화면/상태 변경
+// 금액 화면에 있으면 [확인]을 눌러 상세(통장표기) 화면으로
+async function confirmAmount(s) {
+  if (s.phone.app !== "bank" || s.phone.bankView !== "amount") return;
+  await tap(".bk-btn");
+  s.phone.bankView = "detail";
+  renderPhone();
+  await waitLoading();
+}
+
 function buildSteps(complexity, participantName) {
   const B = complexity === "B";
   const memo = `30기 ${participantName || "OOO"}`;
@@ -394,15 +403,13 @@ function buildSteps(complexity, participantName) {
       s.phone.bankView = "amount";
       renderPhone();
     },
+    // 금액이 입력되는 순간 "입력했어요"가 뜨도록, [확인]은 다음 단계에서 누름
     act: async (s) => {
       s.phone.bankView = "amount";
       renderPhone();
       await typeAmount(s.form.amount);
-      await tap(".bk-btn");
-      s.phone.bankView = "detail";
-      renderPhone();
     },
-    apply: (s) => { s.phone.typedAmount = String(s.form.amount); s.phone.bankView = "detail"; },
+    apply: (s) => { s.phone.typedAmount = String(s.form.amount); },
   });
 
   if (B) {
@@ -412,10 +419,11 @@ function buildSteps(complexity, participantName) {
       guide: `받는 분 통장에 표시될 메모를 정하는 단계. 기본 메모는 ‘${memo}’`,
       defaultMemo: memo,
       low: { messages: msg("memo"), options: APPROVE, reject: "memo", ask: "memo.ask" },
-      pre: async (s) => { s.phone.focus = "memo"; renderPhone(); await actSleep(300); },
+      pre: async (s) => { await confirmAmount(s); s.phone.focus = "memo"; renderPhone(); await actSleep(300); },
       high: { messages: msg("memo"), applyFirst: true },
       act: async (s) => {
         const text = s.pendingMemo ?? memo;
+        await confirmAmount(s);
         await tap(".dt-row.memo");
         s.phone.memoTyping = "";
         renderPhone();
@@ -439,6 +447,7 @@ function buildSteps(complexity, participantName) {
       low: { messages: msg("final"), options: APPROVE, reject: "final", ask: "final.ask" },
       high: { messages: msg("final") },
       pre: async (s) => {
+        await confirmAmount(s);
         if (s.phone.sheet === "confirm") return;
         await tap(".bk-btn2 .primary");
         s.phone.sheet = "confirm";
@@ -446,6 +455,7 @@ function buildSteps(complexity, participantName) {
         await actSleep(500);
       },
       act: async (s) => {
+        await confirmAmount(s);
         if (s.phone.sheet !== "confirm") { s.phone.sheet = "confirm"; renderPhone(); await actSleep(400); }
         await tap(".sheet .primary");
         s.phone.sheet = null;

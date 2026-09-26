@@ -387,7 +387,7 @@ async function typeAmount(amount) {
   if (S.form.amount != null && S.form.amount !== Number(amount)) return; // 도중에 참가자가 금액을 바꾼 경우
   p.typedAmount = String(amount);
   renderPhone();
-  await actSleep(900);
+  await actSleep(150);
 }
 
 // 글자 하나씩 입력
@@ -410,6 +410,7 @@ async function retypeAmount(amount) {
   if (sheet) { p.sheet = null; renderPhone(); await actSleep(400); }
   if (p.bankView === "detail") { await tap(".tr-sub b"); p.bankView = "amount"; renderPhone(); await actSleep(500); }
   await typeAmount(amount);
+  await actSleep(700);
   await tap(".bk-btn");
   p.bankView = "detail";
   renderPhone();
