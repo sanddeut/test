@@ -682,7 +682,7 @@ async function run() {
     renderStepper();
     const ok = S.automation === "low" ? await runLowStep(step) : await runHighStep(step);
     if (!ok || S.finished) return;
-    await sleep(S.automation === "high" ? S.cfg.delay : 1000 * PACE);
+    if (S.automation === "low") await sleep(1000 * PACE); // 높은 자동화는 단계 안에서 읽는 시간을 둠
   }
 }
 
@@ -696,7 +696,11 @@ async function doApply(step, choice) {
   }
   step.apply(S, choice);
   renderPhone();
-  if (step.act) S.statusLines = null; // 화면이 바뀌었으니 이전 안내 문구는 지우고 새로 시작
+  if (step.act) {
+    // 화면이 바뀌었으니 이전 안내 문구는 지우고, 다음 문구가 나올 때까지 "…" 표시
+    S.statusLines = null;
+    setStatus("", true);
+  }
 }
 
 // 화면이 바뀐 뒤 잠시 머무름 (로딩이 끝난 뒤부터)
@@ -709,8 +713,10 @@ async function dwell(ms = 1800) {
 // 단계 준비: 문구를 말하기 전에 화면에서 찾는 과정 (예: 자주 탭으로 이동)
 async function doPre(step) {
   if (!step.pre) return;
+  const before = screenKey(S.phone);
   setActing(true);
   try { await step.pre(S); } finally { setActing(false); }
+  if (screenKey(S.phone) !== before) { S.statusLines = null; setStatus("", true); } // 화면이 바뀌면 이전 문구 지움
   await dwell(400);
 }
 
@@ -1034,6 +1040,8 @@ async function runHighStep(step) {
       if (step.kind === "error_amount" && S.userAmount == null && S.m.errorShownAt == null) S.m.errorShownAt = now();
     }
   };
+  // 단계 간격(S.cfg.delay)은 "문구를 읽는 시간"으로 씀: 문구가 나온 뒤 기다렸다가 다음 조작으로
+  const read = async () => { await sleep(S.cfg.delay); await gate(); };
   const split = step.high.split;
   if (split != null) {
     // 앞 문구 → 화면 조작 → 뒤 문구 (예: "문자 목록 확인 중 …" → 문자 열기 → "찾았어요")
@@ -1041,12 +1049,21 @@ async function runHighStep(step) {
     await gate();
     await doApply(step);
     await say(msgs.slice(split));
-  } else {
-    if (applyFirst) { await gate(); await doApply(step); }
+    await read();
+  } else if (applyFirst) {
+    // 조작 → "~했어요" → 읽는 시간
+    await gate();
+    await doApply(step);
     await say(msgs);
-    if (!applyFirst) { await gate(); await doApply(step); }
+    if (step.kind !== "done") await read();
+  } else {
+    // "~할게요" → 읽는 시간 → 조작 → 바뀐 화면 잠시 보여주고 다음 단계로
+    await say(msgs);
+    await read();
+    await gate();
+    await doApply(step);
+    await dwell(900);
   }
-  if (step.kind !== "done") await dwell(); // 문구와 바뀐 화면을 함께 충분히 보여줌
   if (step.kind === "done") return finish("completed");
   return true;
 }

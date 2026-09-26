@@ -43,12 +43,18 @@ function startLoading(p) {
   ms *= PACE;
   if (!type) return;
   // 앱 실행 중에는 진행 문구를 "…을 실행 중입니다..."로 바꿈
-  if (type === "splash-bank") setStatus?.("은행 앱을 실행 중입니다...");
-  if (type === "splash-app" && p.app.startsWith("sms")) setStatus?.("문자 앱을 실행 중입니다...");
+  const launching = type === "splash-bank" ? "은행 앱을 실행 중입니다..." : type === "splash-app" && p.app.startsWith("sms") ? "문자 앱을 실행 중입니다..." : null;
+  if (launching) setStatus?.(launching);
   p.loading = type;
   p.loadingUntil = Date.now() + ms;
   clearTimeout(p.loadingTimer);
-  p.loadingTimer = setTimeout(() => { p.loading = null; renderPhone(); }, ms);
+  p.loadingTimer = setTimeout(() => {
+    p.loading = null;
+    renderPhone();
+    // 실행이 끝났으니 "실행 중입니다..."는 지우고 다음 문구까지 "…" 표시
+    const st = document.querySelector("#pv-status");
+    if (launching && st && st.textContent === launching) setStatus?.("", true);
+  }, ms);
 }
 
 function loadingOverlay(p) {
