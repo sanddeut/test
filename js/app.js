@@ -1470,16 +1470,39 @@ function unb64url(str) {
   return decodeURIComponent(escape(atob(str.replace(/-/g, "+").replace(/_/g, "/"))));
 }
 
-function readKeyFromLink() {
-  const m = location.hash.match(/[#&]k=([\w-]+)/);
+// 링크(또는 붙여넣은 텍스트)에서 키를 꺼내 저장. 성공하면 true
+function saveKeyFrom(text) {
+  const m = String(text || "").match(/[#&]k=([\w-]+)/);
   if (!m) return false;
   try {
     const cfg = JSON.parse(unb64url(m[1]));
-    if (cfg.k) store.set("gemini_key", cfg.k);
+    if (!cfg.k) return false;
+    store.set("gemini_key", cfg.k);
     if (cfg.m) store.set("gemini_model", cfg.m);
-  } catch { /* 잘못된 링크 */ }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function readKeyFromLink() {
+  if (!/[#&]k=/.test(location.hash)) return false;
+  const ok = saveKeyFrom(location.hash);
   history.replaceState(null, "", location.pathname + location.search); // 주소창에서 키 지움
-  return true;
+  return ok;
+}
+
+// 키가 없을 때(예: 아이폰에 설치한 앱) 받은 링크를 붙여넣어 키 저장
+function setupPasteKey() {
+  const box = $("#paste-key");
+  const refresh = () => { applyLLMSettings(); box.hidden = LLM.enabled; };
+  $("#btn-paste-key").onclick = () => {
+    const ok = saveKeyFrom($("#paste-link").value);
+    if (!ok) { alert("링크에서 키를 찾지 못했어요. 받은 링크 전체를 붙여넣어 주세요."); return; }
+    $("#paste-link").value = "";
+    refresh();
+  };
+  refresh();
 }
 
 // ---------- 앱으로 설치 ----------
@@ -1490,30 +1513,42 @@ function setupInstall() {
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   const btn = $("#btn-install");
   const hint = $("#install-hint");
+  const big = $("#btn-install-big");
+  const welcomeText = $("#welcome-text");
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     installEvent = e;
     btn.hidden = false;
     hint.hidden = true;
   });
-  btn.onclick = async () => {
-    if (!installEvent) return;
+  let manualText = "";
+  const doInstall = async () => {
+    if (!installEvent) {
+      // 설치 창을 띄울 수 없으면 직접 설치하는 방법을 안내
+      welcomeText.textContent = manualText || "크롬 오른쪽 위 ⋮ 메뉴 → 「홈 화면에 추가」(또는 「앱 설치」)를 누르면 앱으로 설치돼요.";
+      return;
+    }
     installEvent.prompt();
     await installEvent.userChoice.catch(() => {});
     installEvent = null;
     btn.hidden = true;
   };
-  window.addEventListener("appinstalled", () => { btn.hidden = true; hint.hidden = true; });
+  btn.onclick = doInstall;
+  big.onclick = doInstall;
+  window.addEventListener("appinstalled", () => {
+    btn.hidden = true; big.hidden = true; $("#btn-web").textContent = "확인"; hint.hidden = true;
+    welcomeText.textContent = "설치했어요. 홈 화면의 「AI 송금」 아이콘으로 열어주세요.";
+  });
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
   if (ios) {
-    hint.textContent = "앱으로 설치하려면 사파리 아래 공유 버튼 → 「홈 화면에 추가」를 누르세요.";
-    hint.hidden = false;
+    const t = "사파리 아래 공유 버튼 → 「홈 화면에 추가」를 누르면 앱으로 설치돼요. 설치한 앱을 처음 열면, 이 링크를 한 번 더 붙여넣어 주세요.";
+    hint.textContent = t; hint.hidden = false; manualText = t;
   } else if (matchMedia("(pointer: coarse)").matches) {
     // 설치 창을 띄울 수 없는 경우를 위한 안내 (잠시 뒤에도 설치 버튼이 없으면 표시)
     setTimeout(() => {
       if (!installEvent) {
-        hint.textContent = "앱으로 설치하려면 크롬 오른쪽 위 ⋮ 메뉴 → 「홈 화면에 추가」를 누르세요.";
-        hint.hidden = false;
+        const t = "크롬 오른쪽 위 ⋮ 메뉴 → 「홈 화면에 추가」(또는 「앱 설치」)를 누르면 앱으로 설치돼요.";
+        hint.textContent = t; hint.hidden = false; manualText = t;
       }
     }, 2500);
   }
@@ -1521,13 +1556,16 @@ function setupInstall() {
 
 function init() {
   const fromLink = readKeyFromLink();
-  if (fromLink) $("#key-loaded").hidden = false;
+  const installedApp = matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches || navigator.standalone;
+  if (fromLink && !installedApp) $("#welcome").hidden = false;
   setupInstall();
+  $("#btn-web").onclick = () => ($("#welcome").hidden = true);
   const saved = store.get("setup", {});
   if (saved.pid) $("#pid").value = saved.pid;
   if (saved.name) $("#pname").value = saved.name;
   if (saved.condition) { const r = document.querySelector(`input[name="cond"][value="${saved.condition}"]`); if (r) r.checked = true; }
   applyLLMSettings();
+  setupPasteKey();
 
   $("#setup-form").onsubmit = (e) => { e.preventDefault(); start(); };
   $("#composer").onsubmit = onSubmit;

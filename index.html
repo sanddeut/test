@@ -33,7 +33,14 @@
     <form id="setup-form" class="card setup-card">
       <div class="setup-head"><h1>세션 설정</h1><button id="btn-install" type="button" class="btn-ghost" hidden><span class="ms">install_mobile</span> 앱으로 설치</button></div>
       <p id="install-hint" class="hint" hidden></p>
-      <p id="key-loaded" class="hint ok" hidden>공유 링크로 API 키를 불러왔어요.</p>
+      <div id="welcome" class="welcome" hidden>
+        <b><span class="ms">check_circle</span> API 키를 불러왔어요</b>
+        <p id="welcome-text">앱으로 설치하면 홈 화면에서 주소창 없이 바로 열 수 있어요.</p>
+        <div class="welcome-btns">
+          <button id="btn-web" type="button" class="btn-ghost">웹에서 보기</button>
+          <button id="btn-install-big" type="button" class="btn-start"><span class="ms">install_mobile</span> 앱 설치</button>
+        </div>
+      </div>
 
       <fieldset>
         <legend>참가자</legend>
@@ -56,6 +63,10 @@
       <div class="llm-status">
         <span class="ms">smart_toy</span>
         <span id="llm-status-text">Gemini 연결 확인 중…</span>
+      </div>
+      <div id="paste-key" class="paste-key" hidden>
+        <p class="hint">받으신 공유 링크를 붙여넣으면 API 키가 저장돼요.</p>
+        <div class="paste-row"><input id="paste-link" placeholder="받은 링크 붙여넣기" autocomplete="off" spellcheck="false"><button id="btn-paste-key" type="button" class="btn-ghost">적용</button></div>
       </div>
 
 
