@@ -133,21 +133,20 @@ function scriptDefaults(cond) {
   }
 
   if (low) {
-    add("final", "최종 이체 확인", "승인 요청", "송금 내용을 최종 확인해주세요.\n“{출금계좌}에서 {받는분}으로 {금액}을 보냅니다.”");
+    add("final", "최종 이체 확인", "승인 요청", "송금 내용을 최종 확인해주세요.");
     add("final.ask", "최종 이체 확인", "거부 시", "무엇을 수정할까요?");
   } else add("final", "최종 이체 확인", "안내", "{출금계좌}에서 {받는분}으로 {금액}을 보낼게요.");
 
   add("password", "[직접조작] 비밀번호", "안내", "이체를 위해 계좌비밀번호 입력이 필요해요. 화면을 열어 직접 입력해주세요.");
   add("done", "완료 안내", "안내", "{받는분}으로 {금액}을 보냈어요.");
 
-  if (!low) {
-    add("stop.ask", "중지·직접 작업", "중지 버튼 / 멈추라고 했을 때", "진행을 멈췄어요. 어떻게 바꿀까요?");
-    add("change.amount", "중지·직접 작업", "금액을 바꿨을 때", B ? "송금액 {금액}을 입력했어요." : "요청하신 금액인 {금액}을 입력했어요.");
-    if (B) add("change.memo", "중지·직접 작업", "메모를 바꿨을 때", "받는 분 통장 메모를 ‘{메모}’으로 바꿨어요.");
-    add("change.source", "중지·직접 작업", "출금계좌를 바꿨을 때", "{출금계좌}에서 출금할게요.");
-    add("stop.continue", "중지·직접 작업", "그대로 진행하라고 했을 때", "계속 진행할게요.");
-    add("manual.resume", "중지·직접 작업", "직접 작업 후 AI에게 맡겼을 때", "이어서 진행할게요.");
-  }
+  add("stop.ask", "중지·직접 조작", "중지를 눌렀을 때", "진행을 멈췄어요. 어떻게 바꿀까요?");
+  add("change.amount", "중지·직접 조작", "중지 중 금액을 바꿨을 때",
+    low ? "송금액을 {금액}으로 바꿀게요." : B ? "송금액 {금액}을 입력했어요." : "요청하신 금액인 {금액}을 입력했어요.");
+  if (B) add("change.memo", "중지·직접 조작", "중지 중 메모를 바꿨을 때", "받는 분 통장 메모를 ‘{메모}’으로 바꿨어요.");
+  add("change.source", "중지·직접 조작", "중지 중 출금계좌를 바꿨을 때", "{출금계좌}에서 출금할게요.");
+  add("stop.continue", "중지·직접 조작", "계속하기를 눌렀을 때", "계속 진행할게요.");
+  add("manual.resume", "중지·직접 조작", "직접 조작 후 AI에게 맡겼을 때", "이어서 진행할게요.");
   add("cancel", "기타", "송금을 취소했을 때", "송금을 취소했어요.");
   return L;
 }
@@ -270,8 +269,8 @@ function buildSteps(complexity, participantName) {
     low: {
       messages: msg("source"),
       options: [
-        { id: "main", label: "주거래", desc: `주거래 통장 · 잔액 ${ACCOUNTS.main.balance.toLocaleString("ko-KR")}원` },
-        { id: "savings", label: "적금출금 계좌", desc: `적금출금 계좌 · 잔액 ${ACCOUNTS.savings.balance.toLocaleString("ko-KR")}원` },
+        { id: "main", label: "주거래" },
+        { id: "savings", label: "적금출금 계좌" },
       ],
     },
     high: { messages: msg("source") },

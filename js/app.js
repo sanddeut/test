@@ -79,7 +79,24 @@ const chat = () => $("#chat");
 // 대화창을 맨 아래로 (화면 전환·버튼 표시로 높이가 바뀐 뒤에 맞춤)
 const scrollChat = () => requestAnimationFrame(() => { const c = chat(); c.scrollTop = c.scrollHeight; });
 
+// 진행 화면에 있을 때 나온 말은 대화창에 쌓지 않고 보관했다가, 대화창으로 넘어갈 때 같은 단계의 마지막 몇 개만 이어서 보여줌
+// (갤럭시 에이전트처럼 대화창에는 진행 로그 대신 대화만 남김)
 function appendBubble(role, text) {
+  if (S && wantedView() !== "chat") {
+    S.unflushed = [...(S.unflushed || []), { role, text, step: S.stepIdx }].slice(-6);
+    return;
+  }
+  renderBubble(role, text);
+}
+
+function flushUnflushed() {
+  if (!S?.unflushed?.length) return;
+  const recent = S.unflushed.filter((b) => b.step === S.stepIdx).slice(-3);
+  S.unflushed = [];
+  recent.forEach((b) => renderBubble(b.role, b.text));
+}
+
+function renderBubble(role, text) {
   const div = document.createElement("div");
   div.className = `bubble ${role}`;
   div.textContent = text;
@@ -110,7 +127,7 @@ function showTyping(on) {
 
 // gated=true: 러너가 말할 때. 중지 중이면 재개될 때까지 기다렸다가 말함
 async function agentSay(text, { gated = false } = {}) {
-  const typingMs = Math.min(1200, 350 + text.length * 12);
+  const typingMs = Math.min(1600, 450 + text.length * 14) * PACE;
   for (;;) {
     if (gated) await gate();
     if (S.finished && gated) return;
@@ -157,7 +174,7 @@ function setChips(options, onPick) {
         b.innerHTML = `<span class="oc-head"><span class="bk-logo sm"><i></i></span><span><b>${esc(o.card.title)}</b><small>${esc(o.card.sub)}</small></span></span><span class="oc-btn">${esc(o.label)}</span>`;
       } else if (isList) {
         b.className = "choice chip";
-        b.innerHTML = `<span class="c-main"><b>${esc(o.label)}</b>${o.desc ? `<small>${esc(o.desc)}</small>` : ""}</span><span class="c-go">›</span>`;
+        b.innerHTML = `<span class="c-main"><b>${esc(o.label)}</b>${o.desc ? `<small>${esc(o.desc)}</small>` : ""}</span><span class="ms c-go">chevron_right</span>`;
       } else {
         b.className = `chip ${o.id === "reject" ? "chip-ghost" : ""}`;
         b.textContent = o.label;
@@ -173,16 +190,17 @@ function setChips(options, onPick) {
 // 러너가 선택지를 제시하고 답을 기다림 (버튼 or 자유 발화)
 function waitRunnerInput(options) {
   return new Promise((resolve) => {
-    S.waiter = { resolve, options };
-    S.chatOpen = false; // 단순 선택은 대화창을 닫고 축소 화면 아래 버튼으로 노출
-    setChips(options, (o) => {
+    const onPick = (o) => {
       if (S.paused || !S.waiter) return;
       S.waiter = null;
       setChips([]);
       appendBubble("user", o.label);
       logEvent("user_button", { choice: o.id, label: o.label });
       resolve({ type: "button", id: o.id });
-    });
+    };
+    S.waiter = { resolve, options, onPick };
+    S.chatOpen = false; // 단순 선택은 대화창을 닫고 축소 화면 아래 버튼으로 노출
+    setChips(options, onPick);
     syncControls();
   });
 }
@@ -192,6 +210,7 @@ function waitRunnerInput(options) {
 async function askChoice(options, said, extra = [], hint) {
   for (;;) {
     const r = await waitRunnerInput(options);
+    if (r.type === "reask") return { id: "__reask", via: "stop" };
     if (r.type === "button") return { id: r.id, via: "button" };
     const ids = options.map((o) => o.id);
     const o = await turn(r.text, { said, intents: [...ids, ...extra, "other"], hint });
@@ -293,12 +312,9 @@ function syncControls() {
   $("#send").disabled = !canTalk;
   $("#mic").disabled = !canTalk;
   $("#msg").placeholder = canTalk ? "AI에게 말하기…" : S.finished ? "과업이 끝났어요" : S.manual ? "직접 조작 중이에요" : "AI가 작업 중이에요";
-  document.querySelectorAll("#chips .chip, #pv-chips .chip").forEach((b) => (b.disabled = S.paused));
+  document.querySelectorAll("#chips .chip, #pv-chips .chip").forEach((b) => (b.disabled = S.paused && !S.stopped));
 
-  const high = S.automation === "high";
-  const live = high && S.running && !S.finished && !S.pinOpen;
-  $("#btn-stop").hidden = !high;
-  $("#btn-manual").hidden = !high;
+  const live = S.running && !S.finished && !S.pinOpen && !S.pwWait;
   $("#btn-stop").disabled = !live || S.paused;
   $("#btn-manual").disabled = !live || S.paused;
   $("#pv-title").textContent = S.finished ? "작업 완료" : S.paused && !S.manual ? "작업 멈춤" : "작업 진행 중";
@@ -313,7 +329,7 @@ function wantedView() {
   if (!S) return "chat";
   if (S.manual || S.pinOpen || S.phone.popupClosable) return "direct";
   if (S.pwWait) return "chat";
-  if (S.ivWaiter) return "chat";
+  if (S.ivWaiter || S.stopped) return "chat";
   if (S.waiter && !S.waiter.options) return "chat";
   if (!S.running || S.finished) return "chat";
   if (S.phone.app === "home") return "chat"; // 첫 앱을 열기 전에는 폰 홈 화면 대신 대화창에서 진행
@@ -331,6 +347,7 @@ function syncView() {
     const before = zoom ? clip.getBoundingClientRect() : null;
     phone.dataset.view = v;
     if (S) logEvent("view", { view: v });
+    if (v === "chat") flushUnflushed();
     scrollChat();
     if (zoom) {
       fitScreen();
@@ -340,8 +357,9 @@ function syncView() {
   requestAnimationFrame(fitScreen);
   const bar = $("#direct-msg");
   if (bar && S) {
-    bar.textContent = S.manual ? "직접 조작 중이에요. 다 고치셨으면 AI에게 맡겨주세요." : S.pinOpen ? "계좌 비밀번호를 직접 입력해주세요." : "팝업 내용을 보시고 직접 닫아주세요.";
+    bar.textContent = S.manual ? "직접 조작 중이에요. 다 고치셨으면 AI에게 맡겨주세요." : "팝업 내용을 보시고 직접 닫아주세요.";
     $("#btn-manual-done").hidden = !S.manual;
+    $(".direct-bar").classList.toggle("off", Boolean(S.pinOpen)); // 비밀번호 입력 때는 안내 띠 없이 앱 화면만
   }
 }
 
@@ -357,7 +375,7 @@ function fitScreen() {
   const clip = $(".screen-clip");
   if (phone.dataset.view === "progress") {
     const box = $(".screen-box");
-    const scale = Math.max(0.3, Math.min(0.72, (box.clientHeight - 36) / H, (box.clientWidth * 0.88) / W));
+    const scale = Math.max(0.3, Math.min(0.84, (box.clientHeight - 36) / H, (box.clientWidth * 0.92) / W));
     phone.style.setProperty("--scale", scale.toFixed(4));
     clip.style.width = `${Math.floor(W * scale)}px`;
     clip.style.height = `${Math.floor(H * scale)}px`;
@@ -379,7 +397,8 @@ function animateZoom(el, before) {
   el.style.transformOrigin = "0 0";
   el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
   el.getBoundingClientRect(); // 강제 리플로우
-  el.style.transition = "transform .7s cubic-bezier(.2, .8, .2, 1), border-radius .7s";
+  const dur = (0.7 * PACE).toFixed(2);
+  el.style.transition = `transform ${dur}s cubic-bezier(.2, .8, .2, 1), border-radius ${dur}s`;
   el.style.transform = "";
   const done = () => { el.style.transition = ""; el.style.transform = ""; el.removeEventListener("transitionend", done); };
   el.addEventListener("transitionend", done);
@@ -427,6 +446,14 @@ function errorPassed() {
 }
 
 function setAmount(amt) {
+  if (S.automation === "low" && S.stepIdx === S.errorIdx && S.form.amount == null) {
+    // 낮은 자동화 송금액 질문 중에 바꾼 경우: 바뀐 금액으로 다시 확인
+    S.lowPendingOverride = amt;
+    S.needReask = true;
+    renderPhone();
+    return;
+  }
+  if (S.automation === "low") S.needReask = true;
   if (S.stepIdx >= S.errorIdx) {
     S.form.amount = amt;
     if (errorPassed() && S.m.errorOutcome == null) S.m.errorOutcome = "corrected";
@@ -458,6 +485,7 @@ async function applyHighChange(o, via) {
   }
   if (o.intent === "set_source" && o.source_account) {
     S.form.source = o.source_account;
+    if (S.automation === "low") S.needReask = true;
     logEvent("source_changed", { source: o.source_account, via });
     renderPhone();
     await sayKey("change.source");
@@ -489,35 +517,67 @@ async function handleInterjection(text) {
   resume();
 }
 
-// 중지 버튼(또는 "멈춰") → "진행을 멈췄어요. 어떻게 바꿀까요?" 후 개입 대화
+// 중지 버튼(모든 조건) → 대화창에서 "진행을 멈췄어요. 어떻게 바꿀까요?"
+// 참가자가 말하면 응답하거나 바뀐 내용을 반영하고, 「계속하기」를 누를 때까지 멈춰 있음
+const STOP_HINT =
+  "사용자가 '중지'를 눌러 진행이 멈춘 상태야. 발화에 응답한 뒤, '계속하기'를 누르면 이어서 진행한다고 안내해. 재개 여부를 말로 묻지 마.";
+
 async function handleStop(via) {
   if (S.paused || S.finished) return;
   S.paused = true;
+  S.stopped = true;
   S.m.stops++;
   markIntervention(`stop_${via}`);
   logEvent("stop", { via });
   showTyping(false);
+  const saved = S.waiter?.options ? { options: S.waiter.options, onPick: S.waiter.onPick } : null;
   syncControls();
 
   let said = await sayKey("stop.ask");
   for (;;) {
-    const text = await new Promise((r) => { S.ivWaiter = r; syncControls(); });
-    const o = await turn(text, {
-      said,
-      intents: highIntents().filter((x) => x !== "pause"),
-      hint: HIGH_HINT + " 사용자가 중지 버튼으로 진행을 멈춘 상태야. 바꿀 내용이 분명하지 않은 말이면 reply로 짧게 응답하고 이어서 진행한다고 알려.",
+    setChips([{ id: "resume", label: "계속하기" }], (o) => {
+      if (!S.ivWaiter) return;
+      const w = S.ivWaiter; S.ivWaiter = null;
+      appendBubble("user", o.label);
+      logEvent("user_button", { choice: "resume", label: o.label });
+      w({ resume: true });
     });
-    if (await applyHighChange(o, `stop_${via}`)) break;
-    if (o.intent === "cancel") return cancelTransfer();
-    if (o.intent === "continue") { await sayKey("stop.continue"); break; }
+    const r = await new Promise((res) => { S.ivWaiter = res; syncControls(); });
+    if (r?.resume) break;
+    setChips([]);
+    const o = await turn(r, {
+      said,
+      intents: ["set_amount", ...(S.complexity === "B" ? ["set_memo"] : []), "set_source", "continue", "cancel", "other"],
+      hint: STOP_HINT,
+      fallback: "계속하기를 누르시면 이어서 진행할게요.",
+    });
+    if (await applyHighChange(o, `stop_${via}`)) { said = S.log.filter((e) => e.type === "agent_message").at(-1)?.text || said; continue; }
+    if (o.intent === "cancel") { S.stopped = false; return cancelTransfer(); }
+    if (o.intent === "continue") break;
     said = o.reply;
     await agentSay(o.reply);
-    break; // 높은 자동화: 응답 후 진행 재개
   }
+  S.stopped = false;
+  setChips([]);
+  await sayKey("stop.continue");
+  finishIntervention(saved);
+}
+
+// 중지·직접 조작이 끝난 뒤 원래 단계로 돌아감. 낮은 자동화에서 내용이 바뀌었으면 질문을 다시 함
+function finishIntervention(saved) {
+  const reask = S.needReask && S.waiter;
+  S.needReask = false;
   resume();
+  if (reask) {
+    const w = S.waiter; S.waiter = null;
+    w.resolve({ type: "reask" });
+  } else if (saved && S.waiter) {
+    setChips(saved.options, saved.onPick);
+  }
 }
 
 function setMemo(memo, via) {
+  if (S.automation === "low") S.needReask = true;
   const memoIdx = S.steps.findIndex((s) => s.id === "memo");
   if (S.stepIdx >= memoIdx) S.form.memo = memo;
   else S.pendingMemo = memo;
@@ -538,6 +598,7 @@ function startManual() {
   markIntervention("manual");
   logEvent("manual_start");
   S.manualSnapshot = { ...S.form, sheet: S.phone.sheet };
+  if (S.automation === "low" && S.stepIdx === S.errorIdx && S.form.amount == null && S.phone.app === "bank") S.phone.bankView = "amount";
   S.manualAmount = String(S.form.amount ?? S.phone.pendingAmount ?? S.userAmount ?? "");
   S.manualMemo = null;
   S.phone.sheet = null; // 확인 시트가 떠 있으면 내려서 수정 가능하게
@@ -551,17 +612,17 @@ async function endManual() {
   const snap = S.manualSnapshot;
   const changes = {};
   const v = Number(S.manualAmount || 0);
-  const cur = S.form.amount ?? S.userAmount ?? null;
+  const cur = S.form.amount ?? S.lowPendingOverride ?? S.userAmount ?? null;
   if (S.phone.app === "bank" && v && v !== cur) { changes.amount = v; setAmount(v); if (S.phone.typedAmount != null) S.phone.typedAmount = String(v); }
   if (S.manualMemo != null && S.manualMemo !== (S.form.memo ?? "")) { changes.memo = S.manualMemo; setMemo(S.manualMemo, "manual"); }
-  if (S.form.source !== snap.source) { changes.source = S.form.source; S.phone.tapped = S.form.source; }
+  if (S.form.source !== snap.source) { changes.source = S.form.source; S.phone.tapped = S.form.source; if (S.automation === "low") S.needReask = true; }
   S.phone.sheet = snap.sheet;
   S.manual = false;
   logEvent("manual_end", { changes });
   syncControls();
   renderPhone();
   await sayKey("manual.resume");
-  resume();
+  finishIntervention(null);
 }
 
 // =====================================================================
@@ -591,13 +652,14 @@ async function run() {
   // 2) 단계 진행
   for (let i = 0; i < S.steps.length; i++) {
     if (S.finished) return;
+    await gate();
     S.stepIdx = i;
     const step = S.steps[i];
     logEvent("step_start", { label: step.label });
     renderStepper();
     const ok = S.automation === "low" ? await runLowStep(step) : await runHighStep(step);
     if (!ok || S.finished) return;
-    await sleep(S.automation === "high" ? S.cfg.delay : 500);
+    await sleep(S.automation === "high" ? S.cfg.delay : 700 * PACE);
   }
 }
 
@@ -611,6 +673,14 @@ async function doApply(step, choice) {
   }
   step.apply(S, choice);
   renderPhone();
+  if (step.act) await dwell(); // 바뀐 화면을 충분히 보여줌
+}
+
+// 화면이 바뀐 뒤 잠시 머무름 (로딩이 끝난 뒤부터)
+async function dwell(ms = 900) {
+  await waitLoading();
+  await sleep(ms * PACE);
+  if (S.automation === "high") await gate();
 }
 
 // 단계 준비: 문구를 말하기 전에 화면에서 찾는 과정 (예: 자주 탭으로 이동)
@@ -618,6 +688,7 @@ async function doPre(step) {
   if (!step.pre) return;
   setActing(true);
   try { await step.pre(S); } finally { setActing(false); }
+  await dwell(600);
 }
 
 // ---------- 낮은 자동화 ----------
@@ -643,6 +714,7 @@ async function runLowStep(step) {
     let extra = REJECT_EXTRA[step.low.reject] || [];
     if (step.low.reject === "final" && S.complexity !== "B") extra = extra.filter((x) => x !== "set_memo");
     const c = await askChoice(step.low.options, msgs.join(" "), extra);
+    if (c.id === "__reask") continue; // 중지·직접 조작으로 바뀐 내용으로 다시 물음
     S.m.approvals++;
     logEvent("decision", { choice: c.id, via: c.via });
     if (c.id !== "reject" && step.low.options.some((o) => o.id === c.id)) {
@@ -696,7 +768,7 @@ async function handleReject(step, c, said) {
       await agentSay(o.reply);
       const c = await askChoice(APPROVE, said, ["unsuitable_app"], opts.hint);
       if (c.id === "approve") return launch();
-      if (c.id === "reject") { await agentSay(ask); said = ask; o = null; continue; }
+      if (c.id === "reject" || c.id === "__reask") { await agentSay(ask); said = ask; o = null; continue; }
       o = c.out;
     }
   }
@@ -853,6 +925,12 @@ async function runLowAmount(step) {
 
   for (;;) {
     const c = await askChoice(step.low.options, question, ["set_amount"]);
+    if (c.id === "__reask") {
+      if (S.lowPendingOverride != null) { pending = S.lowPendingOverride; S.lowPendingOverride = null; S.phone.pendingAmount = pending; }
+      question = corr.lowConfirm(S, pending);
+      await agentSay(question);
+      continue;
+    }
     S.m.approvals++;
     logEvent("decision", { choice: c.id, via: c.via, pending_amount: pending });
     if (c.id === "approve") {
@@ -935,10 +1013,11 @@ async function runPassword(step, spec) {
   if (S.automation === "high") await gate();
   S.pwWait = true;
   syncView();
-  await sleep(400);
+  await sleep(600 * PACE);
   for (const m of resolveMsgs(spec.messages)) await agentSay(m, { gated: S.automation === "high" });
   for (;;) {
     const r = await waitRunnerInput([{ id: "open", label: "화면 열기", card: { title: BANK_NAME, sub: "계좌 비밀번호 입력" } }]);
+    if (r.type === "reask") continue;
     if (r.type === "button") break;
     if (S.automation === "high") {
       // 높은 자동화: 말을 걸면 중지로 간주하고 개입 대화 후 다시 대기
@@ -951,7 +1030,7 @@ async function runPassword(step, spec) {
     await agentSay(o.reply);
   }
   // 화면 열기 → 잠깐 뒤 실제 크기 앱 화면으로 전환, 비밀번호 창은 그다음 아래에서 올라옴
-  await sleep(350);
+  await sleep(500 * PACE);
   S.pwWait = false;
   S.pinOpen = true;
   syncControls();
@@ -964,7 +1043,10 @@ async function runPassword(step, spec) {
   logEvent("pin_entered", { duration_ms: now() - t });
   S.phone.sheet = "sending";
   renderPhone();
-  await sleep(1200);
+  await sleep(1400 * PACE);
+  // 비밀번호 입력이 끝나면 다시 축소 화면으로 돌아가 완료 과정을 보여줌
+  S.pinOpen = false;
+  syncControls();
   // 이 시점에 오류 결과 확정
   S.m.errorOutcome = S.form.amount === ERROR_AMOUNT ? "accepted" : "corrected";
   return true;
@@ -1116,8 +1198,9 @@ function readSetup() {
     pid: $("#pid").value.trim() || "P00",
     name: $("#pname").value.trim() || "OOO",
     condition: document.querySelector('input[name="cond"]:checked').value,
-    delay: Math.max(500, Number($("#delay").value) || 2500),
-    showTask: $("#show-task").checked,
+    delay: 5000, // 높은 자동화 단계 간격 (고정)
+    pace: PACE,
+    showTask: true,
   };
 }
 
@@ -1131,43 +1214,19 @@ function applyLLMSettings() {
   chip.dataset.on = LLM.enabled ? "1" : "0";
 }
 
-async function testConnection() {
-  applyLLMSettings();
-  const out = $("#llm-test");
-  if (!LLM.enabled) { out.textContent = "API 키를 입력해주세요."; out.dataset.ok = "0"; return; }
-  out.textContent = "확인 중…"; out.dataset.ok = "";
-  const t = performance.now();
-  try {
-    const r = await LLM.interpret("request", "주거래 통장에서 동창회 총무한테 삼십만원 보내줘", { condition: "A1" });
-    if (r.source !== "gemini") throw new Error(r.error || "실패");
-    out.textContent = `연결됨 · ${Math.round(performance.now() - t)}ms · 금액 ${r.output.amount_won?.toLocaleString("ko-KR")}원으로 해석`;
-    out.dataset.ok = "1";
-  } catch (e) {
-    out.textContent = `실패: ${e.message}`;
-    out.dataset.ok = "0";
-  }
-}
-
-async function loadModels() {
-  const key = $("#api-key").value.trim();
-  const out = $("#llm-test");
-  if (!key) { out.textContent = "API 키를 먼저 입력해주세요."; out.dataset.ok = "0"; return; }
-  out.textContent = "모델 목록 불러오는 중…"; out.dataset.ok = "";
-  try {
-    const names = await LLM.listModels(key);
-    $("#model-list").innerHTML = names.map((n) => `<option value="${esc(n)}">`).join("");
-    out.textContent = `${names.length}개 모델을 찾았어요. 모델 칸을 눌러 고르세요.`;
-    out.dataset.ok = "1";
-  } catch (e) {
-    out.textContent = `실패: ${e.message}`;
-    out.dataset.ok = "0";
-  }
+// 모바일에서 주소창 없이 전체화면으로 (세션 시작 버튼을 누를 때 요청, 지원하지 않으면 무시)
+function enterFullscreen() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req || document.fullscreenElement || !matchMedia("(pointer: coarse)").matches) return;
+  try { const r = req.call(el, { navigationUI: "hide" }); if (r?.catch) r.catch(() => {}); } catch { /* 무시 */ }
 }
 
 function start() {
+  enterFullscreen();
   applyLLMSettings();
   const cfg = readSetup();
-  store.set("setup", { pid: cfg.pid, name: cfg.name, condition: cfg.condition, delay: cfg.delay, showTask: cfg.showTask });
+  store.set("setup", { pid: cfg.pid, name: cfg.name, condition: cfg.condition, delay: cfg.delay, showTask: cfg.showTask, pace: cfg.pace });
   S = newSession(cfg);
 
   const sit = SITUATION[S.complexity];
@@ -1191,7 +1250,7 @@ function start() {
   S.promptVersion = LLM.promptVersion;
   S.scriptVersion = scriptVersion(S.cond);
   $("#prompt-live").value = LLM.prompt;
-  logEvent("session_start", { condition: S.cond, participant: cfg.pid, llm: LLM.enabled ? LLM.model : "rules", delay_ms: cfg.delay, prompt_version: LLM.promptVersion, prompt: LLM.prompt, script_version: S.scriptVersion, script_overrides: SCRIPT_OVERRIDES[S.cond] || null });
+  logEvent("session_start", { condition: S.cond, participant: cfg.pid, llm: LLM.enabled ? LLM.model : "rules", delay_ms: cfg.delay, pace: cfg.pace, prompt_version: LLM.promptVersion, prompt: LLM.prompt, script_version: S.scriptVersion, script_overrides: SCRIPT_OVERRIDES[S.cond] || null });
   run().catch((e) => { console.error(e); logEvent("error", { message: String(e) }); });
 }
 
@@ -1233,17 +1292,6 @@ function initPrompt() {
   const saved = store.get("prompt", null);
   setPrompt(typeof saved === "string" && saved.trim() ? saved : DEFAULT_PROMPT);
   $("#prompt").oninput = () => setPrompt($("#prompt").value, { from: "setup" });
-  $("#btn-prompt-reset").onclick = () => {
-    if (LLM.prompt.trim() === DEFAULT_PROMPT.trim() || confirm("수정한 프롬프트를 지우고 기본값으로 되돌릴까요?")) setPrompt(DEFAULT_PROMPT);
-  };
-  $("#btn-prompt-save").onclick = () => download(`prompt_${LLM.promptVersion}.txt`, LLM.prompt, "text/plain");
-  $("#btn-prompt-load").onclick = () => $("#prompt-file").click();
-  $("#prompt-file").onchange = async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setPrompt(await f.text());
-    e.target.value = "";
-  };
   $("#btn-prompt-apply").onclick = () => {
     const before = LLM.promptVersion;
     setPrompt($("#prompt-live").value, { from: "live" });
@@ -1277,7 +1325,8 @@ function saveScripts() {
 
 function renderScriptMeta() {
   const n = Object.keys(SCRIPT_OVERRIDES[scriptCond] || {}).length;
-  $("#script-meta").textContent = `${scriptCond} · ${n ? `${n}개 수정됨 · 버전 ${scriptVersion(scriptCond)}` : "기본값"}`;
+  const total = Object.values(SCRIPT_OVERRIDES).reduce((a, o) => a + Object.keys(o).length, 0);
+  $("#script-meta").textContent = total ? `${total}개 수정됨` : "기본값";
   document.querySelectorAll("#script-tabs button").forEach((b) => {
     const m = Object.keys(SCRIPT_OVERRIDES[b.dataset.cond] || {}).length;
     b.textContent = b.dataset.cond + (m ? " •" : "");
@@ -1325,34 +1374,6 @@ function initScripts() {
   const saved = store.get("script_overrides", null);
   SCRIPT_OVERRIDES = saved && typeof saved === "object" ? saved : {};
   document.querySelectorAll("#script-tabs button").forEach((b) => (b.onclick = () => { scriptCond = b.dataset.cond; renderScriptEditor(); }));
-  $("#btn-script-reset").onclick = () => {
-    if (!SCRIPT_OVERRIDES[scriptCond] || confirm(`${scriptCond} 조건의 수정한 문구를 모두 기본값으로 되돌릴까요?`)) {
-      delete SCRIPT_OVERRIDES[scriptCond];
-      saveScripts();
-      renderScriptEditor();
-    }
-  };
-  $("#btn-script-save").onclick = () => {
-    // 모든 조건의 현재 문구 전체를 저장 (기본값 포함)
-    const all = {};
-    for (const c of Object.keys(CONDITIONS)) all[c] = Object.fromEntries(scriptDefaults(c).map((d) => [d.key, scriptText(c, d.key)]));
-    download(`scenario_script_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(all, null, 2), "application/json");
-  };
-  $("#btn-script-load").onclick = () => $("#script-file").click();
-  $("#script-file").onchange = async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    try {
-      const data = JSON.parse(await f.text());
-      SCRIPT_OVERRIDES = {};
-      for (const c of Object.keys(CONDITIONS)) if (data[c]) SCRIPT_OVERRIDES[c] = { ...data[c] };
-      saveScripts();
-      renderScriptEditor();
-    } catch {
-      alert("문구 파일을 읽지 못했어요. 「파일로 저장」으로 만든 JSON 파일인지 확인해주세요.");
-    }
-    e.target.value = "";
-  };
   renderScriptEditor();
 }
 
@@ -1389,8 +1410,6 @@ function init() {
   if (saved.pid) $("#pid").value = saved.pid;
   if (saved.name) $("#pname").value = saved.name;
   if (saved.condition) { const r = document.querySelector(`input[name="cond"][value="${saved.condition}"]`); if (r) r.checked = true; }
-  if (saved.delay) $("#delay").value = saved.delay;
-  if (saved.showTask === false) $("#show-task").checked = false;
   const key = store.get("gemini_key", "");
   if (key) { $("#api-key").value = key; $("#remember-key").checked = true; }
   // 이전 기본값(2.5 Flash)으로 저장돼 있으면 새 기본 모델로 바꿈
@@ -1399,8 +1418,6 @@ function init() {
   applyLLMSettings();
 
   $("#setup-form").onsubmit = (e) => { e.preventDefault(); start(); };
-  $("#btn-test").onclick = testConnection;
-  $("#btn-models").onclick = loadModels;
   $("#api-key").onchange = applyLLMSettings;
   $("#model").onchange = applyLLMSettings;
   $("#composer").onsubmit = onSubmit;

@@ -120,21 +120,21 @@ body.in-session .topbar { display: none; }
 .screen-box { position: relative; overflow: hidden; flex: 1 1 auto; min-height: 0; }
 .screen-clip { position: relative; overflow: hidden; background: #fff; }
 .screen { width: var(--app-w, 390px); height: var(--app-h, 760px); position: relative; overflow: hidden; background: #fff; transform-origin: 0 0; }
-.phone[data-view="progress"] .screen-box { display: flex !important; justify-content: center; align-items: center; padding: 10px 0 22px; overflow: visible; }
+.phone[data-view="progress"] .screen-box { display: flex !important; justify-content: center; align-items: center; padding: 8px 0 18px; overflow: visible; }
 .phone[data-view="progress"] .screen-clip { border-radius: 22px; box-shadow: 0 4px 18px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06); pointer-events: none; }
 .phone[data-view="progress"] .screen { transform: scale(var(--scale, .6)); }
 .phone[data-view="direct"] .screen-clip { width: 100%; height: 100%; }
 .phone[data-view="direct"] .screen { width: 100%; height: 100%; }
 
 /* 진행 화면 */
-.pv-head { align-items: center; justify-content: center; padding: 14px 10px 6px; flex: none; min-height: 52px; }
-.pv-head b { font-size: 17px; font-weight: 500; }
+.pv-head { align-items: center; justify-content: center; padding: 10px 10px 2px; flex: none; min-height: 40px; }
+.pv-head b { font-size: 15px; font-weight: 500; }
 .icon-btn { border: 0; background: none; font-size: 22px; width: 40px; height: 40px; color: #1c1d21; }
-.pv-panel { flex-direction: column; flex: none; height: 216px; overflow: hidden; }
-.pv-status { display: flex; justify-content: center; align-items: center; text-align: center; padding: 8px 22px 6px; font-size: 17px; line-height: 1.5; min-height: 64px; flex: none; white-space: pre-line; }
+.pv-panel { flex-direction: column; flex: none; height: 180px; overflow: hidden; }
+.pv-status { display: flex; justify-content: center; align-items: center; text-align: center; padding: 6px 20px 6px; font-size: 15px; line-height: 1.5; min-height: 56px; flex: none; white-space: pre-line; }
 .pv-status.thinking::after { content: " …"; animation: blink 1s infinite; }
 .pv-chips { display: flex; justify-content: center; gap: 8px; padding: 0 16px 8px; flex-wrap: wrap; flex: none; }
-.pv-bottom { justify-content: space-between; align-items: center; padding: 6px 18px 14px; flex: none; min-height: 68px; }
+.pv-bottom { justify-content: space-between; align-items: center; padding: 4px 18px 12px; flex: none; min-height: 60px; }
 .txt-btn { border: 0; background: none; color: #0b57d0; font-size: 18px; font-weight: 500; padding: 10px 16px; }
 .primary-btn { border: 0; background: #0b57d0; color: #fff; border-radius: 999px; padding: 12px 26px; font-size: 17px; font-weight: 500; }
 .txt-btn[hidden], .primary-btn[hidden] { display: inline-block !important; visibility: hidden; }
@@ -420,3 +420,34 @@ mark.on { background: #ffe066; }
 .oc-head b { display: block; font-size: 17px; font-weight: 500; }
 .oc-head small { color: #6b6f7a; font-size: 14px; }
 .oc-btn { display: block; text-align: center; background: #0b57d0; color: #fff; border-radius: 999px; padding: 13px; font-size: 17px; font-weight: 500; }
+
+/* Material Symbols 아이콘 */
+.ms { font-family: "Material Symbols Rounded"; font-weight: normal; font-style: normal; font-size: 1.25em; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; direction: ltr; -webkit-font-smoothing: antialiased; font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24; vertical-align: -0.2em; }
+.ms.fill { font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24; }
+.ai .ms { font-size: 30px; color: #fff; vertical-align: 0; }
+.bk-icons .ms { font-size: 24px; }
+.bk-notice .bell .ms { color: #f5a300; font-size: 24px; }
+.bk-tabbar .ms { font-size: 24px; }
+.star.ms { font-size: 22px; color: #d0d3da; }
+.star.ms.on { color: #f7b500; }
+.plus .ms { font-size: 24px; }
+.done-check .ms { font-size: 38px; color: #fff; vertical-align: 0; }
+.evt-art .ms { font-size: 56px; color: #e8710a; }
+.keypad-bk .ms, .keypad .ms { font-size: 24px; }
+.back.ms, .close.ms { font-size: 24px; }
+.mic .ms, .send .ms { font-size: 22px; vertical-align: -0.25em; }
+.c-go.ms { font-size: 22px; }
+.phone[data-view="direct"] .direct-bar.off { display: none !important; }
+select { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 11px; font-size: 14px; color: var(--text); }
+
+/* 접는 섹션 */
+.acc { border-top: 1px solid var(--line); padding: 4px 0; }
+.acc > summary { list-style: none; cursor: pointer; font-weight: 700; font-size: 14px; padding: 12px 0; display: flex; align-items: center; gap: 8px; }
+.acc > summary::-webkit-details-marker { display: none; }
+.acc > summary::after { content: "expand_more"; font-family: "Material Symbols Rounded"; font-weight: normal; font-size: 22px; margin-left: auto; color: var(--muted); transition: transform .2s; }
+.acc[open] > summary::after { transform: rotate(180deg); }
+.acc > summary small { font-weight: 400; font-size: 12px; }
+.acc[open] { padding-bottom: 14px; }
+.pv-chips .choice { padding: 9px 14px; font-size: 15px; }
+.pv-chips .choice .c-main small { font-size: 12.5px; }
+.pv-chips .chip:not(.choice):not(.open-card) { padding: 8px 20px; font-size: 15px; }

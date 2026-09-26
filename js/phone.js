@@ -4,6 +4,10 @@
 "use strict";
 
 const BANK_NAME = "마음은행";
+// 진행 속도 배율 (설정 화면의 「진행 속도」, 클수록 느림)
+let PACE = 1.8;
+// 구글 Material Symbols 아이콘
+const mi = (name, cls = "") => `<span class="ms ${cls}">${name}</span>`;
 const won0 = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
 
 // 화면이 바뀔 때 실제 앱처럼 로딩을 잠깐 보여줌
@@ -23,15 +27,19 @@ function startLoading(p) {
   let ms = 0;
   if (p.app !== prevApp && p.app !== "home") {
     type = p.app === "bank" ? "splash-bank" : "splash-app";
-    ms = p.app === "bank" ? 1100 : 600;
+    ms = p.app === "bank" ? 1700 : 900;
   } else if (!p.sheet && p.app === "bank") {
     type = "spinner";
-    ms = Math.random() < 0.35 ? 900 + Math.random() * 500 : 350 + Math.random() * 250; // 때때로 버퍼링
+    ms = Math.random() < 0.4 ? 1600 + Math.random() * 800 : 700 + Math.random() * 400; // 때때로 더 길게 버퍼링
   } else if (p.app !== prevApp || p.app === "sms_detail") {
     type = "spinner";
-    ms = 300;
+    ms = 700;
   }
+  ms *= PACE;
   if (!type) return;
+  // 앱 실행 중에는 진행 문구를 "…을 실행 중입니다..."로 바꿈
+  if (type === "splash-bank") setStatus?.("은행 앱을 실행 중입니다...");
+  if (type === "splash-app" && p.app.startsWith("sms")) setStatus?.("문자 앱을 실행 중입니다...");
   p.loading = type;
   p.loadingUntil = Date.now() + ms;
   clearTimeout(p.loadingTimer);
@@ -74,11 +82,11 @@ function bindPhone() {
 // ---------------- 홈 화면 ----------------
 function homeScreen() {
   const apps = [
-    ["메시지", "💬", "#1a73e8"], [BANK_NAME, "₩", "#2f7cf6"], ["전화", "📞", "#34a853"], ["카메라", "📷", "#5f6368"],
-    ["캘린더", "📅", "#f29900"], ["갤러리", "🌄", "#a142f4"], ["설정", "⚙️", "#5f6368"], ["지도", "🗺️", "#0f9d58"],
+    ["메시지", "chat", "#1a73e8"], [BANK_NAME, "account_balance", "#2f7cf6"], ["전화", "call", "#34a853"], ["카메라", "photo_camera", "#5f6368"],
+    ["캘린더", "calendar_month", "#f29900"], ["갤러리", "photo_library", "#a142f4"], ["설정", "settings", "#5f6368"], ["지도", "map", "#0f9d58"],
   ];
   return `<div class="home"><div class="home-clock">9:41<small>9월 24일 목요일</small></div><div class="home-grid">${apps
-    .map(([n, i, c]) => `<div class="app-icon"><div class="ai" style="background:${c}">${i}</div><span>${n}</span></div>`)
+    .map(([n, i, c]) => `<div class="app-icon"><div class="ai" style="background:${c}">${mi(i)}</div><span>${n}</span></div>`)
     .join("")}</div></div>`;
 }
 
@@ -101,7 +109,7 @@ function smsDetailScreen() {
     "농협 302-1234-5678",
     `<mark class="${S.phone.smsHighlight ? "on" : ""}">농협 302-1234-5678</mark>`,
   );
-  return `<div class="sms"><div class="sms-bar"><span class="back">‹</span><b>김영숙</b></div>
+  return `<div class="sms"><div class="sms-bar">${mi("arrow_back", "back")}<b>김영숙</b></div>
     <div class="sms-thread"><div class="sms-date">오늘 오전 9:12</div><div class="sms-bubble">${text.replace(/\n/g, "<br>")}</div></div></div>`;
 }
 
@@ -127,21 +135,20 @@ function bankHome() {
   const cards = Object.entries(ACCOUNTS).map(([k, a], i) => {
     const hl = p.focus === "source" ? "hl" : p.tapped === k ? "tapped" : "";
     return `<div class="bk-card ${hl}" data-acct="${k}">
-      ${bankLogo()}<div class="bk-card-main"><b>${a.label}</b><small>마음 ${a.number} <span class="copy">⧉</span></small><strong>${won0(a.balance)}</strong></div>
-      <span class="kebab">⋮</span><span class="bk-send ${p.tapped === k ? "on" : ""}">이체</span>
-      ${i === 0 ? `<div class="bk-card-promo">↪ 가을맞이 적금 가입하고 우대금리 받아요!</div>` : ""}
+      ${bankLogo()}<div class="bk-card-main"><b>${a.label}</b><small>마음 ${a.number} ${mi("content_copy", "copy")}</small><strong>${won0(a.balance)}</strong></div>
+      ${mi("more_vert", "kebab")}<span class="bk-send ${p.tapped === k ? "on" : ""}">이체</span>
     </div>`;
   }).join("");
   return `<div class="bk-home">
     <div class="bk-top"><div class="seg-toggle"><span class="on">일반홈</span><span>쉬운</span></div>
-      <div class="bk-icons"><span class="ai-badge">AI</span><span>🔔</span><span>☰</span></div></div>
+      <div class="bk-icons"><span class="ai-badge">AI</span>${mi("notifications")}${mi("menu")}</div></div>
     <div class="bk-hero">
-      <div class="bk-notice"><span class="bell">🔔</span><div>가을맞이 정기적금<br>우대금리 미리 확인해보세요</div><span class="x">×</span></div>
+      <div class="bk-notice"><span class="bell">${mi("notifications_active")}</span><div>가을맞이 정기적금<br>우대금리 미리 확인해보세요</div>${mi("close", "x")}</div>
       <div class="moon"></div>
-      <div class="bk-hero-row"><span class="pill">⚙ 홈계좌설정</span><span class="pill">잔액숨김 <i class="tgl"></i></span></div>
+      <div class="bk-hero-row"><span class="pill">${mi("settings")} 홈계좌설정</span><span class="pill">잔액숨김 <i class="tgl"></i></span></div>
     </div>
     <div class="bk-cards">${cards}</div>
-    <div class="bk-tabbar"><span><i>🛍</i>상품</span><span><i>◔</i>자산·소비</span><span class="on"><i>⌂</i>홈</span><span><i>⇄</i>이체</span><span><i>☺</i>혜택</span></div>
+    <div class="bk-tabbar"><span>${mi("shopping_bag")}상품</span><span>${mi("donut_small")}자산·소비</span><span class="on">${mi("home", "fill")}홈</span><span>${mi("sync_alt")}이체</span><span>${mi("redeem")}혜택</span></div>
   </div>`;
 }
 
@@ -164,17 +171,17 @@ function bankTo() {
   const tab = p.toTab || "recent";
   const list = TO_ROWS[tab]
     .map((r) => `<div class="to-row ${r.target ? "target" : ""} ${r.target && p.focus === "recipient" ? "hl" : ""} ${r.target && S.form.recipient ? "tapped" : ""}">${r.logo === "nh" ? nhLogo() : bankLogo()}
-      <div class="to-main"><b>${r.name}</b><span class="sep">|</span><small>${r.date}</small><p>${r.bank}</p></div><span class="star ${r.star ? "on" : ""}">★</span></div>`)
+      <div class="to-main"><b>${r.name}</b><span class="sep">|</span><small>${r.date}</small><p>${r.bank}</p></div>${mi("star", `star ${r.star ? "on fill" : ""}`)}</div>`)
     .join("");
   return `<div class="bk-page">
-    <div class="bk-nav"><span class="back">‹</span></div>
+    <div class="bk-nav">${mi("arrow_back_ios", "back")}</div>
     <h2 class="bk-h">어디로 이체하시겠어요?</h2>
-    <div class="acct-field"><span class="ph">계좌번호 입력</span><span>📷</span></div>
+    <div class="acct-field"><span class="ph">계좌번호 입력</span>${mi("photo_camera")}</div>
     <div class="seg3"><span data-tab="recent" class="${tab === "recent" ? "on" : ""}">추천</span><span data-tab="fav" class="${tab === "fav" ? "on" : ""}">자주</span><span data-tab="mine">내계좌</span></div>
     <div class="to-head"><b>${tab === "fav" ? "자주 쓰는 계좌" : "최근입금계좌"}</b><small>편집</small></div>
     ${list}
-    <div class="to-more">더보기 ⌄</div>
-    <div class="to-contact"><span class="plus">＋</span>연락처로 이체하기</div>
+    <div class="to-more">더보기 ${mi("expand_more")}</div>
+    <div class="to-contact"><span class="plus">${mi("add")}</span>연락처로 이체하기</div>
   </div>`;
 }
 
@@ -182,10 +189,10 @@ function bankAcctInput() {
   const p = S.phone;
   const typed = p.acctTyped || "";
   return `<div class="bk-page">
-    <div class="bk-nav right"><span class="close">✕</span></div>
+    <div class="bk-nav right">${mi("close", "close")}</div>
     <h2 class="bk-h sm">계좌번호를 입력해 주세요</h2>
     <div class="line-input ${typed ? "filled" : "focus"}">${typed ? esc(typed) : '<span class="ph">입력</span>'}<i class="caret"></i>${p.pasteTip ? '<span class="paste-tip">붙여넣기</span>' : ""}</div>
-    <div class="line-select">${p.bankPicked ? esc(p.bankPicked) : '<span class="ph">은행/증권사 선택</span>'}<span>⌄</span></div>
+    <div class="line-select">${p.bankPicked ? esc(p.bankPicked) : '<span class="ph">은행/증권사 선택</span>'}${mi("expand_more")}</div>
     <div class="spacer"></div>
     <div class="bk-btn ${typed && p.bankPicked ? "" : "off"}">확인</div>
   </div>`;
@@ -195,10 +202,10 @@ function transferHead() {
   const f = S.form;
   const a = ACCOUNTS[f.source];
   const custom = f.recipientCustom;
-  return `<div class="bk-nav between"><span class="back">‹</span><span class="cancel">취소</span></div>
-    <div class="tr-line" ${S.manual ? "data-src-toggle" : ""}>${bankLogo("sm")}<b>${BANK_NAME} 계좌에서</b><span class="chev">⌄</span></div>
+  return `<div class="bk-nav between">${mi("arrow_back_ios", "back")}<span class="cancel">취소</span></div>
+    <div class="tr-line" ${S.manual ? "data-src-toggle" : ""}>${bankLogo("sm")}<b>${BANK_NAME} 계좌에서</b>${mi("expand_more", "chev")}</div>
     <small class="tr-sub">${a.label} ${a.number}</small>
-    <div class="tr-line">${custom ? bankLogo("sm") : nhLogo()}<b>${custom ? "입력하신" : "김영숙"} 님 계좌로</b><span class="chev">⌄</span></div>
+    <div class="tr-line">${custom ? bankLogo("sm") : nhLogo()}<b>${custom ? "입력하신" : "김영숙"} 님 계좌로</b>${mi("expand_more", "chev")}</div>
     <small class="tr-sub">${custom ? esc(custom) : "농협 302-1234-5678"}</small>`;
 }
 
@@ -225,7 +232,7 @@ function bankAmount() {
     <div class="amt-area">${amountLine(amt)}</div>
     ${memoRow}
     <div class="quick ${live}">${["+1만", "+5만", "+10만", "+100만", "전액"].map((q) => `<span ${S.manual ? `data-key="${q}"` : ""}>${q}</span>`).join("")}</div>
-    <div class="keypad-bk ${live}">${keys.map((k) => `<span data-k="${k}" ${S.manual ? `data-key="${k}"` : ""}>${k === "back" ? "←" : k}</span>`).join("")}</div>
+    <div class="keypad-bk ${live}">${keys.map((k) => `<span data-k="${k}" ${S.manual ? `data-key="${k}"` : ""}>${k === "back" ? mi("backspace") : k}</span>`).join("")}</div>
     <div class="bk-btn ${amt ? "" : "off"}">확인</div>
   </div>`;
 }
@@ -233,14 +240,14 @@ function bankAmount() {
 function bankDetail() {
   const f = S.form;
   const p = S.phone;
-  const memoShown = p.memoTyping != null ? `${esc(p.memoTyping)}<i class="caret"></i>` : `${esc(f.memo || S.cfg.name)} ›`;
+  const memoShown = p.memoTyping != null ? `${esc(p.memoTyping)}<i class="caret"></i>` : `${esc(f.memo || S.cfg.name)} ${mi("chevron_right")}`;
   return `<div class="bk-page tr">
     ${transferHead()}
     <div class="amt-area">${amountLine(f.amount)}</div>
     <div class="spacer"></div>
     <div class="dt-row memo ${p.focus === "memo" ? "hl" : ""} ${p.memoTyping != null ? "editing" : ""}"><span>받는 분 통장표기</span><b>${memoShown}</b></div>
-    <div class="dt-row"><span>내 통장표기</span><b>${f.recipientCustom ? "입력하신 계좌" : "김영숙"} ›</b></div>
-    <div class="dt-more">더보기 ⌄</div>
+    <div class="dt-row"><span>내 통장표기</span><b>${f.recipientCustom ? "입력하신 계좌" : "김영숙"} ${mi("chevron_right")}</b></div>
+    <div class="dt-more">더보기 ${mi("expand_more")}</div>
     <div class="dt-note">이체 유의사항 및 안내</div>
     <div class="bk-btn2"><span>추가이체</span><span class="primary">다음</span></div>
   </div>`;
@@ -249,7 +256,7 @@ function bankDetail() {
 function bankComplete() {
   const f = S.form;
   return `<div class="bk-page done">
-    <div class="done-check">✓</div>
+    <div class="done-check">${mi("check")}</div>
     <h2 class="bk-h center">${f.recipientCustom ? "입력하신 계좌로" : "김영숙님께"}<br>${won0(f.amount)}을 이체했어요</h2>
     <div class="done-box">
       <div><span>출금 계좌</span><b>${ACCOUNTS[f.source].label}</b></div>
@@ -270,7 +277,7 @@ function bankOverlay() {
   if (p.popup) {
     const live = p.popupClosable;
     return `<div class="dim center ${enter}"><div class="evt">
-      <div class="evt-art">🍂🎁</div><b>가을맞이 정기적금 이벤트</b><p>지금 가입하면 최대 연 4.5% 우대금리!</p>
+      <div class="evt-art">${mi("redeem", "fill")}</div><b>가을맞이 정기적금 이벤트</b><p>지금 가입하면 최대 연 4.5% 우대금리!</p>
       <div class="evt-btns ${live ? "live" : ""}"><span ${live ? "data-popup-close" : ""}>오늘 하루 보지 않기</span><span class="evt-close" ${live ? "data-popup-close" : ""}>닫기</span></div></div></div>`;
   }
   if (p.sheet === "confirm") {
@@ -285,7 +292,7 @@ function bankOverlay() {
     const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
     return `<div class="dim ${enter}"><div class="sheet pin ${enter}"><h3>계좌 비밀번호</h3><p class="muted">비밀번호 4자리를 입력해주세요</p>
       <div class="dots">${[0, 1, 2, 3].map((i) => `<i class="${i < p.pin.length ? "on" : ""}"></i>`).join("")}</div>
-      <div class="keypad">${keys.map((k) => (k ? `<button type="button" data-pin="${k}">${k === "del" ? "⌫" : k}</button>` : "<span></span>")).join("")}</div></div></div>`;
+      <div class="keypad">${keys.map((k) => (k ? `<button type="button" data-pin="${k}">${k === "del" ? mi("backspace") : k}</button>` : "<span></span>")).join("")}</div></div></div>`;
   }
   if (p.sheet === "sending") {
     return `<div class="dim"><div class="sheet"><div class="spinner"></div><p style="text-align:center">이체 중이에요…</p></div></div>`;
@@ -318,7 +325,7 @@ function manualToggleSource() {
 // =====================================================================
 // 연출 중 대기. 중지·직접 조작으로 멈추면 재개될 때까지 기다림 (중지 대화 안에서의 재입력은 예외)
 let actNoGate = 0;
-const actSleep = async (ms) => { await sleep(ms); if (!actNoGate && typeof gate === "function") await gate(); };
+const actSleep = async (ms) => { await sleep(ms * PACE); if (!actNoGate && typeof gate === "function") await gate(); };
 
 function setActing(on) {
   const ph = $(".phone");
@@ -328,9 +335,10 @@ function setActing(on) {
 // 화면 속 요소를 누르는 표시 (터치 원)
 async function waitLoading() {
   while (S.phone.loading && Date.now() < S.phone.loadingUntil) await sleep(80);
+  await sleep(150 * PACE);
 }
 
-async function tap(sel, { hold = 380, after = 350 } = {}) {
+async function tap(sel, { hold = 420, after = 500 } = {}) {
   await waitLoading(); // 화면 로딩이 끝난 뒤에 누름
   await actSleep(250);
   const el = $("#screen").querySelector(sel);
