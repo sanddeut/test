@@ -5,7 +5,7 @@
 
 const BANK_NAME = "마음은행";
 // 진행 속도 배율 (설정 화면의 「진행 속도」, 클수록 느림)
-let PACE = 2.2;
+let PACE = 1; // 전체 배율 (각 동작 시간은 아래에서 따로 정함)
 // 구글 Material Symbols 아이콘
 const mi = (name, cls = "") => `<span class="ms ${cls}">${name}</span>`;
 const won0 = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
@@ -27,13 +27,13 @@ function startLoading(p) {
   let ms = 0;
   if (p.app !== prevApp && p.app !== "home") {
     type = p.app === "bank" ? "splash-bank" : "splash-app";
-    ms = p.app === "bank" ? 1700 : 900;
+    ms = p.app === "bank" ? 2200 : 1400; // 앱 스플래시
   } else if (!p.sheet && p.app === "bank") {
     type = "spinner";
-    ms = Math.random() < 0.4 ? 1600 + Math.random() * 800 : 700 + Math.random() * 400; // 때때로 더 길게 버퍼링
+    ms = Math.random() < 0.35 ? 2000 + Math.random() * 600 : 900 + Math.random() * 400; // 화면 이동 로딩, 때때로 더 길게 버퍼링
   } else if (p.app !== prevApp || p.app === "sms_detail") {
     type = "spinner";
-    ms = 700;
+    ms = 900;
   }
   ms *= PACE;
   if (!type) return;
@@ -335,12 +335,13 @@ function setActing(on) {
 // 화면 속 요소를 누르는 표시 (터치 원)
 async function waitLoading() {
   while (S.phone.loading && Date.now() < S.phone.loadingUntil) await sleep(80);
-  await sleep(150 * PACE);
+  await sleep(250 * PACE);
 }
 
-async function tap(sel, { hold = 420, after = 500 } = {}) {
-  await waitLoading(); // 화면 로딩이 끝난 뒤에 누름
-  await actSleep(250);
+// 누르기 한 번 ≈ 1.2초 (누를 곳 찾기 → 누름 → 반응). 키패드처럼 연달아 누를 때는 quick
+async function tap(sel, { pre = 450, hold = 350, after = 450, quick = false } = {}) {
+  if (!quick) await waitLoading(); // 화면 로딩이 끝난 뒤에 누름
+  if (pre) await actSleep(pre);
   const el = $("#screen").querySelector(sel);
   const layer = $("#touch-layer");
   if (el && layer && $(".phone").dataset.view === "progress") {
@@ -359,26 +360,20 @@ async function tap(sel, { hold = 420, after = 500 } = {}) {
   await actSleep(after);
 }
 
-// 은행 키패드로 금액 입력 (지우기 → 새 금액)
+// 금액 입력: 금액 칸을 한 번 누르고 금액이 한 번에 입력됨 (수정할 때도 한 번에 바뀜)
 async function typeAmount(amount) {
   const p = S.phone;
-  const target = String(amount);
-  while (p.typedAmount) {
-    await tap('[data-k="back"]', { hold: 120, after: 60 });
-    if (S.form.amount != null && S.form.amount !== Number(amount)) return;
-    p.typedAmount = p.typedAmount.slice(0, -1);
-    renderPhone();
-  }
-  for (const d of target) {
-    await tap(`[data-k="${d}"]`, { hold: 120, after: 80 });
-    if (S.form.amount != null && S.form.amount !== Number(amount)) return; // 입력 도중 참가자가 금액을 바꾼 경우
-    p.typedAmount = (p.typedAmount || "") + d;
-    renderPhone();
-  }
+  await waitLoading();
+  await actSleep(400);
+  await tap(".amt-area", { pre: 300 });
+  if (S.form.amount != null && S.form.amount !== Number(amount)) return; // 도중에 참가자가 금액을 바꾼 경우
+  p.typedAmount = String(amount);
+  renderPhone();
+  await actSleep(900);
 }
 
 // 글자 하나씩 입력
-async function typeText(set, text, ms = 110) {
+async function typeText(set, text, ms = 170) {
   await waitLoading();
   for (let i = 1; i <= text.length; i++) {
     set(text.slice(0, i));

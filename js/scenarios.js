@@ -212,7 +212,13 @@ function buildSteps(complexity, participantName) {
         guide: "문자 목록에서 총무 김영숙님의 문자를 찾는 단계",
         low: { messages: msg("sms_find"), split: 1 },
         high: { messages: msg("sms_find"), split: 1 },
-        act: async (s) => { await tap(".sms-row.unread"); s.phone.app = "sms_detail"; renderPhone(); },
+        act: async (s) => {
+          await waitLoading();
+          await actSleep(1800); // 문자 목록을 살펴보는 시간
+          await tap(".sms-row.unread");
+          s.phone.app = "sms_detail";
+          renderPhone();
+        },
         apply: (s) => { s.phone.app = "sms_detail"; },
       },
       {
@@ -413,7 +419,7 @@ function buildSteps(complexity, participantName) {
         s.phone.memoTyping = "";
         renderPhone();
         await actSleep(300);
-        await typeText((v) => (s.phone.memoTyping = v), text, 130);
+        await typeText((v) => (s.phone.memoTyping = v), text, 180);
         await actSleep(300);
         s.phone.memoTyping = null;
         s.form.memo = text;

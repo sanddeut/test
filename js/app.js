@@ -397,7 +397,7 @@ function animateZoom(el, before) {
   el.style.transformOrigin = "0 0";
   el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
   el.getBoundingClientRect(); // 강제 리플로우
-  const dur = (0.7 * PACE).toFixed(2);
+  const dur = (1.1 * PACE).toFixed(2);
   el.style.transition = `transform ${dur}s cubic-bezier(.2, .8, .2, 1), border-radius ${dur}s`;
   el.style.transform = "";
   const done = () => { el.style.transition = ""; el.style.transform = ""; el.removeEventListener("transitionend", done); };
@@ -664,7 +664,7 @@ async function run() {
     renderStepper();
     const ok = S.automation === "low" ? await runLowStep(step) : await runHighStep(step);
     if (!ok || S.finished) return;
-    await sleep(S.automation === "high" ? S.cfg.delay : 700 * PACE);
+    await sleep(S.automation === "high" ? S.cfg.delay : 1000 * PACE);
   }
 }
 
@@ -682,7 +682,7 @@ async function doApply(step, choice) {
 }
 
 // 화면이 바뀐 뒤 잠시 머무름 (로딩이 끝난 뒤부터)
-async function dwell(ms = 1500) {
+async function dwell(ms = 1800) {
   await waitLoading();
   await sleep(ms * PACE);
   if (S.automation === "high") await gate();
@@ -693,7 +693,7 @@ async function doPre(step) {
   if (!step.pre) return;
   setActing(true);
   try { await step.pre(S); } finally { setActing(false); }
-  await dwell(1000);
+  await dwell(1400);
 }
 
 // ---------- 낮은 자동화 ----------
@@ -1035,7 +1035,7 @@ async function runPassword(step, spec) {
   if (S.automation === "high") await gate();
   S.pwWait = true;
   syncView();
-  await sleep(600 * PACE);
+  await sleep(900 * PACE);
   for (const m of resolveMsgs(spec.messages)) await agentSay(m, { gated: S.automation === "high" });
   for (;;) {
     const r = await waitRunnerInput([{ id: "open", label: "화면 열기", card: { title: BANK_NAME, sub: "계좌 비밀번호 입력" } }]);
@@ -1052,7 +1052,7 @@ async function runPassword(step, spec) {
     await agentSay(o.reply);
   }
   // 화면 열기 → 잠깐 뒤 실제 크기 앱 화면으로 전환, 비밀번호 창은 그다음 아래에서 올라옴
-  await sleep(500 * PACE);
+  await sleep(800 * PACE);
   S.pwWait = false;
   S.pinOpen = true;
   syncControls();
@@ -1065,7 +1065,7 @@ async function runPassword(step, spec) {
   logEvent("pin_entered", { duration_ms: now() - t });
   S.phone.sheet = "sending";
   renderPhone();
-  await sleep(1400 * PACE);
+  await sleep(1800 * PACE);
   // 비밀번호 입력이 끝나면 다시 축소 화면으로 돌아가 완료 과정을 보여줌
   S.pinOpen = false;
   syncControls();
