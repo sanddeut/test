@@ -503,3 +503,4 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .paste-key .hint { margin: 0 0 8px; }
 .paste-row { display: flex; gap: 8px; }
 .paste-row input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 11px; font-size: 14px; color: var(--text); }
+.welcome-btns button { white-space: nowrap; }
