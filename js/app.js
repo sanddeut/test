@@ -127,17 +127,31 @@ async function agentSay(text, { gated = false } = {}) {
 }
 
 // 선택지 버튼: 진행 화면(축소 화면 아래)과 대화창 양쪽에 표시
+// 승인/거부·단일 버튼은 알약 버튼, 그 외 여러 선택지는 세로 목록(stacked list)
 function setChips(options, onPick) {
+  const opts = options || [];
+  const isList = opts.length >= 2 && !opts.every((o) => o.id === "approve" || o.id === "reject");
   ["#chips", "#pv-chips"].forEach((sel) => {
     const box = $(sel);
     box.innerHTML = "";
-    (options || []).forEach((o) => {
+    let parent = box;
+    if (isList) {
+      parent = document.createElement("div");
+      parent.className = "choice-list";
+      box.appendChild(parent);
+    }
+    opts.forEach((o) => {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = `chip ${o.id === "reject" ? "chip-ghost" : ""}`;
-      b.textContent = o.label;
+      if (isList) {
+        b.className = "choice chip";
+        b.innerHTML = `<span class="c-main"><b>${esc(o.label)}</b>${o.desc ? `<small>${esc(o.desc)}</small>` : ""}</span><span class="c-go">›</span>`;
+      } else {
+        b.className = `chip ${o.id === "reject" ? "chip-ghost" : ""}`;
+        b.textContent = o.label;
+      }
       b.onclick = () => onPick(o);
-      box.appendChild(b);
+      parent.appendChild(b);
     });
   });
   syncControls();
@@ -288,6 +302,7 @@ function wantedView() {
   if (S.ivWaiter) return "chat";
   if (S.waiter && !S.waiter.options) return "chat";
   if (!S.running || S.finished) return "chat";
+  if (S.phone.app === "home") return "chat"; // 첫 앱을 열기 전에는 폰 홈 화면 대신 대화창에서 진행
   return S.chatOpen ? "chat" : "progress"; // 참가자가 직접 대화창을 연 경우에만 대화창
 }
 
@@ -319,7 +334,7 @@ function fitScreen() {
   const clip = $(".screen-clip");
   if (phone.dataset.view === "progress") {
     const box = $(".screen-box");
-    const scale = Math.max(0.3, Math.min(0.72, (box.clientHeight - 12) / H, (box.clientWidth * 0.88) / W));
+    const scale = Math.max(0.3, Math.min(0.72, (box.clientHeight - 36) / H, (box.clientWidth * 0.88) / W));
     phone.style.setProperty("--scale", scale.toFixed(4));
     clip.style.width = `${Math.floor(W * scale)}px`;
     clip.style.height = `${Math.floor(H * scale)}px`;

@@ -149,8 +149,8 @@ function buildSteps(complexity, participantName) {
     low: {
       messages: ["계좌가 2개에요. 어떤 계좌에서 출금할까요?"],
       options: [
-        { id: "main", label: "주거래" },
-        { id: "savings", label: "적금출금 계좌" },
+        { id: "main", label: "주거래", desc: `주거래 통장 · 잔액 ${ACCOUNTS.main.balance.toLocaleString("ko-KR")}원` },
+        { id: "savings", label: "적금출금 계좌", desc: `적금출금 계좌 · 잔액 ${ACCOUNTS.savings.balance.toLocaleString("ko-KR")}원` },
       ],
     },
     high: { messages: ["2개의 계좌를 발견했어요.", "말씀하신 ‘주거래 통장’에서 출금할게요."] },

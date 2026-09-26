@@ -6,15 +6,57 @@
 const BANK_NAME = "마음은행";
 const won0 = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
 
+// 화면이 바뀔 때 실제 앱처럼 로딩을 잠깐 보여줌
+// - 앱 실행: 스플래시 화면
+// - 은행 앱 안 화면 이동: 로딩 스피너 (가끔 조금 더 길게 버퍼링)
+function screenKey(p) {
+  return [p.app, p.app === "bank" ? p.bankView : "", p.sheet || ""].join("|");
+}
+
+function startLoading(p) {
+  const key = screenKey(p);
+  const prev = p.lastKey;
+  p.lastKey = key;
+  if (!prev || prev === key || S.manual || p.sheet === "pin" || p.sheet === "sending") return;
+  const [prevApp] = prev.split("|");
+  let type = null;
+  let ms = 0;
+  if (p.app !== prevApp && p.app !== "home") {
+    type = p.app === "bank" ? "splash-bank" : "splash-app";
+    ms = p.app === "bank" ? 1100 : 600;
+  } else if (!p.sheet && p.app === "bank") {
+    type = "spinner";
+    ms = Math.random() < 0.35 ? 900 + Math.random() * 500 : 350 + Math.random() * 250; // 때때로 버퍼링
+  } else if (p.app !== prevApp || p.app === "sms_detail") {
+    type = "spinner";
+    ms = 300;
+  }
+  if (!type) return;
+  p.loading = type;
+  p.loadingUntil = Date.now() + ms;
+  clearTimeout(p.loadingTimer);
+  p.loadingTimer = setTimeout(() => { p.loading = null; renderPhone(); }, ms);
+}
+
+function loadingOverlay(p) {
+  if (!p.loading || Date.now() >= p.loadingUntil) return "";
+  if (p.loading === "splash-bank") {
+    return `<div class="ld splash-bank"><span class="bk-logo big"><i></i></span><b>${BANK_NAME}</b><div class="ld-bar"><i></i></div></div>`;
+  }
+  if (p.loading === "splash-app") return `<div class="ld splash-app"><div class="spinner"></div></div>`;
+  return `<div class="ld veil"><div class="ld-top"><i></i></div><div class="spinner"></div></div>`;
+}
+
 function renderPhone() {
   if (!S) return;
   const p = S.phone;
+  startLoading(p);
   let body = "";
   if (p.app === "home") body = homeScreen();
   else if (p.app === "sms_list") body = smsListScreen();
   else if (p.app === "sms_detail") body = smsDetailScreen();
   else if (p.app === "bank") body = bankScreen();
-  $("#screen").innerHTML = `${body}${p.toast ? `<div class="toast">${esc(p.toast)}</div>` : ""}`;
+  $("#screen").innerHTML = `${body}${p.toast ? `<div class="toast">${esc(p.toast)}</div>` : ""}${loadingOverlay(p)}`;
   bindPhone();
   if (typeof syncView === "function") syncView();
 }
