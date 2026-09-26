@@ -402,3 +402,20 @@ mark.on { background: #ffe066; }
 .dim.enter { animation: fadein .3s ease both; }
 .phone[data-view="direct"] .screen-clip, .phone[data-view="progress"] .screen-clip { transition: border-radius .7s; }
 .phone[data-view="direct"] .screen-clip { border-radius: 0; }
+
+/* 에이전트 조작 연출 */
+.touch-layer { position: absolute; inset: 0; pointer-events: none; z-index: 9; }
+.touch { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: rgba(47,124,246,.35); box-shadow: 0 0 0 2px rgba(47,124,246,.55); animation: touch .8s ease-out forwards; }
+@keyframes touch { 0% { transform: scale(.4); opacity: 1; } 40% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.8); opacity: 0; } }
+.screen .pressed { filter: brightness(.9); transform: scale(.97); transition: transform .12s, filter .12s; }
+.phone.acting[data-view="progress"] .screen-clip { box-shadow: 0 0 0 3px #8cc8ff, 0 0 26px 6px rgba(80,160,255,.55); animation: glow 1.6s ease-in-out infinite; }
+@keyframes glow { 50% { box-shadow: 0 0 0 3px #b3dcff, 0 0 34px 10px rgba(80,160,255,.35); } }
+.caret { display: inline-block; width: 2px; height: 1.05em; background: #2f7cf6; vertical-align: -2px; margin-left: 2px; animation: blink 1s steps(1) infinite; }
+.line-input { position: relative; }
+.paste-tip { position: absolute; left: 0; top: -34px; background: #333; color: #fff; font-size: 13px; padding: 6px 12px; border-radius: 8px; }
+.dt-row.editing b { color: #1c1d21; }
+.open-card { display: flex; flex-direction: column; gap: 14px; width: 100%; border: 0; background: #eef1f6; border-radius: 20px; padding: 16px; text-align: left; color: #1c1d21; }
+.oc-head { display: flex; align-items: center; gap: 12px; }
+.oc-head b { display: block; font-size: 17px; font-weight: 500; }
+.oc-head small { color: #6b6f7a; font-size: 14px; }
+.oc-btn { display: block; text-align: center; background: #0b57d0; color: #fff; border-radius: 999px; padding: 13px; font-size: 17px; font-weight: 500; }

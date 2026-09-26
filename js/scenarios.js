@@ -213,6 +213,7 @@ function buildSteps(complexity, participantName) {
         guide: "문자 목록에서 총무 김영숙님의 문자를 찾는 단계",
         low: { messages: msg("sms_find") },
         high: { messages: msg("sms_find") },
+        act: async (s) => { await tap(".sms-row.unread"); s.phone.app = "sms_detail"; renderPhone(); },
         apply: (s) => { s.phone.app = "sms_detail"; },
       },
       {
@@ -221,6 +222,8 @@ function buildSteps(complexity, participantName) {
         guide: "문자에서 회비 입금 계좌(김영숙 농협 302-1234-5678)를 찾아 송금할 계좌로 정하는 단계. 다른 계좌를 찾아달라고 해도 문자에 있는 계좌는 이것뿐임",
         low: { messages: msg("sms_account"), options: APPROVE, reject: "account" },
         high: { messages: msg("sms_account"), applyFirst: true },
+        pre: async (s) => { await actSleep(300); s.phone.smsHighlight = true; renderPhone(); await actSleep(400); },
+        act: async (s) => { s.phone.smsHighlight = true; await tap("mark", { hold: 700 }); s.phone.toast = "계좌번호를 복사했어요"; renderPhone(); await actSleep(500); },
         apply: (s) => { s.phone.smsHighlight = true; s.phone.toast = "계좌번호를 복사했어요"; },
       },
     );
@@ -255,6 +258,7 @@ function buildSteps(complexity, participantName) {
       guide: "은행 앱에 뜬 이벤트 광고 팝업을 닫는 단계. 참가자가 닫지 말라고 하면, 팝업 내용을 보고 화면의 ‘닫기’를 직접 누르면 이어서 진행한다고 안내",
       low: { messages: msg("popup"), options: APPROVE, reject: "popup" },
       high: { messages: msg("popup"), applyFirst: true },
+      act: async (s) => { await tap(".evt-close"); s.phone.popup = false; s.phone.focus = "source"; renderPhone(); },
       apply: (s) => { s.phone.popup = false; s.phone.focus = "source"; },
     });
   }
@@ -271,11 +275,24 @@ function buildSteps(complexity, participantName) {
       ],
     },
     high: { messages: msg("source") },
+    act: async (s, choice) => {
+      const k = choice === "savings" ? "savings" : "main";
+      s.form.source = k;
+      s.phone.focus = null;
+      renderPhone();
+      await tap(`.bk-card[data-acct="${k}"] .bk-send`);
+      s.phone.tapped = k;
+      s.phone.toTab = "recent";
+      s.phone.bankView = "to";
+      renderPhone();
+      await actSleep(300);
+    },
     apply: (s, choice) => {
       s.form.source = choice === "savings" ? "savings" : "main";
       s.phone.tapped = s.form.source; // 선택한 계좌 카드의 [이체]를 누름
+      s.phone.toTab = "recent";
       s.phone.bankView = "to";
-      s.phone.focus = "recipient";
+      s.phone.focus = null;
     },
   });
 
@@ -286,7 +303,31 @@ function buildSteps(complexity, participantName) {
       guide: "문자에서 복사한 계좌를 받는 분 계좌에 입력하는 단계",
       low: { messages: (s) => lines(s.form.recipientCustom ? "recipient.custom" : "recipient", s) },
       high: { messages: msg("recipient"), applyFirst: true },
-      apply: (s) => { s.form.recipient = true; s.phone.bankView = "acct_input"; s.phone.focus = null; },
+      act: async (s) => {
+        const p = s.phone;
+        await tap(".acct-field");
+        p.bankView = "acct_input";
+        renderPhone();
+        await actSleep(500);
+        if (s.form.recipientCustom) {
+          await typeText((v) => (p.acctTyped = v), s.form.recipientCustom, 120);
+        } else {
+          p.pasteTip = true;
+          renderPhone();
+          await tap(".paste-tip");
+          p.pasteTip = false;
+          p.acctTyped = "302-1234-5678";
+          renderPhone();
+        }
+        await tap(".line-select");
+        p.bankPicked = s.form.recipientCustom ? BANK_NAME : "농협";
+        renderPhone();
+        await tap(".bk-btn");
+        s.form.recipient = true;
+        p.bankView = "amount";
+        renderPhone();
+      },
+      apply: (s) => { s.form.recipient = true; s.phone.bankView = "amount"; s.phone.focus = null; },
     });
   } else {
     steps.push({
@@ -295,7 +336,37 @@ function buildSteps(complexity, participantName) {
       guide: "자주 사용하는 계좌 목록에서 ‘동창회 총무’ 김영숙님 계좌(농협 302-1234-5678)를 받는 분으로 정하는 단계. 다른 계좌를 찾아달라고 해도 목록에서 맞는 계좌는 이것뿐임",
       low: { messages: msg("recipient"), options: APPROVE, reject: "account" },
       high: { messages: msg("recipient") },
-      apply: (s) => { s.form.recipient = true; s.phone.bankView = "amount"; s.phone.focus = "amount"; },
+      pre: async (s) => {
+        if (s.phone.toTab !== "fav") {
+          await tap('[data-tab="fav"]');
+          s.phone.toTab = "fav";
+          renderPhone();
+          await actSleep(400);
+        }
+        s.phone.focus = "recipient";
+        renderPhone();
+        await actSleep(300);
+      },
+      act: async (s) => {
+        if (s.form.recipientCustom) {
+          await tap(".acct-field");
+          s.phone.bankView = "acct_input";
+          renderPhone();
+          await actSleep(400);
+          await typeText((v) => (s.phone.acctTyped = v), s.form.recipientCustom, 120);
+          await tap(".line-select");
+          s.phone.bankPicked = BANK_NAME;
+          renderPhone();
+          await tap(".bk-btn");
+        } else {
+          await tap(".to-row.target");
+        }
+        s.form.recipient = true;
+        s.phone.focus = null;
+        s.phone.bankView = "amount";
+        renderPhone();
+      },
+      apply: (s) => { s.form.recipient = true; s.phone.bankView = "amount"; s.phone.focus = null; },
     });
   }
 
@@ -313,7 +384,15 @@ function buildSteps(complexity, participantName) {
       highAsk: (s) => line("stop.ask", s),
       highDone: (s, amt) => line("change.amount", s, { amount: amt }),
     },
-    apply: (s) => { s.phone.bankView = "detail"; s.phone.focus = B ? "memo" : null; },
+    act: async (s) => {
+      s.phone.bankView = "amount";
+      renderPhone();
+      await typeAmount(s.form.amount);
+      await tap(".bk-btn");
+      s.phone.bankView = "detail";
+      renderPhone();
+    },
+    apply: (s) => { s.phone.typedAmount = String(s.form.amount); s.phone.bankView = "detail"; },
   });
 
   if (B) {
@@ -324,6 +403,19 @@ function buildSteps(complexity, participantName) {
       defaultMemo: memo,
       low: { messages: msg("memo"), options: APPROVE, reject: "memo", ask: "memo.ask" },
       high: { messages: msg("memo"), applyFirst: true },
+      act: async (s) => {
+        const text = s.pendingMemo ?? memo;
+        await tap(".dt-row.memo");
+        s.phone.memoTyping = "";
+        renderPhone();
+        await actSleep(300);
+        await typeText((v) => (s.phone.memoTyping = v), text, 130);
+        await actSleep(300);
+        s.phone.memoTyping = null;
+        s.form.memo = text;
+        s.pendingMemo = null;
+        renderPhone();
+      },
       apply: (s) => { s.form.memo = s.pendingMemo ?? memo; s.pendingMemo = null; s.phone.focus = null; },
     });
   }
@@ -335,7 +427,20 @@ function buildSteps(complexity, participantName) {
       guide: "송금 내용을 최종 확인하는 단계. 금액·출금계좌·메모를 바꿀 수 있음",
       low: { messages: msg("final"), options: APPROVE, reject: "final", ask: "final.ask" },
       high: { messages: msg("final") },
-      apply: (s) => { s.phone.sheet = "confirm"; },
+      pre: async (s) => {
+        if (s.phone.sheet === "confirm") return;
+        await tap(".bk-btn2 .primary");
+        s.phone.sheet = "confirm";
+        renderPhone();
+        await actSleep(500);
+      },
+      act: async (s) => {
+        if (s.phone.sheet !== "confirm") { s.phone.sheet = "confirm"; renderPhone(); await actSleep(400); }
+        await tap(".sheet .primary");
+        s.phone.sheet = null;
+        renderPhone();
+      },
+      apply: (s) => { s.phone.sheet = null; },
     },
     {
       id: "password",

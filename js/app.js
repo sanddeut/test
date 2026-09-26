@@ -76,6 +76,8 @@ function logEvent(type, data = {}) {
 // 채팅 UI
 // =====================================================================
 const chat = () => $("#chat");
+// 대화창을 맨 아래로 (화면 전환·버튼 표시로 높이가 바뀐 뒤에 맞춤)
+const scrollChat = () => requestAnimationFrame(() => { const c = chat(); c.scrollTop = c.scrollHeight; });
 
 function appendBubble(role, text) {
   const div = document.createElement("div");
@@ -150,7 +152,10 @@ function setChips(options, onPick) {
     opts.forEach((o) => {
       const b = document.createElement("button");
       b.type = "button";
-      if (isList) {
+      if (o.card) {
+        b.className = "open-card chip";
+        b.innerHTML = `<span class="oc-head"><span class="bk-logo sm"><i></i></span><span><b>${esc(o.card.title)}</b><small>${esc(o.card.sub)}</small></span></span><span class="oc-btn">${esc(o.label)}</span>`;
+      } else if (isList) {
         b.className = "choice chip";
         b.innerHTML = `<span class="c-main"><b>${esc(o.label)}</b>${o.desc ? `<small>${esc(o.desc)}</small>` : ""}</span><span class="c-go">›</span>`;
       } else {
@@ -162,6 +167,7 @@ function setChips(options, onPick) {
     });
   });
   syncControls();
+  scrollChat();
 }
 
 // 러너가 선택지를 제시하고 답을 기다림 (버튼 or 자유 발화)
@@ -306,6 +312,7 @@ function syncControls() {
 function wantedView() {
   if (!S) return "chat";
   if (S.manual || S.pinOpen || S.phone.popupClosable) return "direct";
+  if (S.pwWait) return "chat";
   if (S.ivWaiter) return "chat";
   if (S.waiter && !S.waiter.options) return "chat";
   if (!S.running || S.finished) return "chat";
@@ -324,7 +331,7 @@ function syncView() {
     const before = zoom ? clip.getBoundingClientRect() : null;
     phone.dataset.view = v;
     if (S) logEvent("view", { view: v });
-    chat().scrollTop = chat().scrollHeight;
+    scrollChat();
     if (zoom) {
       fitScreen();
       animateZoom(clip, before);
@@ -440,6 +447,7 @@ async function applyHighChange(o, via) {
   if (o.intent === "set_amount" && o.amount_won) {
     setAmount(o.amount_won);
     logEvent("amount_changed", { amount: o.amount_won, via });
+    await retypeAmount(o.amount_won);
     await sayKey("change.amount", { amount: o.amount_won });
     return true;
   }
@@ -544,7 +552,7 @@ async function endManual() {
   const changes = {};
   const v = Number(S.manualAmount || 0);
   const cur = S.form.amount ?? S.userAmount ?? null;
-  if (S.phone.app === "bank" && v && v !== cur) { changes.amount = v; setAmount(v); }
+  if (S.phone.app === "bank" && v && v !== cur) { changes.amount = v; setAmount(v); if (S.phone.typedAmount != null) S.phone.typedAmount = String(v); }
   if (S.manualMemo != null && S.manualMemo !== (S.form.memo ?? "")) { changes.memo = S.manualMemo; setMemo(S.manualMemo, "manual"); }
   if (S.form.source !== snap.source) { changes.source = S.form.source; S.phone.tapped = S.form.source; }
   S.phone.sheet = snap.sheet;
@@ -595,6 +603,23 @@ async function run() {
 
 const resolveMsgs = (m) => (typeof m === "function" ? m(S) : m);
 
+// 단계 조작: act가 있으면 화면에서 누르고 입력하는 과정을 보여주며 진행, 없으면 바로 반영
+async function doApply(step, choice) {
+  if (step.act) {
+    setActing(true);
+    try { await step.act(S, choice); } finally { setActing(false); }
+  }
+  step.apply(S, choice);
+  renderPhone();
+}
+
+// 단계 준비: 문구를 말하기 전에 화면에서 찾는 과정 (예: 자주 탭으로 이동)
+async function doPre(step) {
+  if (!step.pre) return;
+  setActing(true);
+  try { await step.pre(S); } finally { setActing(false); }
+}
+
 // ---------- 낮은 자동화 ----------
 // 거부 유형별로 선택지 단계에서 바로 받아들일 수 있는 의도
 const REJECT_EXTRA = {
@@ -607,12 +632,13 @@ async function runLowStep(step) {
   if (step.kind === "password") return runPassword(step, step.low);
   if (step.kind === "error_amount") return runLowAmount(step);
 
+  await doPre(step);
   let repeat = true;
   for (;;) {
     const msgs = resolveMsgs(step.low.messages);
     if (repeat) for (const m of msgs) await agentSay(m);
     repeat = true;
-    if (!step.low.options) { step.apply(S); renderPhone(); break; }
+    if (!step.low.options) { await doApply(step); break; }
 
     let extra = REJECT_EXTRA[step.low.reject] || [];
     if (step.low.reject === "final" && S.complexity !== "B") extra = extra.filter((x) => x !== "set_memo");
@@ -620,8 +646,7 @@ async function runLowStep(step) {
     S.m.approvals++;
     logEvent("decision", { choice: c.id, via: c.via });
     if (c.id !== "reject" && step.low.options.some((o) => o.id === c.id)) {
-      step.apply(S, c.id);
-      renderPhone();
+      await doApply(step, c.id);
       break;
     }
     const r = await handleReject(step, c, msgs.join(" "));
@@ -645,8 +670,7 @@ async function handleReject(step, c, said) {
     const ask = line("app.which", S);
     const launch = async () => {
       await sayKey(step.low.launched);
-      step.apply(S);
-      renderPhone();
+      await doApply(step);
       return "done";
     };
     const opts = {
@@ -699,8 +723,7 @@ async function handleReject(step, c, said) {
         S.form.recipientCustom = o.account_number;
         logEvent("recipient_changed", { account: o.account_number });
         await sayKey("account.custom", { account: o.account_number });
-        step.apply(S);
-        renderPhone();
+        await doApply(step);
         return "done";
       }
       if (o.intent === "direct_input") {
@@ -708,7 +731,7 @@ async function handleReject(step, c, said) {
         o = null;
         continue;
       }
-      if (o.intent === "approve") { step.apply(S); renderPhone(); return "done"; }
+      if (o.intent === "approve") { await doApply(step); return "done"; }
       if (o.intent === "cancel") { await cancelTransfer(); return "cancel"; }
       await agentSay(o.reply);
       o = null;
@@ -723,10 +746,12 @@ async function handleReject(step, c, said) {
       fallback: "알겠어요. 팝업 내용을 보시고 직접 닫으시면 이어서 진행할게요.",
     });
     await agentSay(r.reply);
+    let byUser = false;
     for (;;) {
       const res = await waitPopupClose();
       if (res.type === "click") {
         logEvent("popup_closed_by_user");
+        byUser = true;
         break;
       }
       const t = await turn(res.text, {
@@ -740,8 +765,7 @@ async function handleReject(step, c, said) {
       }
       await agentSay(t.reply);
     }
-    step.apply(S);
-    renderPhone();
+    if (byUser) { step.apply(S); renderPhone(); } else await doApply(step);
     return "done";
   }
 
@@ -782,6 +806,7 @@ async function handleReject(step, c, said) {
       if (S.m.correctionVia == null && S.form.amount === ERROR_AMOUNT && o.amount_won !== ERROR_AMOUNT) S.m.correctionVia = "final_text";
       setAmount(o.amount_won);
       logEvent("amount_changed", { amount: o.amount_won, via: "final" });
+      await retypeAmount(o.amount_won);
       return "retry";
     }
     if (o.intent === "set_memo" && o.memo) { setMemo(o.memo, "final"); return "retry"; }
@@ -863,8 +888,7 @@ async function runLowAmount(step) {
   S.form.amount = pending;
   S.phone.pendingAmount = null;
   S.m.amountStepDecision = pending === ERROR_AMOUNT ? "accepted" : "corrected";
-  step.apply(S);
-  renderPhone();
+  await doApply(step); // 승인 후 키패드로 금액을 입력
   return true;
 }
 
@@ -884,16 +908,14 @@ async function runHighStep(step) {
     } else {
       S.form.amount = ERROR_AMOUNT;
     }
-    S.phone.bankView = "amount";
-    renderPhone();
-    await sleep(700); // 금액이 입력되는 화면을 잠깐 보여줌
     applyFirst = true;
   }
 
+  await gate();
+  await doPre(step);
   if (applyFirst) {
     await gate();
-    step.apply(S);
-    renderPhone();
+    await doApply(step);
   }
   for (const m of msgs) {
     await agentSay(m, { gated: true });
@@ -901,8 +923,7 @@ async function runHighStep(step) {
   }
   if (!applyFirst) {
     await gate();
-    step.apply(S);
-    renderPhone();
+    await doApply(step);
   }
   if (step.kind === "done") return finish("completed");
   return true;
@@ -910,9 +931,14 @@ async function runHighStep(step) {
 
 // ---------- 비밀번호 (직접조작, 공통) ----------
 async function runPassword(step, spec) {
+  // 직접 조작이 필요하면 갤럭시 에이전트처럼 대화창으로 전환해 안내하고, 「화면 열기」 카드를 보여줌
+  if (S.automation === "high") await gate();
+  S.pwWait = true;
+  syncView();
+  await sleep(400);
   for (const m of resolveMsgs(spec.messages)) await agentSay(m, { gated: S.automation === "high" });
   for (;;) {
-    const r = await waitRunnerInput([{ id: "open", label: "화면 열기" }]);
+    const r = await waitRunnerInput([{ id: "open", label: "화면 열기", card: { title: BANK_NAME, sub: "계좌 비밀번호 입력" } }]);
     if (r.type === "button") break;
     if (S.automation === "high") {
       // 높은 자동화: 말을 걸면 중지로 간주하고 개입 대화 후 다시 대기
@@ -924,10 +950,9 @@ async function runPassword(step, spec) {
     if (o.intent === "open") break;
     await agentSay(o.reply);
   }
-  // 화면 열기 → 잠깐 뒤 실제 크기 화면으로 천천히 전환, 비밀번호 창은 그다음 아래에서 올라옴
-  setStatus("비밀번호 입력 화면을 여는 중이에요", true);
-  await sleep(600);
-  setStatus(null, false);
+  // 화면 열기 → 잠깐 뒤 실제 크기 앱 화면으로 전환, 비밀번호 창은 그다음 아래에서 올라옴
+  await sleep(350);
+  S.pwWait = false;
   S.pinOpen = true;
   syncControls();
   S.phone.pin = "";

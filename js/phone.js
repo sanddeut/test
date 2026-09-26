@@ -126,7 +126,7 @@ function bankHome() {
   const p = S.phone;
   const cards = Object.entries(ACCOUNTS).map(([k, a], i) => {
     const hl = p.focus === "source" ? "hl" : p.tapped === k ? "tapped" : "";
-    return `<div class="bk-card ${hl}">
+    return `<div class="bk-card ${hl}" data-acct="${k}">
       ${bankLogo()}<div class="bk-card-main"><b>${a.label}</b><small>마음 ${a.number} <span class="copy">⧉</span></small><strong>${won0(a.balance)}</strong></div>
       <span class="kebab">⋮</span><span class="bk-send ${p.tapped === k ? "on" : ""}">이체</span>
       ${i === 0 ? `<div class="bk-card-promo">↪ 가을맞이 적금 가입하고 우대금리 받아요!</div>` : ""}
@@ -145,25 +145,33 @@ function bankHome() {
   </div>`;
 }
 
+// 이체 대상: 추천(최근입금계좌) / 자주 / 내계좌 탭
+const TO_ROWS = {
+  recent: [
+    { name: "김철수", date: "2026.09.20", bank: "마음 120-555-102938", logo: "bank", star: false },
+    { name: "관리사무소", date: "2026.09.01", bank: "농협 301-0045-1128", logo: "nh", star: false },
+    { name: "우리딸 이지은", date: "2026.08.28", bank: "마음 110-234-567890", logo: "bank", star: true },
+    { name: "건강보험공단", date: "2026.08.25", bank: "기업 048-000-112233", logo: "bank", star: false },
+  ],
+  fav: [
+    { name: "동창회 총무 김영숙", date: "2025.09.26", bank: "농협 302-1234-5678", logo: "nh", star: true, target: true },
+    { name: "우리딸 이지은", date: "2026.08.28", bank: "마음 110-234-567890", logo: "bank", star: true },
+  ],
+};
+
 function bankTo() {
   const p = S.phone;
-  const A = S.complexity === "A";
-  const rows = [
-    { name: "동창회 총무 김영숙", date: "2025.09.26", bank: "농협 302-1234-5678", logo: nhLogo(), star: true, target: true },
-    { name: "우리딸 이지은", date: "2026.09.15", bank: "마음 110-234-567890", logo: bankLogo(), star: true },
-    { name: "관리사무소", date: "2026.09.01", bank: "농협 301-0045-1128", logo: nhLogo(), star: false },
-    { name: "김철수", date: "2026.08.20", bank: "마음 120-555-102938", logo: bankLogo(), star: false },
-  ];
-  const list = rows
-    .map((r) => `<div class="to-row ${r.target && p.focus === "recipient" && A ? "hl" : ""} ${r.target && S.form.recipient ? "tapped" : ""}">${r.logo}
+  const tab = p.toTab || "recent";
+  const list = TO_ROWS[tab]
+    .map((r) => `<div class="to-row ${r.target ? "target" : ""} ${r.target && p.focus === "recipient" ? "hl" : ""} ${r.target && S.form.recipient ? "tapped" : ""}">${r.logo === "nh" ? nhLogo() : bankLogo()}
       <div class="to-main"><b>${r.name}</b><span class="sep">|</span><small>${r.date}</small><p>${r.bank}</p></div><span class="star ${r.star ? "on" : ""}">★</span></div>`)
     .join("");
   return `<div class="bk-page">
     <div class="bk-nav"><span class="back">‹</span></div>
     <h2 class="bk-h">어디로 이체하시겠어요?</h2>
-    <div class="acct-field ${!A && p.focus === "recipient" ? "hl" : ""}"><span class="ph">계좌번호 입력</span><span>📷</span></div>
-    <div class="seg3"><span class="${A ? "" : "on"}">추천</span><span class="${A ? "on" : ""}">자주</span><span>내계좌</span></div>
-    <div class="to-head"><b>${A ? "자주 쓰는 계좌" : "최근입금계좌"}</b><small>편집</small></div>
+    <div class="acct-field"><span class="ph">계좌번호 입력</span><span>📷</span></div>
+    <div class="seg3"><span data-tab="recent" class="${tab === "recent" ? "on" : ""}">추천</span><span data-tab="fav" class="${tab === "fav" ? "on" : ""}">자주</span><span data-tab="mine">내계좌</span></div>
+    <div class="to-head"><b>${tab === "fav" ? "자주 쓰는 계좌" : "최근입금계좌"}</b><small>편집</small></div>
     ${list}
     <div class="to-more">더보기 ⌄</div>
     <div class="to-contact"><span class="plus">＋</span>연락처로 이체하기</div>
@@ -171,14 +179,15 @@ function bankTo() {
 }
 
 function bankAcctInput() {
-  const filled = S.form.recipient || S.phone.acctPasted;
-  const acct = S.form.recipientCustom || "302-1234-5678";
+  const p = S.phone;
+  const typed = p.acctTyped || "";
   return `<div class="bk-page">
     <div class="bk-nav right"><span class="close">✕</span></div>
     <h2 class="bk-h sm">계좌번호를 입력해 주세요</h2>
-    <div class="line-input ${filled ? "filled" : "focus"}">${filled ? esc(acct) : '<span class="ph">입력</span>'}</div>
-    <div class="line-select">${filled && !S.form.recipientCustom ? "농협" : '<span class="ph">은행/증권사 선택</span>'}<span>⌄</span></div>
-    ${filled ? '<div class="paste-hint">문자에서 복사한 계좌번호를 붙여넣었어요</div>' : ""}
+    <div class="line-input ${typed ? "filled" : "focus"}">${typed ? esc(typed) : '<span class="ph">입력</span>'}<i class="caret"></i>${p.pasteTip ? '<span class="paste-tip">붙여넣기</span>' : ""}</div>
+    <div class="line-select">${p.bankPicked ? esc(p.bankPicked) : '<span class="ph">은행/증권사 선택</span>'}<span>⌄</span></div>
+    <div class="spacer"></div>
+    <div class="bk-btn ${typed && p.bankPicked ? "" : "off"}">확인</div>
   </div>`;
 }
 
@@ -193,31 +202,30 @@ function transferHead() {
     <small class="tr-sub">${custom ? esc(custom) : "농협 302-1234-5678"}</small>`;
 }
 
-function amountLine(amt, pending) {
+function amountLine(amt) {
   const a = ACCOUNTS[S.form.source];
-  if (amt == null) {
+  if (!amt) {
     return `<div class="amt-q">얼마를 이체하시겠어요?</div><small class="tr-sub">출금가능금액 ${a.balance.toLocaleString("ko-KR")} 원</small>`;
   }
-  return `<div class="amt-big ${pending ? "pending" : ""}">${Number(amt).toLocaleString("ko-KR")}<span>원</span></div>
+  return `<div class="amt-big">${Number(amt).toLocaleString("ko-KR")}<span>원</span></div>
     <small class="tr-sub"><b>${won(amt)}</b> <span class="sep">|</span> 출금가능금액 ${a.balance.toLocaleString("ko-KR")} 원</small>`;
 }
 
 function bankAmount() {
   const p = S.phone;
-  let amt = S.form.amount ?? p.pendingAmount ?? null;
-  if (S.manual) amt = S.manualAmount ? Number(S.manualAmount) : null;
-  const pending = S.form.amount == null && p.pendingAmount != null;
+  // 에이전트가 키패드로 입력 중인 금액(typedAmount) 또는 직접 조작 중인 금액
+  const amt = S.manual ? Number(S.manualAmount || 0) : Number(p.typedAmount || 0);
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0", "back"];
   const live = S.manual ? "live" : "";
   const memoRow = S.manual && S.complexity === "B"
     ? `<div class="memo-edit"><label>받는 분 통장표기</label><input id="m-memo" value="${esc(S.manualMemo ?? S.form.memo ?? "")}" placeholder="${esc(S.cfg.name)}"></div>`
     : "";
-  return `<div class="bk-page tr ${p.focus === "amount" ? "focus-amt" : ""}">
+  return `<div class="bk-page tr">
     ${transferHead()}
-    <div class="amt-area">${amountLine(amt, pending)}</div>
+    <div class="amt-area">${amountLine(amt)}</div>
     ${memoRow}
-    <div class="quick ${live}">${["+1만", "+5만", "+10만", "+100만", "전액"].map((q) => `<span data-key="${S.manual ? q : ""}">${q}</span>`).join("")}</div>
-    <div class="keypad-bk ${live}">${keys.map((k) => `<span ${S.manual ? `data-key="${k}"` : ""}>${k === "back" ? "←" : k}</span>`).join("")}</div>
+    <div class="quick ${live}">${["+1만", "+5만", "+10만", "+100만", "전액"].map((q) => `<span ${S.manual ? `data-key="${q}"` : ""}>${q}</span>`).join("")}</div>
+    <div class="keypad-bk ${live}">${keys.map((k) => `<span data-k="${k}" ${S.manual ? `data-key="${k}"` : ""}>${k === "back" ? "←" : k}</span>`).join("")}</div>
     <div class="bk-btn ${amt ? "" : "off"}">확인</div>
   </div>`;
 }
@@ -225,11 +233,12 @@ function bankAmount() {
 function bankDetail() {
   const f = S.form;
   const p = S.phone;
+  const memoShown = p.memoTyping != null ? `${esc(p.memoTyping)}<i class="caret"></i>` : `${esc(f.memo || S.cfg.name)} ›`;
   return `<div class="bk-page tr">
     ${transferHead()}
-    <div class="amt-area">${amountLine(f.amount, false)}</div>
+    <div class="amt-area">${amountLine(f.amount)}</div>
     <div class="spacer"></div>
-    <div class="dt-row ${p.focus === "memo" ? "hl" : ""}"><span>받는 분 통장표기</span><b>${esc(f.memo || S.cfg.name)} ›</b></div>
+    <div class="dt-row memo ${p.focus === "memo" ? "hl" : ""} ${p.memoTyping != null ? "editing" : ""}"><span>받는 분 통장표기</span><b>${memoShown}</b></div>
     <div class="dt-row"><span>내 통장표기</span><b>${f.recipientCustom ? "입력하신 계좌" : "김영숙"} ›</b></div>
     <div class="dt-more">더보기 ⌄</div>
     <div class="dt-note">이체 유의사항 및 안내</div>
@@ -262,7 +271,7 @@ function bankOverlay() {
     const live = p.popupClosable;
     return `<div class="dim center ${enter}"><div class="evt">
       <div class="evt-art">🍂🎁</div><b>가을맞이 정기적금 이벤트</b><p>지금 가입하면 최대 연 4.5% 우대금리!</p>
-      <div class="evt-btns ${live ? "live" : ""}"><span ${live ? "data-popup-close" : ""}>오늘 하루 보지 않기</span><span ${live ? "data-popup-close" : ""}>닫기</span></div></div></div>`;
+      <div class="evt-btns ${live ? "live" : ""}"><span ${live ? "data-popup-close" : ""}>오늘 하루 보지 않기</span><span class="evt-close" ${live ? "data-popup-close" : ""}>닫기</span></div></div></div>`;
   }
   if (p.sheet === "confirm") {
     return `<div class="dim ${enter}"><div class="sheet ${enter}">
@@ -302,4 +311,89 @@ function manualToggleSource() {
   if (!S?.manual) return;
   S.form.source = S.form.source === "main" ? "savings" : "main";
   renderPhone();
+}
+
+// =====================================================================
+// 에이전트 조작 연출 (축소 화면에서 실제로 누르고 입력하는 것처럼)
+// =====================================================================
+// 연출 중 대기. 중지·직접 조작으로 멈추면 재개될 때까지 기다림 (중지 대화 안에서의 재입력은 예외)
+let actNoGate = 0;
+const actSleep = async (ms) => { await sleep(ms); if (!actNoGate && typeof gate === "function") await gate(); };
+
+function setActing(on) {
+  const ph = $(".phone");
+  if (ph) ph.classList.toggle("acting", on);
+}
+
+// 화면 속 요소를 누르는 표시 (터치 원)
+async function waitLoading() {
+  while (S.phone.loading && Date.now() < S.phone.loadingUntil) await sleep(80);
+}
+
+async function tap(sel, { hold = 380, after = 350 } = {}) {
+  await waitLoading(); // 화면 로딩이 끝난 뒤에 누름
+  await actSleep(250);
+  const el = $("#screen").querySelector(sel);
+  const layer = $("#touch-layer");
+  if (el && layer && $(".phone").dataset.view === "progress") {
+    const r = el.getBoundingClientRect();
+    const c = $(".screen-clip").getBoundingClientRect();
+    const dot = document.createElement("i");
+    dot.className = "touch";
+    dot.style.left = `${r.left + r.width / 2 - c.left}px`;
+    dot.style.top = `${r.top + r.height / 2 - c.top}px`;
+    layer.appendChild(dot);
+    el.classList.add("pressed");
+    setTimeout(() => dot.remove(), 900);
+  }
+  await actSleep(hold);
+  if (el) el.classList.remove("pressed");
+  await actSleep(after);
+}
+
+// 은행 키패드로 금액 입력 (지우기 → 새 금액)
+async function typeAmount(amount) {
+  const p = S.phone;
+  const target = String(amount);
+  while (p.typedAmount) {
+    await tap('[data-k="back"]', { hold: 120, after: 60 });
+    if (S.form.amount != null && S.form.amount !== Number(amount)) return;
+    p.typedAmount = p.typedAmount.slice(0, -1);
+    renderPhone();
+  }
+  for (const d of target) {
+    await tap(`[data-k="${d}"]`, { hold: 120, after: 80 });
+    if (S.form.amount != null && S.form.amount !== Number(amount)) return; // 입력 도중 참가자가 금액을 바꾼 경우
+    p.typedAmount = (p.typedAmount || "") + d;
+    renderPhone();
+  }
+}
+
+// 글자 하나씩 입력
+async function typeText(set, text, ms = 110) {
+  await waitLoading();
+  for (let i = 1; i <= text.length; i++) {
+    set(text.slice(0, i));
+    renderPhone();
+    await actSleep(ms);
+  }
+}
+
+// 이미 금액 입력을 지난 뒤 금액이 바뀌면 금액 화면으로 돌아가 다시 입력
+async function retypeAmount(amount) {
+  const p = S.phone;
+  if (p.app !== "bank" || !["amount", "detail"].includes(p.bankView) || p.typedAmount == null) return;
+  const sheet = p.sheet;
+  actNoGate++;
+  setActing(true);
+  if (sheet) { p.sheet = null; renderPhone(); await actSleep(400); }
+  if (p.bankView === "detail") { await tap(".tr-sub b"); p.bankView = "amount"; renderPhone(); await actSleep(500); }
+  await typeAmount(amount);
+  await tap(".bk-btn");
+  p.bankView = "detail";
+  renderPhone();
+  await actSleep(500);
+  if (sheet) { await tap(".bk-btn2 .primary"); p.sheet = sheet; renderPhone(); await actSleep(400); }
+  setActing(false);
+  actNoGate--;
 }
