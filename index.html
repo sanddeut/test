@@ -124,7 +124,6 @@
       <!-- 대화창 헤더 -->
       <div class="chat-head only-chat">
         <span class="agent-avatar">AI</span><b class="secret">AI 도우미</b>
-        <button type="button" class="pill-btn" id="btn-close-chat">작업 화면 보기</button>
       </div>
 
       <div class="screen-box only-screen"><div class="screen-clip"><div id="screen" class="screen"></div><div id="touch-layer" class="touch-layer"></div></div></div>
@@ -139,8 +138,7 @@
         <button id="btn-manual" type="button" class="primary-btn">직접 조작</button>
       </div>
 
-      <div id="chat" class="chat only-chat" aria-live="polite"></div>
-      <div id="chips" class="chips only-chat"></div>
+      <div id="chat" class="chat only-chat" aria-live="polite"><div id="chips" class="chips"></div></div>
       <form id="composer" class="composer only-chat" autocomplete="off">
         <button id="mic" type="button" class="mic" title="음성 입력">🎤</button>
         <input id="msg" placeholder="AI에게 말하기…">

@@ -83,7 +83,7 @@ function appendBubble(role, text) {
   const div = document.createElement("div");
   div.className = `bubble ${role}`;
   div.textContent = text;
-  chat().appendChild(div);
+  chat().insertBefore(div, $("#chips"));
   chat().scrollTop = chat().scrollHeight;
 }
 
@@ -102,7 +102,7 @@ function showTyping(on) {
     t.id = "typing";
     t.className = "bubble agent typing";
     t.innerHTML = "<span></span><span></span><span></span>";
-    chat().appendChild(t);
+    chat().insertBefore(t, $("#chips"));
     chat().scrollTop = chat().scrollHeight;
   } else if (!on && t) t.remove();
   setStatus(null, on);
@@ -1176,7 +1176,7 @@ function start() {
   $("#task-list").innerHTML = sit.task.map((t) => `<li>${esc(t.replace("OOO", cfg.name))}</li>`).join("");
   $("#cond-title").textContent = CONDITIONS[S.cond].title;
 
-  chat().innerHTML = "";
+  chat().querySelectorAll(".bubble").forEach((b) => b.remove());
   $("#chips").innerHTML = "";
   $("#pv-chips").innerHTML = "";
   setStatus("");
@@ -1419,7 +1419,6 @@ function init() {
     });
   });
   window.addEventListener("resize", fitScreen);
-  $("#btn-close-chat").onclick = () => openChat(false);
   $("#btn-researcher").onclick = () => document.body.classList.toggle("drawer-open");
   $("#btn-close-drawer").onclick = () => document.body.classList.remove("drawer-open");
   $("#btn-reset").onclick = backToSetup;
