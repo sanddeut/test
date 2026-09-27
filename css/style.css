@@ -580,3 +580,7 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .rc-manual:disabled { opacity: .4; }
 .run-card.away { display: none; }
 .pw-direct { display: block; margin: 12px auto 0; border: 0; background: none; color: #0b57d0; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+/* 입력창 원형 버튼(마이크·보내기·중지): 아이콘을 정가운데로 */
+.composer .send, .composer .mic { display: grid; place-items: center; padding: 0; line-height: 1; }
+.composer .send .ms, .composer .mic .ms { display: block; vertical-align: 0; line-height: 1; font-size: 22px; }
+.composer .send[data-mode="stop"] .ms { font-size: 20px; }
