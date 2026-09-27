@@ -21,7 +21,7 @@ function startLoading(p) {
   const key = screenKey(p);
   const prev = p.lastKey;
   p.lastKey = key;
-  if (!prev || prev === key || S.manual || p.sheet === "pin" || p.sheet === "sending") return;
+  if (!prev || prev === key || p.sheet === "pin" || p.sheet === "sending") return;
   let [prevApp] = prev.split("|");
   const family = (a) => (a.startsWith("sms") ? "sms" : a);
   if (family(prevApp) === family(p.app) && prevApp !== p.app) prevApp = "__same";
@@ -89,7 +89,11 @@ function renderPhone() {
 function bindPhone() {
   const sc = $("#screen");
   sc.querySelectorAll("[data-pin]").forEach((b) => (b.onclick = () => pinPress(b.dataset.pin)));
-  sc.querySelectorAll("[data-popup-close]").forEach((b) => (b.onclick = () => S.popupResolve && S.popupResolve()));
+  sc.querySelectorAll("[data-popup-close]").forEach((b) => (b.onclick = () => (S.popupResolve ? S.popupResolve() : manualClosePopup())));
+  sc.querySelectorAll("[data-man-app]").forEach((b) => (b.onclick = () => manualOpenApp(b.dataset.manApp)));
+  sc.querySelectorAll("[data-man-send]").forEach((b) => (b.onclick = () => manualSend(b.dataset.manSend)));
+  sc.querySelectorAll("[data-man-pick]").forEach((b) => (b.onclick = () => manualPick()));
+  if (S.manual) sc.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { if (b.dataset.tab !== "mine") { S.phone.toTab = b.dataset.tab; renderPhone(); } }));
   sc.querySelectorAll("[data-done-confirm]").forEach((b) => (b.onclick = () => confirmDone()));
   sc.querySelectorAll("[data-key]").forEach((b) => (b.onclick = () => manualKey(b.dataset.key)));
   sc.querySelectorAll("[data-src-toggle]").forEach((b) => (b.onclick = () => manualToggleSource()));
@@ -104,7 +108,11 @@ function homeScreen() {
     ["캘린더", "calendar_month", "#f29900"], ["갤러리", "photo_library", "#a142f4"], ["설정", "settings", "#5f6368"], ["지도", "map", "#0f9d58"],
   ];
   return `<div class="home"><div class="home-clock">9:41<small>9월 24일 목요일</small></div><div class="home-grid">${apps
-    .map(([n, i, c]) => `<div class="app-icon"><div class="ai" style="background:${c}">${mi(i)}</div><span>${n}</span></div>`)
+    .map(([n, i, c]) => {
+      // 직접 조작 중에는 메시지·은행 앱만 눌러서 열 수 있음
+      const open = S.manual && n === "메시지" ? 'data-man-app="sms"' : S.manual && n === BANK_NAME ? 'data-man-app="bank"' : "";
+      return `<div class="app-icon ${open ? "live" : ""}" ${open}><div class="ai" style="background:${c}">${mi(i)}</div><span>${n}</span></div>`;
+    })
     .join("")}</div></div>`;
 }
 
@@ -154,7 +162,7 @@ function bankHome() {
     const hl = p.focus === "source" ? "hl" : p.tapped === k ? "tapped" : "";
     return `<div class="bk-card ${hl}" data-acct="${k}">
       ${bankLogo()}<div class="bk-card-main"><b>${a.label}</b><small>마음 ${a.number} ${mi("content_copy", "copy")}</small><strong>${won0(a.balance)}</strong></div>
-      ${mi("more_vert", "kebab")}<span class="bk-send ${p.tapped === k ? "on" : ""}">이체</span>
+      ${mi("more_vert", "kebab")}<span class="bk-send ${p.tapped === k ? "on" : ""}" ${S.manual ? `data-man-send="${k}"` : ""}>이체</span>
     </div>`;
   }).join("");
   return `<div class="bk-home">
@@ -187,7 +195,7 @@ function bankTo() {
   const p = S.phone;
   const tab = p.toTab || "recent";
   const list = TO_ROWS[tab]
-    .map((r) => `<div class="to-row ${r.target ? "target" : ""} ${r.target && p.focus === "recipient" ? "hl" : ""} ${r.target && S.form.recipient ? "tapped" : ""}">${r.logo === "nh" ? nhLogo() : bankLogo()}
+    .map((r) => `<div ${S.manual && r.target && S.complexity === "A" ? "data-man-pick" : ""} class="to-row ${r.target ? "target" : ""} ${r.target && p.focus === "recipient" ? "hl" : ""} ${r.target && S.form.recipient ? "tapped" : ""}">${r.logo === "nh" ? nhLogo() : bankLogo()}
       <div class="to-main"><b>${r.name}</b><span class="sep">|</span><small>${r.date}</small><p>${r.bank}</p></div>${mi("star", `star ${r.star ? "on fill" : ""}`)}</div>`)
     .join("");
   return `<div class="bk-page">
@@ -292,7 +300,7 @@ function bankOverlay() {
   const enter = cur !== p.overlayShown ? "enter" : "";
   p.overlayShown = cur;
   if (p.popup) {
-    const live = p.popupClosable;
+    const live = p.popupClosable || S.manual;
     return `<div class="dim center ${enter}"><div class="evt">
       <div class="evt-art">${mi("redeem", "fill")}</div><b>가을맞이 정기적금 이벤트</b><p>지금 가입하면 최대 연 4.5% 우대금리!</p>
       <div class="evt-btns ${live ? "live" : ""}"><span ${live ? "data-popup-close" : ""}>오늘 하루 보지 않기</span><span class="evt-close" ${live ? "data-popup-close" : ""}>닫기</span></div></div></div>`;
@@ -328,6 +336,58 @@ function manualKey(k) {
   else if (add[k]) v = String(Number(v || 0) + add[k]);
   else if (v.length < 9) v = (v + k).replace(/^0+/, "");
   S.manualAmount = v;
+  renderPhone();
+}
+
+// 직접 조작으로 단계를 끝낸 경우 기록 → 에이전트는 그 단계를 다시 하지 않고 넘어감
+function manualMark(stepId, choice = true) {
+  S.manualDone = S.manualDone || {};
+  S.manualDone[stepId] = choice;
+  logEvent("manual_action", { step: stepId, choice });
+}
+
+function manualOpenApp(a) {
+  if (!S?.manual) return;
+  const p = S.phone;
+  if (a === "sms") {
+    p.app = "sms_list";
+    manualMark("sms_open");
+  } else {
+    p.app = "bank";
+    p.bankView = "home";
+    p.toast = null;
+    p.focus = null;
+    if (S.complexity === "B") p.popup = true; // 은행 앱을 열면 광고 팝업 (높은 복잡도)
+    manualMark("bank_open");
+  }
+  renderPhone();
+}
+
+function manualClosePopup() {
+  if (!S?.manual) return;
+  S.phone.popup = false;
+  manualMark("popup");
+  renderPhone();
+}
+
+function manualSend(k) {
+  if (!S?.manual || S.phone.popup) return;
+  const p = S.phone;
+  S.form.source = k;
+  p.tapped = k;
+  p.toTab = "recent";
+  p.bankView = "to";
+  p.focus = null;
+  manualMark("source", k);
+  renderPhone();
+}
+
+function manualPick() {
+  if (!S?.manual) return;
+  S.form.recipient = true;
+  S.phone.bankView = "amount";
+  S.phone.focus = null;
+  manualMark("recipient");
   renderPhone();
 }
 

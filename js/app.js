@@ -418,7 +418,7 @@ async function askChoice(options, said, extra = [], hint) {
   for (;;) {
     const r = await waitRunnerInput(options);
     if (r.type === "reask") return { id: "__reask", via: "stop" };
-    if (r.type === "button") return { id: r.id, via: "button" };
+    if (r.type === "button") return { id: r.id, via: r.manual ? "manual" : "button" };
     const ids = options.map((o) => o.id);
     const o = await turn(r.text, { said, intents: [...ids, ...extra, "other"], hint });
     if (ids.includes(o.intent) || extra.includes(o.intent)) return { id: o.intent, via: "text", text: r.text, out: o };
@@ -479,7 +479,14 @@ async function interpret(kind, text, context) {
   await sleep(Math.max(0, REPLY_PAUSE * PACE - (performance.now() - t0)));
   showTyping(false);
   S.m.llmCalls++;
-  if (res.source === "rules" && LLM.enabled) S.m.llmFallbacks++;
+  if (res.source === "rules" && LLM.enabled) {
+    S.m.llmFallbacks++;
+    // Gemini 호출이 실패해 규칙 해석으로 대체됐음을 연구자가 알 수 있게 (상단 칩)
+    const chip = $("#llm-chip");
+    chip.textContent = "Gemini 오류 · 규칙으로 대체";
+    chip.dataset.on = "err";
+    chip.title = res.error || "";
+  }
   logEvent("interpret", { kind, input: text, output: res.output, source: res.source, model: res.model || null, latency_ms: res.latency_ms, error: res.error || null });
   return res;
 }
@@ -696,7 +703,8 @@ function highIntents() {
   return ["set_amount", ...(S.complexity === "B" ? ["set_memo"] : []), "set_source", "pause", "continue", "cancel", "other"];
 }
 const HIGH_HINT =
-  "높은 자동화에서는 사용자의 답을 기다리지 않고 자동으로 진행해. other/continue이면 reply는 발화를 짧게 받아준 뒤 현재 진행 상황을 알리는 형태로 끝내고, 승인을 묻지 마.";
+  "높은 자동화에서는 사용자의 답을 기다리지 않고 자동으로 진행해. other/continue이면 reply는 발화를 짧게 받아준 뒤 현재 진행 상황을 알리는 형태로 끝내고, 승인을 묻지 마. " +
+  "사용자가 무언가 잘못됐다고 지적하거나 멈추라고 하면(예: '잘못했잖아', '이상해', '틀렸어') 값이 없어도 pause로 분류해.";
 
 async function applyHighChange(o, via) {
   if (o.intent === "set_amount" && o.amount_won) {
@@ -748,7 +756,8 @@ async function handleInterjection(text) {
 // 중지 버튼(모든 조건) → 대화창에서 "진행을 멈췄어요. 어떻게 바꿀까요?"
 // 참가자가 말하면 응답하거나 바뀐 내용을 반영하고, 「계속하기」를 누를 때까지 멈춰 있음
 const STOP_HINT =
-  "사용자가 '중지'를 눌러 진행이 멈춘 상태야. 발화에 응답한 뒤, '계속하기'를 누르면 이어서 진행한다고 안내해. 재개 여부를 말로 묻지 마.";
+  "사용자가 '중지'를 눌러 진행이 멈춘 상태야. 발화에 응답한 뒤, '계속하기'를 누르면 이어서 진행한다고 안내해. 재개 여부를 말로 묻지 마. " +
+  "사용자가 무엇이 잘못됐다고만 하고 바꿀 값을 말하지 않으면(예: '금액이 잘못됐어'), 무엇으로 바꿀지 되물어(예: '송금액을 얼마로 바꿀까요?'). 이때는 계속하기 안내를 하지 마.";
 
 async function handleStop(via) {
   if (S.paused || S.finished) return;
@@ -846,6 +855,9 @@ function startManual() {
   logEvent("manual_start");
   S.manualSnapshot = { ...S.form, sheet: S.phone.sheet };
   if (S.automation === "low" && S.stepIdx === S.errorIdx && S.form.amount == null && S.phone.app === "bank") S.phone.bankView = "amount";
+  // 앱 실행을 묻는 중이면 홈 화면에서 직접 앱을 열 수 있게
+  const stepId = S.steps[S.stepIdx]?.id;
+  if (["sms_open", "bank_open"].includes(stepId) && S.manualDone?.[stepId] === undefined) S.phone.app = "home";
   S.manualAmount = String(S.form.amount ?? S.phone.pendingAmount ?? S.userAmount ?? "");
   S.manualMemo = null;
   S.phone.sheet = null; // 확인 시트가 떠 있으면 내려서 수정 가능하게
@@ -872,8 +884,17 @@ async function endManual() {
   const w = S.waiter;
   const reask = S.needReask && w;
   S.needReask = false;
+  const curStep = S.steps[S.stepIdx];
+  const done = curStep && w?.options ? S.manualDone?.[curStep.id] : undefined;
   resume();
-  if (reask) {
+  if (done !== undefined) {
+    // 지금 묻던 단계를 직접 끝냈으면(앱 실행·계좌 선택 등) 그 답으로 처리하고 다음 단계로
+    const id = typeof done === "string" ? done : "approve";
+    S.waiter = null;
+    setChips([]);
+    logEvent("decision_manual", { choice: id });
+    w.resolve({ type: "button", id, manual: true });
+  } else if (reask) {
     // 낮은 자동화에서 내용이 바뀌었으면 바뀐 내용으로 다시 물음
     S.waiter = null;
     w.resolve({ type: "reask" });
@@ -930,9 +951,13 @@ async function run() {
 
 const resolveMsgs = (m) => (typeof m === "function" ? m(S) : m);
 
+// 참가자가 직접 조작으로 이미 끝낸 단계인지
+const manualDone = (step) => S.manualDone?.[step.id] !== undefined;
+
 // 단계 조작: act가 있으면 화면에서 누르고 입력하는 과정을 보여주며 진행, 없으면 바로 반영
 // announced=true: 바로 앞에서 이 조작을 알리는 문구("~할게요")를 말한 경우 → 조작 중에도 그 문구를 유지
 async function doApply(step, choice, { announced = false } = {}) {
+  if (manualDone(step)) { renderPhone(); return; } // 직접 조작으로 이미 화면이 바뀌어 있음
   if (step.act && !announced) {
     // 새 조작이 시작되면 이전 문구(이미 답한 질문, 이전 결과)는 지우고 "…" 표시
     resetStatus();
@@ -960,7 +985,7 @@ async function dwell(ms = 1800) {
 
 // 단계 준비: 문구를 말하기 전에 화면에서 찾는 과정 (예: 자주 탭으로 이동)
 async function doPre(step) {
-  if (!step.pre) return;
+  if (!step.pre || manualDone(step)) return;
   // 새 단계의 준비 동작이 시작되면 이전 단계 문구는 지우고 "…" 표시
   resetStatus();
   setStatus("", true);
@@ -971,7 +996,7 @@ async function doPre(step) {
 
 // 단계 시작 진행 문구 (예: "계좌를 확인하고 있어요 …") → 잠시 보여준 뒤 단계 진행
 async function sayBusy(step) {
-  if (!step.busy) return;
+  if (!step.busy || manualDone(step)) return;
   const ls = lines(step.busy, S);
   if (!ls.length) return;
   resetStatus();
@@ -992,6 +1017,7 @@ async function runLowStep(step) {
   if (step.kind === "password") return runPassword(step, step.low);
   if (step.kind === "error_amount") return runLowAmount(step);
 
+  if (manualDone(step) && step.low.options) { logEvent("step_done_manually"); return true; } // 이미 직접 한 단계는 묻지 않고 넘어감
   await sayBusy(step);
   await doPre(step);
   if (!step.low.options) {
@@ -1019,7 +1045,7 @@ async function runLowStep(step) {
     S.m.approvals++;
     logEvent("decision", { choice: c.id, via: c.via });
     if (c.id !== "reject" && step.low.options.some((o) => o.id === c.id)) {
-      const opening = step.low.opening ? lines(step.low.opening, S) : [];
+      const opening = step.low.opening && !manualDone(step) ? lines(step.low.opening, S) : [];
       for (const t of opening) await agentSay(t);
       await doApply(step, c.id, { announced: opening.length > 0 });
       if (step.act) await dwell(1000);
@@ -1122,7 +1148,9 @@ async function handleReject(step, c, said) {
       hint: "참가자가 도우미에게 팝업을 닫지 말라고 했습니다. 알겠다고 하고, 팝업 내용을 보시고 화면에서 직접 닫으시면 이어서 진행하겠다고 안내하세요.",
       fallback: "알겠어요. 팝업 내용을 보시고 직접 닫으시면 이어서 진행할게요.",
     });
-    await agentSay(r.reply);
+    // 안내를 대화창에서 먼저 보여준 뒤 앱 화면(전체)으로 전환
+    await agentSay(r.reply, { talk: true });
+    await sleep(2200 * PACE);
     let byUser = false;
     for (;;) {
       const res = await waitPopupClose();
@@ -1281,6 +1309,7 @@ async function runLowAmount(step) {
 // ---------- 높은 자동화 ----------
 async function runHighStep(step) {
   if (step.kind === "password") return runPassword(step, step.high);
+  if (manualDone(step) && step.kind !== "error_amount") { logEvent("step_done_manually"); return true; }
 
   let msgs = resolveMsgs(step.high.messages);
   let applyFirst = step.high.applyFirst;
@@ -1327,7 +1356,7 @@ async function runHighStep(step) {
     await say(msgs);
     await read();
     await gate();
-    if (step.high.opening) await say(lines(step.high.opening, S)); // 예: "은행 앱을 열고 있어요 …"
+    if (step.high.opening && !manualDone(step)) await say(lines(step.high.opening, S)); // 예: "은행 앱을 열고 있어요 …"
     await doApply(step, undefined, { announced: true });
     await dwell(900);
   }
@@ -1600,6 +1629,9 @@ function applyLLMSettings() {
   if (st) {
     st.textContent = LLM.enabled ? `Gemini 연결됨 · ${LLM.model}` : "Gemini 연결 안 됨";
     st.classList.toggle("off", !LLM.enabled);
+    // 최근 호출이 실패했으면 이유를 함께 (연구자 확인용)
+    const le = LLM.enabled ? store.get("llm_last_error", null) : null;
+    if (le?.error && Date.now() - Date.parse(le.at) < 24 * 3600 * 1000) st.textContent += ` · 최근 오류: ${le.error.slice(0, 80)}`;
   }
   store.set("gemini_model", LLM.model);
   const chip = $("#llm-chip");

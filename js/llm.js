@@ -135,7 +135,7 @@ const INTENT_MEANINGS = {
   find_other: "다른 계좌를 찾아보라고 함",
   direct_input: "계좌를 직접 입력하겠다고 함 (번호는 말하지 않음)",
   unsuitable_app: "지정된 앱이 아닌 다른 앱(다른 은행 앱, 전화, 카메라 등)을 말함",
-  pause: "바꿀 내용 없이 진행을 멈추라고만 함 (멈춰, 기다려 등)",
+  pause: "바꿀 값 없이 진행을 멈추라고 하거나 무언가 잘못됐다고 지적함 (멈춰, 기다려, 잘못했잖아, 이상해 등)",
   continue: "바꿀 것 없이 그대로(하던 대로) 진행하라고 함. 예: '그냥 해', '하던 거 해', '괜찮아 계속해', '없어'",
   cancel: "송금 자체를 취소하라고 함",
   other: "위 어느 것에도 해당하지 않음 (질문, 잡담, 이해하기 어려운 말 등)",
@@ -185,10 +185,13 @@ const LLM = {
         if (kind === "turn") schema = turnSchema(context.intents);
         const output = await geminiCall(this.key, this.model, buildPrompt(kind, text, llmContext), schema);
         if (kind === "turn" && !context.intents.includes(output.intent)) output.intent = "other";
-        return { output, source: "gemini", model: this.model, latency_ms: Math.round(performance.now() - started) };
+        this.lastError = null;
+        return { output, source: "gemini", model: workingModel || this.model, latency_ms: Math.round(performance.now() - started) };
       } catch (err) {
         const output = Rules[kind](text, context);
-        return { output, source: "rules", error: String(err.message || err), latency_ms: Math.round(performance.now() - started) };
+        this.lastError = String(err.message || err);
+        try { localStorage.setItem("llm_last_error", JSON.stringify({ at: new Date().toISOString(), error: this.lastError })); } catch {}
+        return { output, source: "rules", error: this.lastError, latency_ms: Math.round(performance.now() - started) };
       }
     }
     return { output: Rules[kind](text, context), source: "rules", latency_ms: Math.round(performance.now() - started) };
@@ -228,7 +231,7 @@ function buildPrompt(kind, text, c) {
   return lines.join("\n");
 }
 
-async function geminiCall(key, model, prompt, schema) {
+async function geminiCallModel(key, model, prompt, schema) {
   const thinking = thinkingConfigFor(model);
   try {
     return await geminiRequest(key, model, prompt, schema, thinking);
@@ -237,6 +240,25 @@ async function geminiCall(key, model, prompt, schema) {
     if (thinking && /thinking/i.test(String(err.message))) return geminiRequest(key, model, prompt, schema, null);
     throw err;
   }
+}
+
+// 지정한 모델이 없으면(404) 대체 모델로 이어서 시도하고, 되는 모델을 기억함
+const FALLBACK_MODELS = ["gemini-flash-latest", "gemini-2.5-flash"];
+let workingModel = null;
+async function geminiCall(key, model, prompt, schema) {
+  const chain = [workingModel || model, ...FALLBACK_MODELS.filter((m) => m !== (workingModel || model))];
+  let lastErr;
+  for (const m of chain) {
+    try {
+      const out = await geminiCallModel(key, m, prompt, schema);
+      workingModel = m;
+      return out;
+    } catch (err) {
+      lastErr = err;
+      if (!/^(404|400)\b|not found|not supported/i.test(String(err.message))) throw err;
+    }
+  }
+  throw lastErr;
 }
 
 async function geminiRequest(key, model, prompt, schema, thinking) {
@@ -337,10 +359,13 @@ const Rules = {
       if (YES.test(t) && !NO.test(t)) return byIntent("approve");
     }
     if (allowed.has("unsuitable_app") && !QUESTION.test(t) && !NO.test(t)) return byIntent("unsuitable_app");
-    if (allowed.has("pause") && /(멈춰|멈춰봐|기다려|스톱|stop|잠깐만)/i.test(t) && extractAmount(t) == null) return byIntent("pause");
+    if (allowed.has("pause") && (/(멈춰|멈춰봐|기다려|스톱|stop|잠깐만|이상해|잘못)/i.test(t) || NO.test(t)) && extractAmount(t) == null && !/메모|통장\s?표기|적금|주거래/.test(t)) return byIntent("pause");
 
     const amount = extractAmount(t);
     if (amount != null && allowed.has("set_amount")) return out("set_amount", { amount_won: amount });
+    // 값 없이 "금액이 잘못됐어" / "메모가 틀렸어" → 무엇으로 바꿀지 되물음
+    if (amount == null && allowed.has("set_amount") && /(금액|돈|액수|얼마)/.test(t) && !QUESTION.test(t.replace(/얼마/, ""))) return out("other", { reply: "송금액을 얼마로 바꿀까요?" });
+    if (allowed.has("set_memo") && /메모|통장\s?표기/.test(t) && /(잘못|틀렸|틀려|이상|다르)/.test(t) && !/\d+기/.test(t)) return out("other", { reply: "메모를 어떻게 바꿀까요?" });
     const acct = extractAccount(t);
     if (acct && allowed.has("set_account")) return out("set_account", { account_number: acct });
     if (allowed.has("set_source") && /(적금|주거래)/.test(t)) return out("set_source", { source_account: /적금/.test(t) ? "savings" : "main" });
