@@ -93,13 +93,65 @@ function resetStatus() {
   S.pendingLines = [];
 }
 
-// 진행 중에 한 말은 우선 진행 카드에만 보이고, 참가자의 답이 필요해지면 그 말을 대화창 말풍선으로 옮김
-function promote() {
-  if (!S?.pendingLines?.length) return;
-  const ls = S.pendingLines; S.pendingLines = [];
+// 진행 중에 한 말은 우선 진행 카드에만 보이고, 참가자의 답이 필요해지면 그 말을 보여줌
+// ask=true(버튼·키패드로 답하는 질문): 진행 카드 안에 질문과 선택지를 함께 (메타 뮤즈 승인 카드처럼)
+// ask=false(말로 답하는 질문): 대화창 말풍선으로
+function promote(ask = false) {
+  const ls = S?.pendingLines || [];
+  if (ask && cardLive()) {
+    if (ls.length) {
+      freezeQuestion();
+      S.pendingLines = [];
+      const q = $("#rc-q");
+      q.textContent = ls.join("\n");
+      q.hidden = false;
+    }
+    $("#run-card").classList.add("asking");
+    setCard({ status: "확인이 필요해요", thinking: false });
+    placeCard();
+    return;
+  }
+  if (!ls.length) return;
+  S.pendingLines = [];
   ls.forEach((t) => renderBubble("agent", t));
   setCard({ status: "답변을 기다리고 있어요", thinking: false });
 }
+
+const cardLive = () => Boolean($("#run-card") && S?.running && !S.finished);
+
+// 카드 안 질문에 답하면 그 질문을 대화 기록(말풍선)으로 남기고 카드는 다시 진행 상태로
+function freezeQuestion() {
+  const c = $("#run-card");
+  if (!c) return;
+  const q = c.querySelector("#rc-q");
+  if (q.textContent.trim()) {
+    const div = document.createElement("div");
+    div.className = "bubble agent";
+    div.textContent = q.textContent;
+    chat().insertBefore(div, c);
+  }
+  q.textContent = "";
+  q.hidden = true;
+  c.querySelector("#rc-choices").innerHTML = "";
+  c.classList.remove("asking");
+}
+
+function transferSummary() {
+  const f = S.form;
+  const rows = [
+    ["출금 계좌", ACCOUNTS[f.source].label],
+    ["받는 분", f.recipientCustom ? f.recipientCustom : "김영숙 · 농협 302-1234-5678"],
+    ["보낼 금액", won0(f.amount)],
+    ...(S.complexity === "B" ? [["받는 분 통장표기", f.memo || `30기 ${S.cfg.name}`]] : []),
+  ];
+  const div = document.createElement("div");
+  div.className = "rc-summary";
+  div.innerHTML = rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join("");
+  return div;
+}
+
+// 선택지를 넣을 곳: 진행 중에는 진행 카드 안, 그 외에는 대화창 아래
+const chipsBox = () => (cardLive() ? $("#rc-choices") : $("#chips"));
 
 // ---------- 진행 카드 (대화창 안: 할 일 처리 중 / 짧은 진행 문구 / 실행화면 보기) ----------
 // 중지는 입력창의 보내기 버튼이 작업 중에 중지 버튼으로 바뀌고, 직접 조작은 중지한 뒤 선택지로 제시
@@ -111,7 +163,9 @@ function ensureRunCard() {
   c.className = "run-card";
   c.innerHTML = `<div class="rc-head"><span class="rc-icon"><span class="ms">auto_awesome</span></span>
       <div class="rc-text"><b id="rc-title">할 일 처리하는 중</b><small id="rc-status"></small></div></div>
-    <button type="button" id="rc-open" class="rc-open">실행화면 보기</button>`;
+    <div id="rc-q" class="rc-q" hidden></div>
+    <div id="rc-choices" class="rc-choices"></div>
+    <button type="button" id="rc-open" class="rc-open"><span class="ms">open_in_full</span> 실행화면 보기</button>`;
   chat().insertBefore(c, $("#chips"));
   c.querySelector("#rc-open").onclick = () => showRun(true);
   scrollChat();
@@ -223,12 +277,15 @@ async function sayKey(key, vars, opts) {
 // 승인/거부·단일 버튼은 알약 버튼, 그 외 여러 선택지는 세로 목록(stacked list)
 function setChips(options, onPick) {
   const opts = options || [];
-  if (opts.length) promote(); // 답이 필요해지면 방금 한 말을 대화창 말풍선으로
+  if (opts.length) promote(true); // 답이 필요해지면 방금 한 말을 질문으로 (진행 카드 안)
+  else freezeQuestion(); // 답했으면 질문을 대화 기록으로
   const pill = ["approve", "reject", "manual", "resume"];
   const isList = opts.length >= 2 && !opts.every((o) => pill.includes(o.id));
-  ["#chips", "#pv-chips"].forEach((sel) => {
-    const box = $(sel);
+  $("#chips").innerHTML = "";
+  [chipsBox(), $("#pv-chips")].forEach((box) => {
     box.innerHTML = "";
+    // 최종 확인 질문: 대화창에서도 송금 내용을 볼 수 있게 요약을 함께 (실행화면의 확인 시트와 같은 내용)
+    if (box.id === "rc-choices" && opts.some((o) => o.id === "approve") && S.steps[S.stepIdx]?.id === "final") box.appendChild(transferSummary());
     let parent = box;
     if (isList) {
       parent = document.createElement("div");
@@ -398,12 +455,13 @@ function syncControls() {
   $("#send").disabled = !canTalk;
   $("#mic").disabled = !canTalk;
   $("#msg").placeholder = canTalk ? "AI에게 말하기…" : S.finished ? "과업이 끝났어요" : S.manual ? "직접 조작 중이에요" : "AI가 작업 중이에요";
-  document.querySelectorAll("#chips .chip, #pv-chips .chip").forEach((b) => (b.disabled = S.paused && !S.stopped));
+  document.querySelectorAll("#chips .chip, #pv-chips .chip, #rc-choices .chip").forEach((b) => (b.disabled = S.paused && !S.stopped));
 
   const live = S.running && !S.finished && !S.pinOpen && !S.pwWait;
   $("#btn-stop").disabled = !live || S.paused;
   $("#btn-manual").disabled = !live || S.paused;
   $("#run-card")?.classList.toggle("ended", S.finished);
+  if (!S.finished) setCard({ title: S.stopped || S.manual ? "작업을 멈췄어요" : "할 일 처리하는 중" });
   syncSendButton();
   $("#pv-title").textContent = S.finished ? "작업 완료" : S.paused && !S.manual ? "작업 멈춤" : "작업 진행 중";
   syncView();
@@ -1223,7 +1281,7 @@ function waitPin() {
     S.pinResolve = () => { S.waiter = null; setChips([]); resolve({ type: "pin" }); };
     S.waiter = { resolve: (r) => { S.pinResolve = null; resolve(r); }, options: null, pin: true };
     setChips([]);
-    promote();
+    promote(true);
     renderPinCard();
     syncControls();
   });
@@ -1231,9 +1289,9 @@ function waitPin() {
 
 const PIN_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
 function renderPinCard() {
-  const box = $("#chips");
+  const box = chipsBox();
   box.innerHTML = `<div class="pw-card">
-    <div class="pw-head"><span class="bk-logo sm"><i></i></span><span><b>계좌 비밀번호</b><small>${esc(BANK_NAME)} · ${esc(ACCOUNTS[S.form.source].label)}</small></span></div>
+    <div class="pw-head"><span class="bk-logo sm"><i></i></span><span><b>계좌 비밀번호 4자리</b><small>${esc(BANK_NAME)} · ${esc(ACCOUNTS[S.form.source].label)}</small></span></div>
     <div class="pw-dots">${[0, 1, 2, 3].map((i) => `<i class="${i < S.phone.pin.length ? "on" : ""}"></i>`).join("")}</div>
     <div class="pw-keys">${PIN_KEYS.map((k) => (k ? `<button type="button" data-k="${k}">${k === "del" ? '<span class="ms">backspace</span>' : k}</button>` : "<span></span>")).join("")}</div>
     <p class="pw-note"><span class="ms">lock</span>비밀번호는 AI에게 전달되지 않아요</p></div>`;
