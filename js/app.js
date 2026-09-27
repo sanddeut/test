@@ -110,7 +110,7 @@ function promote(ask = false) {
       q.textContent = ls.join("\n");
       tagSrc(q, q.textContent);
       q.hidden = false;
-    } else if (!$("#rc-q").textContent.trim() && S.lastQuestion) {
+    } else if (!$("#rc-q").textContent.trim() && S.lastQuestion && !lastBubbleAsks()) {
       // 같은 질문으로 돌아온 경우(거부 후 "그대로 해", 직접 조작 후 복귀): 마지막 질문을 다시 카드에
       $("#rc-q").textContent = S.lastQuestion;
       tagSrc($("#rc-q"), S.lastQuestion);
@@ -127,6 +127,12 @@ function promote(ask = false) {
   if (!ls.length) return;
   S.pendingLines = [];
   ls.forEach((t) => renderBubble("agent", t));
+}
+
+// 바로 앞 AI 말풍선이 이미 질문으로 끝났으면(예: LLM 응답 "…송금할까요?") 카드에 같은 질문을 반복하지 않음
+function lastBubbleAsks() {
+  const last = [...chat().querySelectorAll(".bubble")].at(-1);
+  return Boolean(last?.classList.contains("agent") && /[?？]\s*$/.test(last.textContent));
 }
 
 const cardLive = () => Boolean($("#run-card") && S?.running && !S.finished);
@@ -446,7 +452,7 @@ async function askChoice(options, said, extra = [], hint) {
     const ids = options.map((o) => o.id);
     const o = await turn(r.text, { said, intents: [...ids, ...extra, "other"], hint });
     if (ids.includes(o.intent) || extra.includes(o.intent)) return { id: o.intent, via: "text", text: r.text, out: o };
-    await agentSay(o.reply);
+    await agentSay(o.reply, { talk: true });
   }
 }
 
@@ -830,7 +836,7 @@ async function handleStop(via) {
     if (o.intent === "cancel") { S.stopped = false; return cancelTransfer(); }
     if (o.intent === "continue") break;
     said = o.reply;
-    await agentSay(o.reply);
+    await agentSay(o.reply, { talk: true });
   }
   S.stopped = false;
   setChips([]);
@@ -1126,7 +1132,7 @@ async function handleReject(step, c, said) {
       if (o.intent === "approve") return launch();
       // 지정되지 않은 앱 / 기타 → 응답 후 지정된 앱 실행 여부를 다시 물음
       said = o.reply;
-      await agentSay(o.reply);
+      await agentSay(o.reply, { talk: true });
       const c = await askChoice(APPROVE, said, ["unsuitable_app"], opts.hint);
       if (c.id === "approve") return launch();
       if (c.id === "reject" || c.id === "__reask") { await agentSay(ask); said = ask; o = null; continue; }
@@ -1149,7 +1155,7 @@ async function handleReject(step, c, said) {
       if (o.intent === "find_other") {
         // 다른 계좌를 찾아도 같은 계좌만 나옴 → 같은 계좌와 직접 입력 가능을 안내하고 승인을 다시 물음
         logEvent("find_other_account");
-        await agentSay(o.reply);
+        await agentSay(o.reply, { talk: true });
         return "reask";
       }
       if (o.intent === "set_account" && o.account_number) {
@@ -1166,7 +1172,7 @@ async function handleReject(step, c, said) {
       }
       if (o.intent === "approve") { await doApply(step); return "done"; }
       if (o.intent === "cancel") { await cancelTransfer(); return "cancel"; }
-      await agentSay(o.reply);
+      await agentSay(o.reply, { talk: true });
       o = null;
     }
   }
@@ -1198,7 +1204,7 @@ async function handleReject(step, c, said) {
         await sayKey("popup.closed");
         break;
       }
-      await agentSay(t.reply);
+      await agentSay(t.reply, { talk: true });
     }
     if (byUser) { step.apply(S); renderPhone(); } else await doApply(step);
     return "done";
@@ -1222,7 +1228,7 @@ async function handleReject(step, c, said) {
       }
       if (o.intent === "continue") return "reask";
       if (o.intent === "cancel") { await cancelTransfer(); return "cancel"; }
-      await agentSay(o.reply);
+      await agentSay(o.reply, { talk: true });
       o = null;
     }
   }
@@ -1252,7 +1258,7 @@ async function handleReject(step, c, said) {
       return "retry";
     }
     if (o.intent === "cancel") { await cancelTransfer(); return "cancel"; }
-    if (o.intent !== "continue") await agentSay(o.reply);
+    if (o.intent !== "continue") await agentSay(o.reply, { talk: true });
     return "reask";
   }
 
@@ -1312,7 +1318,7 @@ async function runLowAmount(step) {
       o = await turn(await waitText(), {
         said: corr.lowAsk(S),
         intents: ["set_amount", "continue", "cancel", "other"],
-        hint: "금액 외의 것을 바꾸고 싶다고 하면 그 말에 짧게 답하고, 지금은 송금액을 입력하는 단계라는 흐름으로 자연스럽게 돌아오세요.",
+        hint: `송금액을 말하지 않았으면(잡담, 감정 표현, 금액 외 요청 등) reply는 발화를 짧게 받아준 뒤 "송금액을 ${won(pending)}으로 입력할까요? 다른 금액이면 말씀해주세요."처럼 현재 금액으로 입력할지 묻는 형태로 끝내. 시나리오에 없는 개념(단계 수 등)을 만들어내지 마.`,
       });
     }
     if (o.intent === "set_amount" && o.amount_won) {
@@ -1326,7 +1332,7 @@ async function runLowAmount(step) {
     }
     if (o.intent === "continue") break;
     if (o.intent === "cancel") return cancelTransfer();
-    await agentSay(o.reply); // 금액 외 요청 → 응답 후 같은 질문의 선택지로 복귀
+    await agentSay(o.reply, { talk: true }); // 금액 외 요청 → 응답(말풍선) 후 같은 질문의 선택지로 복귀
   }
   S.form.amount = pending;
   S.phone.pendingAmount = null;
