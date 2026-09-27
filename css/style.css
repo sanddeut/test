@@ -543,7 +543,7 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .pw-note .ms { font-size: 15px; vertical-align: 0; }
 .bubble.pw-done { display: inline-flex; align-items: center; gap: 6px; }
 .bubble.pw-done .ms { font-size: 18px; vertical-align: 0; }
-.send[data-mode="stop"] { background: #1c1d21; }
+.send[data-mode="stop"] { background: #d93025; }
 .send[data-mode="stop"] .ms { font-size: 20px; vertical-align: 0; }
 .start-btns { margin-top: 16px; }
 .start-btns .btn-ghost { background: #fff; }
