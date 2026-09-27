@@ -291,8 +291,8 @@ function buildSteps(complexity, participantName) {
     low: {
       messages: msg("source"),
       options: [
-        { id: "main", label: "주거래" },
-        { id: "savings", label: "적금출금 계좌" },
+        { id: "main", label: "주거래", desc: `잔액 ${ACCOUNTS.main.balance.toLocaleString("ko-KR")}원` },
+        { id: "savings", label: "적금출금 계좌", desc: `잔액 ${ACCOUNTS.savings.balance.toLocaleString("ko-KR")}원` },
       ],
     },
     high: { messages: msg("source") },

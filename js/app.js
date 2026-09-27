@@ -136,6 +136,35 @@ function freezeQuestion() {
   c.classList.remove("asking");
 }
 
+// 단계별 재구성 UI (승인 질문과 함께 진행 카드 안에 표시)
+function stepPreview() {
+  const id = S.steps[S.stepIdx]?.id;
+  const el = (cls, html) => { const d = document.createElement("div"); d.className = `rc-pv ${cls}`; d.innerHTML = html; return d; };
+  const appTile = (name, icon, color, sub) =>
+    el("pv-app", `<span class="pv-icon" style="background:${color}"><span class="ms">${icon}</span></span><span><b>${esc(name)}</b><small>${esc(sub)}</small></span>`);
+  const acct = (title, sub) =>
+    el("pv-acct", `<span class="bk-logo nh sm"><i></i></span><span><b>${esc(title)}</b><small>${esc(sub)}</small></span>`);
+  const kv = (rows) => el("rc-summary", rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join(""));
+  switch (id) {
+    case "sms_open": return appTile("메시지", "chat", "#1a73e8", "문자 앱");
+    case "sms_account":
+      return el("pv-sms", `<div class="pv-sms-from"><span class="avatar">김</span><b>김영숙</b></div>
+        <p>회비 입금 계좌: <mark>농협 302-1234-5678 (김영숙)</mark></p>`);
+    case "bank_open": return appTile(BANK_NAME, "account_balance", "#2f7cf6", "은행 앱");
+    case "popup":
+      return el("pv-evt", `<span class="ms fill">redeem</span><span><b>가을맞이 정기적금 이벤트</b><small>지금 가입하면 최대 연 4.5% 우대금리!</small></span>`);
+    case "recipient":
+      return S.complexity === "B" ? null : acct("동창회 총무 · 김영숙", "농협 302-1234-5678 · 자주 사용하는 계좌");
+    case "amount": {
+      const amt = S.phone.pendingAmount ?? S.form.amount ?? ERROR_AMOUNT;
+      return el("pv-amount", `<small>김영숙님께 보낼 금액</small><b>${esc(won0(amt))}</b>`);
+    }
+    case "memo": return kv([["받는 분 통장표기", S.pendingMemo ?? S.form.memo ?? `30기 ${S.cfg.name}`]]);
+    case "final": return transferSummary();
+    default: return null;
+  }
+}
+
 function transferSummary() {
   const f = S.form;
   const rows = [
@@ -284,8 +313,8 @@ function setChips(options, onPick) {
   $("#chips").innerHTML = "";
   [chipsBox(), $("#pv-chips")].forEach((box) => {
     box.innerHTML = "";
-    // 최종 확인 질문: 대화창에서도 송금 내용을 볼 수 있게 요약을 함께 (실행화면의 확인 시트와 같은 내용)
-    if (box.id === "rc-choices" && opts.some((o) => o.id === "approve") && S.steps[S.stepIdx]?.id === "final") box.appendChild(transferSummary());
+    // 진행 카드 안 질문: 실행화면 대신, 판단에 필요한 내용을 재구성한 UI를 함께 보여줌
+    if (box.id === "rc-choices" && opts.some((o) => o.id === "approve")) { const pv = stepPreview(); if (pv) box.appendChild(pv); }
     let parent = box;
     if (isList) {
       parent = document.createElement("div");

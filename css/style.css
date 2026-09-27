@@ -526,8 +526,8 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .rc-choices .chip:not(.choice) { flex: 1; padding: 12px 10px; }
 .rc-choices .choice-list, .rc-choices .pw-card { width: 100%; }
 .rc-choices .pw-card { box-shadow: none; }
-/* 질문 중에는 실행화면 보기를 작은 글자 버튼으로 */
-.run-card.asking .rc-open { background: none; box-shadow: none; padding: 2px; font-size: 14px; }
+/* 질문 중에는 실행화면 보기 대신 재구성한 UI를 보여줌 */
+.run-card.asking .rc-open { display: none; }
 .rc-open:disabled { opacity: .4; }
 .run-card.ended .rc-open { display: none; }
 
@@ -556,3 +556,19 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .rc-summary div + div { border-top: 1px solid #eef0f3; }
 .rc-summary span { color: #6b6f7a; flex: none; }
 .rc-summary b { font-weight: 600; text-align: right; }
+.rc-pv { width: 100%; background: #fff; border-radius: 14px; box-shadow: 0 0 0 1px #e3e6ea; }
+.pv-app, .pv-acct, .pv-evt { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.pv-app b, .pv-acct b, .pv-evt b { display: block; font-size: 15.5px; font-weight: 600; }
+.pv-app small, .pv-acct small, .pv-evt small { display: block; color: #6b6f7a; font-size: 13px; margin-top: 1px; }
+.pv-icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+.pv-icon .ms { color: #fff; font-size: 22px; vertical-align: 0; }
+.pv-acct .bk-logo { width: 40px; height: 40px; }
+.pv-evt > .ms { font-size: 30px; color: #e8710a; flex: none; vertical-align: 0; }
+.pv-sms { padding: 12px 14px; }
+.pv-sms-from { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.pv-sms-from .avatar { width: 26px; height: 26px; border-radius: 50%; background: #e3ecfd; color: #1a73e8; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.pv-sms p { margin: 0; font-size: 14.5px; line-height: 1.5; }
+.pv-sms mark { background: #fff3b0; padding: 0 2px; border-radius: 3px; }
+.pv-amount { padding: 14px; text-align: center; }
+.pv-amount small { display: block; color: #6b6f7a; font-size: 13px; }
+.pv-amount b { display: block; font-size: 26px; font-weight: 700; margin-top: 2px; letter-spacing: -0.5px; }
