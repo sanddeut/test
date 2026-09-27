@@ -140,9 +140,8 @@ body.in-session .topbar { display: none; }
 .txt-btn[hidden], .primary-btn[hidden] { display: inline-block !important; visibility: hidden; }
 
 /* 직접 작업 */
-.direct-bar { align-items: center; padding: 4px 6px; flex: none; min-height: 44px; }
-.direct-back { border: 0; background: none; width: 40px; height: 40px; display: grid; place-items: center; color: #1c1d21; }
-.direct-back .ms { font-size: 20px; vertical-align: 0; }
+.direct-bar { position: relative; align-items: center; justify-content: center; padding: 10px 10px 2px; flex: none; min-height: 40px; }
+.direct-bar b { font-size: 15px; font-weight: 500; }
 
 /* 대화창 (전체 화면) */
 .chat-head { align-items: center; gap: 8px; padding: 8px 14px; flex: none; }
