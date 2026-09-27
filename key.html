@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..600,0..1,0&display=block" rel="stylesheet">
   <script>document.write('<link rel="stylesheet" href="css/style.css?v=' + Date.now() + '">');</script>
+  <style>.diag{white-space:pre-wrap;font-size:12.5px;line-height:1.55;background:#f4f6f9;border-radius:10px;padding:12px;margin-top:10px;word-break:break-all}</style>
 </head>
 <body>
   <main class="setup">
@@ -24,6 +25,8 @@
         <button type="button" id="btn-clear" class="btn-ghost danger">이 브라우저에서 키 지우기</button>
       </div>
       <p id="msg" class="test-out" aria-live="polite"></p>
+      <button type="button" id="btn-test" class="btn-ghost">연결 진단</button>
+      <pre id="diag" class="diag" hidden></pre>
       <p class="hint">공유 링크를 한 번 열면 그 기기에 키가 저장되고, 주소창에서 키 부분은 바로 지워져요. 키가 담겨 있으니 보여드릴 분께만 보내세요.</p>
       <input id="share-link" class="share-link" readonly hidden>
       <p class="hint">프롬프트·시나리오 문구를 이 브라우저에서 고쳤다면, 아래 버튼으로 복사해 개발 요청 시 붙여넣으면 코드 기본값으로 반영할 수 있어요.</p>
@@ -69,6 +72,40 @@
       try { await navigator.clipboard.writeText(text); msg("고친 문구를 복사했어요. 그대로 붙여넣어 보내주세요."); }
       catch { msg("아래 칸을 길게 눌러 전체 선택 후 복사하세요."); }
     };
+    // 연결 진단: ① 키 저장 여부 ② 키로 쓸 수 있는 모델 목록에 지정 모델이 있는지 ③ 실제 호출이 되는지
+    $("#btn-test").onclick = async () => {
+      const out = $("#diag"); out.hidden = false;
+      const log = (t) => (out.textContent += t + "\n");
+      out.textContent = "";
+      const { k, m } = save();
+      const BASE = "https://generativelanguage.googleapis.com/v1beta";
+      log(`① 키 저장: ${k ? "있음 (" + k.slice(0, 6) + "…)" : "없음 → 키를 넣고 저장하세요"}`);
+      if (!k) return;
+      const f = (url, opt = {}) => fetch(url, { ...opt, signal: AbortSignal.timeout(15000) }); // 15초 넘으면 실패로
+      log("   확인 중…");
+      const err = async (res) => { try { const j = await res.json(); return `${res.status} ${j.error?.status || ""} ${j.error?.message || ""}`; } catch { return String(res.status); } };
+      try {
+        const res = await f(`${BASE}/models?pageSize=200`, { headers: { "x-goog-api-key": k } });
+        if (!res.ok) { log(`② 모델 목록: 실패 — ${await err(res)}`); log("   → 키가 잘못됐거나, 키 제한(웹사이트/API) 설정에 막혔을 수 있어요."); return; }
+        const names = ((await res.json()).models || []).map((x) => x.name.replace(/^models\//, "")).filter((n) => n.startsWith("gemini"));
+        log(`② 모델 목록: ${names.length}개 · 지정 모델 ${m} ${names.includes(m) ? "있음" : "없음"}`);
+        if (!names.includes(m)) log(`   쓸 수 있는 Flash 모델: ${names.filter((n) => /flash/.test(n)).slice(0, 8).join(", ") || "-"}`);
+      } catch (e) { log(`② 모델 목록: 네트워크 오류 — ${e.message}`); return; }
+      for (const model of [m, "gemini-flash-latest", "gemini-2.5-flash"].filter((x, i, a) => a.indexOf(x) === i)) {
+        const t0 = performance.now();
+        try {
+          const res = await f(`${BASE}/models/${encodeURIComponent(model)}:generateContent`, {
+            method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": k },
+            body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "'안녕하세요'를 JSON {\"reply\": ...} 로 답해" }] }], generationConfig: { responseMimeType: "application/json" } }),
+          });
+          const ms = Math.round(performance.now() - t0);
+          if (res.ok) { log(`③ 호출 ${model}: 성공 (${ms}ms)`); if (model !== m) log(`   → 앱은 자동으로 ${model}을(를) 대신 써요.`); break; }
+          log(`③ 호출 ${model}: 실패 — ${await err(res)}`);
+        } catch (e) { log(`③ 호출 ${model}: 네트워크 오류 — ${e.message}`); }
+      }
+      try { const le = JSON.parse(localStorage.getItem("llm_last_error") || "null"); if (le) log(`참고) 앱에서 마지막 오류: ${le.error} (${new Date(le.at).toLocaleString("ko-KR")})`); } catch {}
+    };
+
     $("#btn-clear").onclick = () => { del("gemini_key"); $("#key").value = ""; msg("이 브라우저에서 키를 지웠어요."); };
   </script>
 </body>

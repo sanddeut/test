@@ -926,7 +926,7 @@ async function run() {
       await sleep(1800 * PACE); // 요청을 처리하는 것처럼 "…"을 잠시 보여줌
       break;
     }
-    await agentSay(o.clarification || "송금하실 분과 금액을 말씀해주세요.");
+    await agentSay(o.clarification || "저는 휴대폰 앱을 대신 조작해서 송금이나 문자 확인 같은 일을 도와드릴 수 있어요. 어떤 일을 도와드릴까요?");
   }
 
   S.running = true;
@@ -1865,7 +1865,8 @@ function setupPasteKey() {
   const box = $("#paste-key");
   // 평소에는 숨기고, 「연결 안 됨」 문구를 누르면 링크 붙여넣기 칸이 열림
   const refresh = () => { applyLLMSettings(); if (LLM.enabled) box.hidden = true; };
-  $("#llm-status-text").onclick = () => { if (!LLM.enabled) box.hidden = !box.hidden; };
+  // 키가 없으면 링크 붙여넣기 칸, 키가 있으면 연결 진단 페이지로
+  $("#llm-status-text").onclick = () => { if (!LLM.enabled) box.hidden = !box.hidden; else location.href = "key.html"; };
   $("#btn-paste-key").onclick = () => {
     const ok = saveKeyFrom($("#paste-link").value);
     if (!ok) { alert("링크에서 키를 찾지 못했어요. 받은 링크 전체를 붙여넣어 주세요."); return; }

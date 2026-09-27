@@ -89,7 +89,8 @@ const OUTPUT_FORMAT = `# 출력 형식
 
 const LLM_TASKS = {
   request:
-    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 송금 요청이 아니거나 금액을 알 수 없을 때만 clarification에 되묻는 말(해요체, 2문장 이내)을 써.",
+    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 송금 요청이면 clarification은 null로 둬. 송금 요청인데 금액을 알 수 없을 때만 금액을 되물어. " +
+    "송금 요청이 아니면(인사, 잡담, 의미 없는 말, 다른 부탁 등) 먼저 송금을 꺼내지 말고, 발화를 짧게 받아준 뒤 휴대폰 앱을 대신 조작해서 할 수 있는 일(예: 송금·이체, 문자 확인, 앱 실행)을 알려주고 무엇을 도와드릴지 물어. clarification은 해요체 2문장 이내.",
   turn: "현재 상태에서 사용자가 말했어. 의도를 분류하고 필요한 값을 채운 뒤, reply를 써.",
 };
 
@@ -337,7 +338,9 @@ const Rules = {
       recipient_hint: (text.match(/(동창회\s*)?총무|김영숙|영숙/) || [null])[0],
       wants_sms_lookup: /(문자|메시지|카톡)/.test(text),
       memo: (text.match(/30기\s*[가-힣]{2,4}/) || [null])[0],
-      clarification: isTransfer ? null : "어떤 일을 도와드릴까요? 송금하실 분과 금액을 말씀해주세요.",
+      clarification: isTransfer
+        ? (amount == null ? "얼마를 보내드릴까요?" : null)
+        : "저는 휴대폰 앱을 대신 조작해서 송금이나 문자 확인 같은 일을 도와드릴 수 있어요. 어떤 일을 도와드릴까요?",
     };
   },
 

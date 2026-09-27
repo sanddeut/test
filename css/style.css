@@ -591,3 +591,4 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 #llm-chip[data-on="err"] { background: #fde8e7; color: #b3261e; }
 .app-icon.live { cursor: pointer; }
 .app-icon.live .ai { box-shadow: 0 0 0 3px rgba(255,255,255,.9); }
+.llm-status { cursor: pointer; }
