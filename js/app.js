@@ -101,7 +101,8 @@ function promote() {
   setCard({ status: "답변을 기다리고 있어요", thinking: false });
 }
 
-// ---------- 진행 카드 (대화창 안: 할 일 처리 중 / 짧은 진행 문구 / 실행화면 보기·중지·직접 조작) ----------
+// ---------- 진행 카드 (대화창 안: 할 일 처리 중 / 짧은 진행 문구 / 실행화면 보기) ----------
+// 중지는 입력창의 보내기 버튼이 작업 중에 중지 버튼으로 바뀌고, 직접 조작은 중지한 뒤 선택지로 제시
 function ensureRunCard() {
   let c = $("#run-card");
   if (c) return c;
@@ -110,12 +111,9 @@ function ensureRunCard() {
   c.className = "run-card";
   c.innerHTML = `<div class="rc-head"><span class="rc-icon"><span class="ms">auto_awesome</span></span>
       <div class="rc-text"><b id="rc-title">할 일 처리하는 중</b><small id="rc-status"></small></div></div>
-    <button type="button" id="rc-open" class="rc-open">실행화면 보기</button>
-    <div class="rc-actions"><button type="button" id="rc-stop">중지</button><button type="button" id="rc-manual">직접 조작</button></div>`;
+    <button type="button" id="rc-open" class="rc-open">실행화면 보기</button>`;
   chat().insertBefore(c, $("#chips"));
   c.querySelector("#rc-open").onclick = () => showRun(true);
-  c.querySelector("#rc-stop").onclick = () => S && handleStop("button");
-  c.querySelector("#rc-manual").onclick = () => S && startManual();
   scrollChat();
   return c;
 }
@@ -199,15 +197,20 @@ async function agentSay(text, { gated = false, talk = false } = {}) {
     if (card) setStatus(null, false); else showTyping(false);
     if (!gated || !S.paused) break;
   }
-  if (card) S.pendingLines = [...(S.pendingLines || []), text];
+  // "~하고 있어요 …" 같은 진행 문구는 진행 카드에만 보이고 대화창 말풍선으로 옮기지 않음
+  if (card) { if (!isProgressLine(text)) S.pendingLines = [...(S.pendingLines || []), text]; }
   else appendBubble("agent", text);
   // 진행 화면 문구: 같은 단계의 연속 문구는 최근 2개까지 함께 보여줌 (예: "최종 확인해주세요" + 송금 내용)
-  const same = S.statusStep === S.stepIdx && S.statusLines;
-  S.statusLines = same ? [...S.statusLines, text].slice(-2) : [text];
+  let prev = S.statusStep === S.stepIdx && S.statusLines ? S.statusLines : [];
+  if (isProgressLine(prev.at(-1) || "")) prev = prev.slice(0, -1); // 진행 문구는 다음 문구가 나오면 사라짐
+  S.statusLines = [...prev, text].slice(-2);
   S.statusStep = S.stepIdx;
   setStatus(S.statusLines.join("\n"));
   logEvent("agent_message", { text, screen: screenKey(S.phone) + (S.phone.typedAmount ? `|${S.phone.typedAmount}` : "") });
 }
+
+// 진행 문구: "…" 또는 "..."으로 끝나는 문구 (예: "계좌를 확인하고 있어요 …")
+const isProgressLine = (t) => /(…|\.\.\.)\s*$/.test(t);
 
 // 시나리오 문구(키)를 말풍선으로: 여러 줄이면 줄마다 말풍선 하나
 async function sayKey(key, vars, opts) {
@@ -221,7 +224,8 @@ async function sayKey(key, vars, opts) {
 function setChips(options, onPick) {
   const opts = options || [];
   if (opts.length) promote(); // 답이 필요해지면 방금 한 말을 대화창 말풍선으로
-  const isList = opts.length >= 2 && !opts.every((o) => o.id === "approve" || o.id === "reject");
+  const pill = ["approve", "reject", "manual", "resume"];
+  const isList = opts.length >= 2 && !opts.every((o) => pill.includes(o.id));
   ["#chips", "#pv-chips"].forEach((sel) => {
     const box = $(sel);
     box.innerHTML = "";
@@ -241,7 +245,7 @@ function setChips(options, onPick) {
         b.className = "choice chip";
         b.innerHTML = `<span class="c-main"><b>${esc(o.label)}</b>${o.desc ? `<small>${esc(o.desc)}</small>` : ""}</span><span class="ms c-go">chevron_right</span>`;
       } else {
-        b.className = `chip ${o.id === "reject" ? "chip-ghost" : ""}`;
+        b.className = `chip ${o.id === "reject" || o.id === "manual" ? "chip-ghost" : ""}`;
         b.textContent = o.label;
       }
       b.onclick = () => onPick(o);
@@ -369,6 +373,22 @@ function onSubmit(e) {
   syncControls();
 }
 
+// 에이전트가 작업 중이면(참가자 답을 기다리는 중이 아니면) 보내기 버튼이 중지 버튼으로 바뀜. 글자를 입력하면 다시 보내기
+function isWorking() {
+  return Boolean(S && S.running && !S.finished && !S.paused && !S.waiter && !S.ivWaiter && !S.pwWait && !S.pinOpen);
+}
+function syncSendButton() {
+  const btn = $("#send");
+  if (!S) return;
+  const stop = isWorking() && !$("#msg").value.trim();
+  if (btn.dataset.mode !== (stop ? "stop" : "send")) {
+    btn.dataset.mode = stop ? "stop" : "send";
+    btn.innerHTML = `<span class="ms${stop ? " fill" : ""}">${stop ? "stop" : "arrow_upward"}</span>`;
+    btn.title = stop ? "중지" : "보내기";
+  }
+  if (stop) btn.disabled = false;
+}
+
 function syncControls() {
   if (!S) return;
   const canTalk =
@@ -383,12 +403,8 @@ function syncControls() {
   const live = S.running && !S.finished && !S.pinOpen && !S.pwWait;
   $("#btn-stop").disabled = !live || S.paused;
   $("#btn-manual").disabled = !live || S.paused;
-  const rc = $("#run-card");
-  if (rc) {
-    rc.querySelector("#rc-stop").disabled = !live || S.paused;
-    rc.querySelector("#rc-manual").disabled = !live || S.paused;
-    rc.classList.toggle("ended", S.finished);
-  }
+  $("#run-card")?.classList.toggle("ended", S.finished);
+  syncSendButton();
   $("#pv-title").textContent = S.finished ? "작업 완료" : S.paused && !S.manual ? "작업 멈춤" : "작업 진행 중";
   syncView();
 }
@@ -607,15 +623,22 @@ async function handleStop(via) {
   resetStatus(); // 진행 문구를 새로 시작
   let said = await sayKey("stop.ask");
   for (;;) {
-    setChips([{ id: "resume", label: "계속하기" }], (o) => {
+    setChips([{ id: "manual", label: "직접 조작" }, { id: "resume", label: "계속하기" }], (o) => {
       if (!S.ivWaiter) return;
       const w = S.ivWaiter; S.ivWaiter = null;
       appendBubble("user", o.label);
-      logEvent("user_button", { choice: "resume", label: o.label });
-      w({ resume: true });
+      logEvent("user_button", { choice: o.id, label: o.label });
+      w({ [o.id]: true });
     });
     const r = await new Promise((res) => { S.ivWaiter = res; syncControls(); });
     if (r?.resume) break;
+    if (r?.manual) {
+      // 중지 상태에서 직접 조작으로 넘어감 → 끝나면 endManual이 원래 단계로 되돌림
+      S.stopped = false;
+      S.paused = false;
+      setChips([]);
+      return startManual();
+    }
     setChips([]);
     const o = await turn(r, {
       said,
@@ -790,6 +813,17 @@ async function doPre(step) {
   await dwell(150);
 }
 
+// 단계 시작 진행 문구 (예: "계좌를 확인하고 있어요 …") → 잠시 보여준 뒤 단계 진행
+async function sayBusy(step) {
+  if (!step.busy) return;
+  const ls = lines(step.busy, S);
+  if (!ls.length) return;
+  resetStatus();
+  for (const t of ls) await agentSay(t, { gated: S.automation === "high" });
+  await sleep(1500 * PACE);
+  if (S.automation === "high") await gate();
+}
+
 // ---------- 낮은 자동화 ----------
 // 거부 유형별로 선택지 단계에서 바로 받아들일 수 있는 의도
 const REJECT_EXTRA = {
@@ -802,6 +836,7 @@ async function runLowStep(step) {
   if (step.kind === "password") return runPassword(step, step.low);
   if (step.kind === "error_amount") return runLowAmount(step);
 
+  await sayBusy(step);
   await doPre(step);
   if (!step.low.options) {
     // 안내만 하는 단계: 문구와 화면 조작 순서를 맞춤
@@ -828,7 +863,9 @@ async function runLowStep(step) {
     S.m.approvals++;
     logEvent("decision", { choice: c.id, via: c.via });
     if (c.id !== "reject" && step.low.options.some((o) => o.id === c.id)) {
-      await doApply(step, c.id);
+      const opening = step.low.opening ? lines(step.low.opening, S) : [];
+      for (const t of opening) await agentSay(t);
+      await doApply(step, c.id, { announced: opening.length > 0 });
       if (step.act) await dwell(1000);
       break;
     }
@@ -853,7 +890,8 @@ async function handleReject(step, c, said) {
     const ask = line("app.which", S);
     const launch = async () => {
       await sayKey(step.low.launched);
-      await doApply(step);
+      if (step.low.opening) await sayKey(step.low.opening);
+      await doApply(step, undefined, { announced: true });
       return "done";
     };
     const opts = {
@@ -1104,6 +1142,7 @@ async function runHighStep(step) {
   }
 
   await gate();
+  await sayBusy(step);
   await doPre(step);
   const say = async (list) => {
     for (const m of list) {
@@ -1132,6 +1171,7 @@ async function runHighStep(step) {
     await say(msgs);
     await read();
     await gate();
+    if (step.high.opening) await say(lines(step.high.opening, S)); // 예: "은행 앱을 열고 있어요 …"
     await doApply(step, undefined, { announced: true });
     await dwell(900);
   }
@@ -1686,6 +1726,12 @@ function init() {
 
   $("#setup-form").onsubmit = (e) => { e.preventDefault(); start(); };
   $("#composer").onsubmit = onSubmit;
+  $("#send").addEventListener("click", (e) => {
+    if ($("#send").dataset.mode !== "stop" || !S) return;
+    e.preventDefault();
+    handleStop("button");
+  });
+  $("#msg").addEventListener("input", syncSendButton);
   $("#btn-stop").onclick = () => S && handleStop("button");
   $("#btn-manual").onclick = () => S && startManual();
   $("#btn-manual-done").onclick = () => S && endManual();

@@ -522,11 +522,7 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .rc-text small { color: #5f6470; font-size: 14px; line-height: 1.45; word-break: keep-all; overflow-wrap: break-word; min-height: 1.45em; }
 .rc-text small.thinking::after { content: " …"; animation: blink 1s infinite; }
 .rc-open { border: 0; background: #0b57d0; color: #fff; border-radius: 999px; padding: 12px; font-size: 16px; font-weight: 500; }
-.rc-actions { display: flex; justify-content: center; gap: 4px; }
-.rc-actions button { border: 0; background: none; color: #0b57d0; font-size: 14.5px; font-weight: 500; padding: 6px 14px; }
-.rc-actions button + button { border-left: 1px solid #cfd4dc; border-radius: 0; }
-.rc-actions button:disabled, .rc-open:disabled { opacity: .4; }
-.run-card.ended .rc-actions { display: none; }
+.rc-open:disabled { opacity: .4; }
 .run-card.ended .rc-open { display: none; }
 
 /* 대화창 비밀번호 입력 (보안 키패드) */
@@ -544,3 +540,5 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .pw-note .ms { font-size: 15px; vertical-align: 0; }
 .bubble.pw-done { display: inline-flex; align-items: center; gap: 6px; }
 .bubble.pw-done .ms { font-size: 18px; vertical-align: 0; }
+.send[data-mode="stop"] { background: #1c1d21; }
+.send[data-mode="stop"] .ms { font-size: 20px; vertical-align: 0; }

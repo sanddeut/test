@@ -82,25 +82,28 @@ function scriptDefaults(cond) {
       add("sms_open", "문자 앱 실행", "승인 요청", "먼저 문자 앱을 실행할까요?");
       add("sms_open.launched", "문자 앱 실행", "승인 후 / 거부 후 앱 이름을 말했을 때", "문자 앱을 실행할게요.");
     } else add("sms_open", "문자 앱 실행", "안내", "먼저 문자 앱을 실행할게요.");
-    add("sms_find", "총무 문자 찾기", "안내", "문자 목록 확인 중 …\n김영숙 님의 문자를 찾았어요.");
+    add("sms_find", "총무 문자 찾기", "안내", "문자 목록 확인 중 …\n김영숙 님의 문자를 찾았어요.\n계좌번호를 찾는 중 …");
     add("sms_account", "문자 속 계좌번호 찾아 복사하기", low ? "승인 요청" : "안내",
       low ? "문자에서 ‘회비 입금 계좌’를 찾았어요. (김영숙 농협 302-1234-5678)\n이 계좌로 송금을 진행할까요?"
           : "문자에서 ‘회비 입금 계좌’를 찾았어요. (김영숙 농협 302-1234-5678)\n이 계좌로 송금을 진행할게요.");
   }
 
   if (low) {
-    add("bank_open", "은행 앱 실행", "승인 요청", B ? "이제 송금을 위해 은행 앱을 실행할까요?" : "은행 앱을 실행할까요?");
-    add("bank_open.launched", "은행 앱 실행", "승인 후", B ? "이제 은행 앱을 실행할게요." : "은행 앱을 실행할게요.");
+    add("bank_open", "은행 앱 실행", "승인 요청", B ? "송금을 위해 은행 앱을 실행할까요?" : "은행 앱을 실행할까요?");
     add("app.which", "은행 앱 실행", "거부 시", "어떤 앱으로 실행할까요?");
+    add("bank_open.launched", "은행 앱 실행", "거부 후 은행 앱을 말했을 때", "은행 앱을 실행할게요.");
   } else add("bank_open", "은행 앱 실행", "안내", B ? "이제 은행 앱을 실행할게요." : "은행 앱을 실행할게요.");
+  // B2는 설계상 "열고 있어요" 문구 없음 (비워두면 말하지 않음)
+  add("bank_open.opening", "은행 앱 실행", "진행 문구 (앱을 여는 동안)", cond === "B2" ? "" : "은행 앱을 열고 있어요 …");
 
   if (B) {
     if (low) {
-      add("popup", "광고 팝업 닫기", "승인 요청", "이벤트 안내 팝업을 닫을까요?");
+      add("popup", "광고 팝업 닫기", "승인 요청", "이벤트 안내 팝업이 떴어요. 닫을까요?");
       add("popup.closed", "광고 팝업 닫기", "거부 후 닫아달라고 했을 때", "이벤트 안내 팝업을 닫았어요.");
     } else add("popup", "광고 팝업 닫기", "안내", "이벤트 안내 팝업을 닫았어요.");
   }
 
+  add("source.busy", "출금계좌 선택", "진행 문구 (계좌 확인 중)", "계좌를 확인하고 있어요 …");
   add("source", "출금계좌 선택", low ? "선택 요청" : "안내",
     low ? "계좌가 2개에요. 어떤 계좌에서 출금할까요?" : "2개의 계좌를 발견했어요.\n말씀하신 ‘주거래 통장’에서 출금할게요.");
 
@@ -108,6 +111,7 @@ function scriptDefaults(cond) {
     add("recipient", "받는계좌 입력", "안내", low ? "문자에서 복사한 김영숙님(농협 302-1234-5678) 계좌를 입력할게요." : "문자에서 복사한 김영숙님(농협 302-1234-5678) 계좌를 입력했어요.");
     if (low) add("recipient.custom", "받는계좌 입력", "계좌번호를 직접 말했을 때", "{받는분}를 입력할게요.");
   } else {
+    add("recipient.busy", "받는계좌 입력", "진행 문구 (자주 사용하는 계좌 확인 중)", "자주 사용하는 계좌를 확인하고 있어요 …");
     add("recipient", "받는계좌 입력", low ? "승인 요청" : "안내",
       low ? "자주 사용하는 계좌 목록에서 ‘동창회 총무’ 김영숙님 계좌(농협 302-1234-5678)를 찾았어요. 이 계좌로 송금할까요?"
           : "자주 사용하는 계좌에서 ‘동창회 총무’ 김영숙님 계좌(농협 302-1234-5678)를 찾았어요.\n이 계좌로 송금할게요.");
@@ -138,7 +142,7 @@ function scriptDefaults(cond) {
     add("final.ask", "최종 이체 확인", "거부 시", "무엇을 수정할까요?");
   } else add("final", "최종 이체 확인", "안내", "{출금계좌}에서 {받는분}으로 {금액}을 보낼게요.");
 
-  add("password", "비밀번호 입력", "안내", "이체를 위해 계좌 비밀번호 4자리를 입력해주세요.");
+  add("password", "비밀번호 입력", "안내", "이체를 위해 계좌비밀번호 입력이 필요해요. 아래에 직접 입력해주세요.");
   add("done", "완료 안내", "안내", "{받는분}으로 {금액}을 보냈어요.");
 
   add("stop.ask", "중지·직접 조작", "중지를 눌렀을 때", "진행을 멈췄어요. 어떻게 바꿀까요?");
@@ -253,9 +257,10 @@ function buildSteps(complexity, participantName) {
       options: APPROVE,
       reject: "app",
       launched: "bank_open.launched",
+      opening: "bank_open.opening",
       app: { target: "은행 앱", purpose: "송금", keywords: "마음은행|^은행|은행\\s?앱" },
     },
-    high: { messages: msg("bank_open") },
+    high: { messages: msg("bank_open"), opening: "bank_open.opening" },
     apply: (s) => {
       s.phone.app = "bank";
       s.phone.bankView = "home";
@@ -280,6 +285,7 @@ function buildSteps(complexity, participantName) {
 
   steps.push({
     id: "source",
+    busy: "source.busy",
     label: "출금계좌 선택",
     guide: "출금할 계좌(주거래 통장 1,523,400원 / 적금출금 계좌 482,000원) 중 하나를 고르는 단계",
     low: {
@@ -344,6 +350,7 @@ function buildSteps(complexity, participantName) {
   } else {
     steps.push({
       id: "recipient",
+      busy: "recipient.busy",
       label: "받는계좌 입력",
       guide: "자주 사용하는 계좌 목록에서 ‘동창회 총무’ 김영숙님 계좌(농협 302-1234-5678)를 받는 분으로 정하는 단계. 다른 계좌를 찾아달라고 해도 목록에서 맞는 계좌는 이것뿐임",
       low: { messages: msg("recipient"), options: APPROVE, reject: "account" },
