@@ -385,7 +385,11 @@ const Rules = {
     if (allowed.has("reject") && NO.test(t)) return out("reject");
     if (allowed.has("approve") && YES.test(t)) return out("approve");
     if (allowed.has("open") && YES.test(t)) return out("open");
-    if (allowed.has("continue") && (YES.test(t) || /(그대로|없어|하던|원래대로|다시\s?해|그냥\s?(해|진행|보내)|이대로)/.test(t))) return out("continue");
+    // 계좌가 맞는지 의심·확인하는 말 → 계좌 정보를 알려줌 (질문을 '그대로 진행'으로 오해하지 않게)
+    if (/계좌/.test(t) && (QUESTION.test(t) || NO.test(t) || /맞/.test(t)) && !acct) {
+      return out("other", { reply: `받는 분은 김영숙님(농협 302-1234-5678) 계좌예요.${ctx.fallback_reply ? " " + ctx.fallback_reply : ""}` });
+    }
+    if (allowed.has("continue") && !QUESTION.test(t) && !NO.test(t) && (YES.test(t) || /(그대로|없어|하던|원래대로|다시\s?해|그냥\s?(해|진행|보내)|이대로)/.test(t))) return out("continue");
     return out("other");
   },
 };

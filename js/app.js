@@ -82,7 +82,11 @@ const scrollChat = () => requestAnimationFrame(() => { const c = chat(); c.scrol
 
 // 대화창에는 대화(질문·답·응답)만 말풍선으로 남기고, 진행 상황은 진행 카드 한 곳에서 짧게 바뀌며 보여줌 (로그는 남기지 않음)
 function appendBubble(role, text) {
-  if (S && role === "user") resetStatus(); // 참가자가 답하면 진행 문구를 새로 시작
+  if (S && role === "user") {
+    resetStatus(); // 참가자가 답하면 진행 문구를 새로 시작
+    // 높은 자동화 알림 카드가 떠 있으면 그 알림을 먼저 대화 기록으로 남긴 뒤 참가자 말풍선을 붙임 (순서가 뒤바뀌지 않게)
+    if ($("#run-card")?.classList.contains("notice")) freezeQuestion();
+  }
   renderBubble(role, text);
 }
 

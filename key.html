@@ -35,8 +35,8 @@
       <a class="btn-start" href="index.html" style="display:block;text-align:center;text-decoration:none">프로토타입으로 가기</a>
     </form>
   </main>
+  <script>document.write('<script src="js/llm.js?v=' + Date.now() + '"><\/script>');</script>
   <script>
-    const DEFAULT_MODEL = "gemini-3.5-flash";
     const get = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
     const set = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
     const del = (k) => { try { localStorage.removeItem(k); } catch {} };
@@ -103,6 +103,19 @@
           log(`③ 호출 ${model}: 실패 — ${await err(res)}`);
         } catch (e) { log(`③ 호출 ${model}: 네트워크 오류 — ${e.message}`); }
       }
+      // ④ 앱과 똑같은 요청(프롬프트·응답 형식)으로 한 번 해석해봄
+      try {
+        LLM.key = k; LLM.model = m;
+        const saved = get("prompt", null);
+        if (typeof saved === "string" && saved.trim()) LLM.prompt = saved;
+        const r = await LLM.interpret("turn", "계좌가 잘못된 것 같은데 진짜 맞아?", {
+          automation: "높은 자동화", step: "받는계좌 입력", agent_said: "진행을 멈췄어요. 어떻게 바꿀까요?",
+          current_transfer: { source_account: "주거래 통장", recipient: "김영숙(농협 302-1234-5678)", amount_won: 100000, memo: null },
+          recent: [], intents: ["set_amount", "set_source", "continue", "cancel", "other"], fallback_reply: "(규칙 대체)",
+        });
+        if (r.source === "gemini") log(`④ 앱 방식 해석: 성공 (${r.model}, ${r.latency_ms}ms)\n   intent=${r.output.intent}\n   reply=${r.output.reply}`);
+        else log(`④ 앱 방식 해석: 실패 → 규칙으로 대체됨\n   오류: ${r.error || "(키 없음)"}`);
+      } catch (e) { log(`④ 앱 방식 해석: 오류 — ${e.message}`); }
       try { const le = JSON.parse(localStorage.getItem("llm_last_error") || "null"); if (le) log(`참고) 앱에서 마지막 오류: ${le.error} (${new Date(le.at).toLocaleString("ko-KR")})`); } catch {}
     };
 
