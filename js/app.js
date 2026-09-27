@@ -133,7 +133,7 @@ function freezeQuestion() {
   q.textContent = "";
   q.hidden = true;
   c.querySelector("#rc-choices").innerHTML = "";
-  c.classList.remove("asking", "notice");
+  c.classList.remove("asking", "notice", "can-manual");
   S.noticeStep = null;
 }
 
@@ -217,9 +217,12 @@ function ensureRunCard() {
       <div class="rc-text"><b id="rc-title">할 일 처리하는 중</b><small id="rc-status"></small></div></div>
     <div id="rc-q" class="rc-q" hidden></div>
     <div id="rc-choices" class="rc-choices"></div>
-    <button type="button" id="rc-open" class="rc-open"><span class="ms">open_in_full</span> 실행화면 보기</button>`;
+    <button type="button" id="rc-open" class="rc-open"><span class="ms">open_in_full</span> 실행화면 보기</button>
+    <button type="button" id="rc-manual" class="rc-manual">직접 조작하기</button>`;
   chat().insertBefore(c, $("#chips"));
   c.querySelector("#rc-open").onclick = () => showRun(true);
+  // 질문 카드 아래 작은 링크 (chatGPT의 "Sign in manually instead"처럼) → 앱 화면에서 직접 조작
+  c.querySelector("#rc-manual").onclick = () => S && startManual();
   scrollChat();
   return c;
 }
@@ -311,8 +314,7 @@ async function agentSay(text, { gated = false, talk = false } = {}) {
     // 높은 자동화: 승인 없이 진행하되, 낮은 자동화의 승인 카드와 같은 내용(문구+재구성 UI)을 알림 카드로 보여줌
     if (S.automation === "high" && !S.paused && S.stepIdx >= 0 && cardLive()) showNotice(text);
     else S.pendingLines = [...(S.pendingLines || []), text];
-  }
-  else appendBubble("agent", text);
+  } else if (!card) appendBubble("agent", text);
   // 진행 화면 문구: 같은 단계의 연속 문구는 최근 2개까지 함께 보여줌 (예: "최종 확인해주세요" + 송금 내용)
   let prev = S.statusStep === S.stepIdx && S.statusLines ? S.statusLines : [];
   if (isProgressLine(prev.at(-1) || "")) prev = prev.slice(0, -1); // 진행 문구는 다음 문구가 나오면 사라짐
@@ -336,8 +338,11 @@ async function sayKey(key, vars, opts) {
 // 승인/거부·단일 버튼은 알약 버튼, 그 외 여러 선택지는 세로 목록(stacked list)
 function setChips(options, onPick) {
   const opts = options || [];
-  if (opts.length) promote(true); // 답이 필요해지면 방금 한 말을 질문으로 (진행 카드 안)
-  else freezeQuestion(); // 답했으면 질문을 대화 기록으로
+  if (opts.length) {
+    promote(true); // 답이 필요해지면 방금 한 말을 질문으로 (진행 카드 안)
+    // 승인·선택 질문에는 「직접 조작하기」 링크 (중지 후 선택지에는 이미 직접 조작이 있음)
+    $("#run-card")?.classList.toggle("can-manual", cardLive() && !opts.some((o) => o.id === "manual" || o.id === "resume"));
+  } else freezeQuestion(); // 답했으면 질문을 대화 기록으로
   const pill = ["approve", "reject", "manual", "resume"];
   const isList = opts.length >= 2 && !opts.every((o) => pill.includes(o.id));
   $("#chips").innerHTML = "";
@@ -519,6 +524,7 @@ function syncControls() {
   const live = S.running && !S.finished && !S.pinOpen && !S.pwWait;
   $("#btn-stop").disabled = !live || S.paused;
   $("#btn-manual").disabled = !live || S.paused;
+  if ($("#rc-manual")) $("#rc-manual").disabled = !live || S.paused;
   $("#run-card")?.classList.toggle("ended", S.finished);
   if (!S.finished) setCard({ title: S.stopped || S.manual ? "작업을 멈췄어요" : "할 일 처리하는 중" });
   syncSendButton();
@@ -782,6 +788,7 @@ async function finishIntervention(saved) {
   S.needReask = false;
   // "계속 진행할게요." / "이어서 진행할게요."를 잠시 보여준 뒤 이어감 (그동안 선택지는 숨김)
   await sleep(2500 * PACE);
+  resetStatus(); // "계속 진행할게요."는 진행 문구로만 보이고 다음 질문에 섞이지 않게
   resume();
   if (reask) {
     const w = S.waiter; S.waiter = null;
