@@ -31,16 +31,7 @@
   <!-- ============ 설정 화면 (연구자용) ============ -->
   <main id="setup" class="setup">
     <form id="setup-form" class="card setup-card">
-      <div class="setup-head"><h1>세션 설정</h1><button id="btn-install" type="button" class="btn-ghost" hidden><span class="ms">install_mobile</span> 앱으로 설치</button></div>
-      <p id="install-hint" class="hint" hidden></p>
-      <div id="welcome" class="welcome" hidden>
-        <b><span class="ms">install_mobile</span> 앱으로 설치할 수 있어요</b>
-        <p id="welcome-text">앱으로 설치하면 홈 화면에서 주소창 없이 바로 열 수 있어요.</p>
-        <div class="welcome-btns">
-          <button id="btn-web" type="button" class="btn-ghost">웹에서 보기</button>
-          <button id="btn-install-big" type="button" class="btn-install"><span class="ms">install_mobile</span> 앱 설치</button>
-        </div>
-      </div>
+      <div class="setup-head"><h1>세션 설정</h1></div>
 
       <fieldset>
         <legend>참가자</legend>
@@ -84,7 +75,12 @@
         <textarea id="prompt" class="prompt-box" rows="16" spellcheck="false"></textarea>
       </details>
 
-      <button type="submit" class="btn-start">세션 시작</button>
+      <!-- 웹에서 보기 = 이 브라우저에서 세션 시작 / 앱 설치 = 홈 화면에 설치 -->
+      <div class="start-btns">
+        <button type="submit" id="btn-web" class="btn-ghost">웹에서 보기</button>
+        <button type="button" id="btn-install-big" class="btn-install"><span class="ms">install_mobile</span> 앱 설치</button>
+      </div>
+      <p id="install-hint" class="hint" hidden></p>
     </form>
   </main>
 

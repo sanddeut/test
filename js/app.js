@@ -1663,52 +1663,43 @@ function setupPasteKey() {
 }
 
 // ---------- 앱으로 설치 ----------
+// 설정 화면 맨 아래: 「웹에서 보기」(세션 시작) + 「앱 설치」
 let installEvent = null;
 function setupInstall() {
-  const installed = matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches || navigator.standalone;
-  if (installed) return;
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
-  const btn = $("#btn-install");
-  const hint = $("#install-hint");
   const big = $("#btn-install-big");
-  const welcomeText = $("#welcome-text");
+  const hint = $("#install-hint");
+  const installed = matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches || navigator.standalone;
+  if (installed) {
+    // 설치한 앱으로 열었으면 설치 버튼 없이 시작 버튼만
+    big.hidden = true;
+    $("#btn-web").textContent = "세션 시작";
+    return;
+  }
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     installEvent = e;
-    btn.hidden = false;
-    hint.hidden = true;
   });
-  let manualText = "";
-  const doInstall = async () => {
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const manualText = ios
+    ? "사파리 아래 공유 버튼 → 「홈 화면에 추가」를 누르면 앱으로 설치돼요. 설치한 앱을 처음 열면, 받은 링크를 한 번 더 붙여넣어 주세요."
+    : "크롬 오른쪽 위 ⋮ 메뉴 → 「홈 화면에 추가」(또는 「앱 설치」)를 누르면 앱으로 설치돼요.";
+  big.onclick = async () => {
     if (!installEvent) {
       // 설치 창을 띄울 수 없으면 직접 설치하는 방법을 안내
-      welcomeText.textContent = manualText || "크롬 오른쪽 위 ⋮ 메뉴 → 「홈 화면에 추가」(또는 「앱 설치」)를 누르면 앱으로 설치돼요.";
+      hint.textContent = manualText;
+      hint.hidden = false;
       return;
     }
     installEvent.prompt();
     await installEvent.userChoice.catch(() => {});
     installEvent = null;
-    btn.hidden = true;
   };
-  btn.onclick = doInstall;
-  big.onclick = doInstall;
   window.addEventListener("appinstalled", () => {
-    btn.hidden = true; big.hidden = true; $("#btn-web").textContent = "확인"; hint.hidden = true;
-    welcomeText.textContent = "설치했어요. 홈 화면의 「AI 송금」 아이콘으로 열어주세요.";
+    big.hidden = true;
+    hint.textContent = "설치했어요. 홈 화면의 「AI 송금」 아이콘으로 열어주세요.";
+    hint.hidden = false;
   });
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  if (ios) {
-    const t = "사파리 아래 공유 버튼 → 「홈 화면에 추가」를 누르면 앱으로 설치돼요. 설치한 앱을 처음 열면, 이 링크를 한 번 더 붙여넣어 주세요.";
-    hint.textContent = t; hint.hidden = false; manualText = t;
-  } else if (matchMedia("(pointer: coarse)").matches) {
-    // 설치 창을 띄울 수 없는 경우를 위한 안내 (잠시 뒤에도 설치 버튼이 없으면 표시)
-    setTimeout(() => {
-      if (!installEvent) {
-        const t = "크롬 오른쪽 위 ⋮ 메뉴 → 「홈 화면에 추가」(또는 「앱 설치」)를 누르면 앱으로 설치돼요.";
-        hint.textContent = t; hint.hidden = false; manualText = t;
-      }
-    }, 2500);
-  }
 }
 
 // 코드의 기본 문구(시나리오 문구·프롬프트)를 새로 정리하면 이 값을 바꿈
@@ -1723,11 +1714,8 @@ function resetOldContent() {
 
 function init() {
   resetOldContent();
-  const fromLink = readKeyFromLink();
-  const installedApp = matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches || navigator.standalone;
-  if (fromLink && !installedApp) $("#welcome").hidden = false;
+  readKeyFromLink();
   setupInstall();
-  $("#btn-web").onclick = () => ($("#welcome").hidden = true);
   const saved = store.get("setup", {});
   if (saved.pid) $("#pid").value = saved.pid;
   if (saved.name) $("#pname").value = saved.name;
