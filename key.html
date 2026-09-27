@@ -113,6 +113,9 @@
           current_transfer: { source_account: "주거래 통장", recipient: "김영숙(농협 302-1234-5678)", amount_won: 100000, memo: null },
           recent: [], intents: ["set_amount", "set_source", "continue", "cancel", "other"], fallback_reply: "(규칙 대체)",
         });
+        const q = await LLM.interpret("request", "ㅇ", { condition: "A1", scenario_task: ["나의 주거래 통장에서 동창회 총무 계좌로 30만원 송금"] });
+        if (q.source === "gemini") log(`④-1 첫 요청 해석: 성공 (${q.model}, ${q.latency_ms}ms)\n   clarification=${q.output.clarification}`);
+        else log(`④-1 첫 요청 해석: 실패 → 규칙으로 대체됨\n   오류: ${q.error || "(키 없음)"}`);
         if (r.source === "gemini") log(`④ 앱 방식 해석: 성공 (${r.model}, ${r.latency_ms}ms)\n   intent=${r.output.intent}\n   reply=${r.output.reply}`);
         else log(`④ 앱 방식 해석: 실패 → 규칙으로 대체됨\n   오류: ${r.error || "(키 없음)"}`);
       } catch (e) { log(`④ 앱 방식 해석: 오류 — ${e.message}`); }

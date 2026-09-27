@@ -243,6 +243,18 @@ async function geminiCallModel(key, model, prompt, schema) {
   }
 }
 
+// 일시적인 실패(요청 한도 429, 서버 오류 5xx, 시간 초과·네트워크)는 잠깐 쉬고 한 번 더 시도
+async function withRetry(fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    const m = String(err.message || err);
+    if (!/^(429|500|502|503|504)\b|abort|network|Failed to fetch|Load failed/i.test(m)) throw err;
+    await new Promise((r) => setTimeout(r, 1200));
+    return fn();
+  }
+}
+
 // 지정한 모델이 없으면(404) 대체 모델로 이어서 시도하고, 되는 모델을 기억함
 const FALLBACK_MODELS = ["gemini-flash-latest", "gemini-2.5-flash"];
 let workingModel = null;
@@ -251,7 +263,7 @@ async function geminiCall(key, model, prompt, schema) {
   let lastErr;
   for (const m of chain) {
     try {
-      const out = await geminiCallModel(key, m, prompt, schema);
+      const out = await withRetry(() => geminiCallModel(key, m, prompt, schema));
       workingModel = m;
       return out;
     } catch (err) {
@@ -264,7 +276,7 @@ async function geminiCall(key, model, prompt, schema) {
 
 async function geminiRequest(key, model, prompt, schema, thinking) {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 20000);
+  const timer = setTimeout(() => ctrl.abort(), 30000);
   try {
     const res = await fetch(`${GEMINI_BASE}/models/${encodeURIComponent(model)}:generateContent`, {
       method: "POST",

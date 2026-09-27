@@ -108,12 +108,12 @@ function promote(ask = false) {
       S.pendingLines = [];
       const q = $("#rc-q");
       q.textContent = ls.join("\n");
-      q.dataset.src = srcOf(q.textContent);
+      tagSrc(q, q.textContent);
       q.hidden = false;
     } else if (!$("#rc-q").textContent.trim() && S.lastQuestion) {
       // 같은 질문으로 돌아온 경우(거부 후 "그대로 해", 직접 조작 후 복귀): 마지막 질문을 다시 카드에
       $("#rc-q").textContent = S.lastQuestion;
-      $("#rc-q").dataset.src = srcOf(S.lastQuestion);
+      tagSrc($("#rc-q"), S.lastQuestion);
       $("#rc-q").hidden = false;
     }
     $("#run-card").classList.add("asking");
@@ -140,7 +140,7 @@ function freezeQuestion() {
     const div = document.createElement("div");
     div.className = "bubble agent";
     div.textContent = q.textContent;
-    div.dataset.src = srcOf(q.textContent);
+    tagSrc(div, q.textContent);
     chat().insertBefore(div, c);
   }
   q.textContent = "";
@@ -208,7 +208,7 @@ function showNotice(text) {
     freezeQuestion();
     S.noticeStep = S.stepIdx;
     q.textContent = text;
-    q.dataset.src = srcOf(text);
+    tagSrc(q, text);
     const pv = stepPreview();
     if (pv) $("#rc-choices").appendChild(pv);
     c.classList.remove("away");
@@ -271,6 +271,14 @@ function showRun(on) {
   syncControls();
 }
 
+// 출처 표시 붙이기 (규칙 대체면 Gemini 실패 이유도 함께: 연구자용)
+function tagSrc(el, text) {
+  el.dataset.src = srcOf(text);
+  const errs = S?.errByText || {};
+  const err = errs[text] || String(text).split("\n").map((t) => errs[t]).find(Boolean);
+  if (err) el.dataset.err = err.slice(0, 140); else delete el.dataset.err;
+}
+
 // 문구의 출처: 시나리오(고정 문구) / llm / rules(규칙 대체)
 function srcOf(text) {
   const map = S?.srcByText || {};
@@ -282,7 +290,7 @@ function renderBubble(role, text) {
   const div = document.createElement("div");
   div.className = `bubble ${role}`;
   div.textContent = text;
-  if (role === "agent") div.dataset.src = srcOf(text);
+  if (role === "agent") tagSrc(div, text);
   chat().insertBefore(div, $("#chips"));
   chat().scrollTop = chat().scrollHeight;
 }
@@ -496,7 +504,10 @@ async function interpret(kind, text, context) {
   showTyping(false);
   // 응답 출처 기록 (연구자용 표시): LLM이 만든 답인지, Gemini 실패로 규칙이 대신한 답인지
   const replyText = res.output?.reply ?? res.output?.clarification;
-  if (replyText) (S.srcByText ||= {})[replyText] = res.source === "gemini" ? "llm" : "rules";
+  if (replyText) {
+    (S.srcByText ||= {})[replyText] = res.source === "gemini" ? "llm" : "rules";
+    if (res.error) (S.errByText ||= {})[replyText] = res.error;
+  }
   S.m.llmCalls++;
   if (res.source === "rules" && LLM.enabled) {
     S.m.llmFallbacks++;
