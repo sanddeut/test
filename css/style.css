@@ -504,3 +504,43 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .paste-row { display: flex; gap: 8px; }
 .paste-row input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 11px; font-size: 14px; color: var(--text); }
 .welcome-btns button { white-space: nowrap; }
+
+/* 진행 화면: 대화창으로 돌아가기 */
+.pv-head { position: relative; }
+.pv-back { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; width: 40px; height: 40px; color: #1c1d21; display: grid; place-items: center; }
+.pv-back .ms { font-size: 20px; }
+
+/* 대화창 진행 카드 (할 일 처리하는 중 / 짧은 진행 문구 / 실행화면 보기) */
+.run-card { flex-shrink: 0; align-self: stretch; background: #eef1f6; border-radius: 20px; padding: 14px 16px 10px; display: flex; flex-direction: column; gap: 12px; animation: pop .18s ease-out; }
+.rc-head { display: flex; align-items: center; gap: 12px; }
+.rc-icon { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #4c8df6, #a36bf5); display: grid; place-items: center; flex: none; }
+.rc-icon .ms { color: #fff; font-size: 20px; vertical-align: 0; }
+.run-card:not(.ended) .rc-icon { animation: glowdot 1.8s ease-in-out infinite; }
+@keyframes glowdot { 50% { box-shadow: 0 0 0 5px rgba(120,150,250,.22); } }
+.rc-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rc-text b { font-size: 16px; font-weight: 500; }
+.rc-text small { color: #5f6470; font-size: 14px; line-height: 1.45; word-break: keep-all; overflow-wrap: break-word; min-height: 1.45em; }
+.rc-text small.thinking::after { content: " …"; animation: blink 1s infinite; }
+.rc-open { border: 0; background: #0b57d0; color: #fff; border-radius: 999px; padding: 12px; font-size: 16px; font-weight: 500; }
+.rc-actions { display: flex; justify-content: center; gap: 4px; }
+.rc-actions button { border: 0; background: none; color: #0b57d0; font-size: 14.5px; font-weight: 500; padding: 6px 14px; }
+.rc-actions button + button { border-left: 1px solid #cfd4dc; border-radius: 0; }
+.rc-actions button:disabled, .rc-open:disabled { opacity: .4; }
+.run-card.ended .rc-actions { display: none; }
+.run-card.ended .rc-open { display: none; }
+
+/* 대화창 비밀번호 입력 (보안 키패드) */
+.pw-card { width: 100%; background: #fff; border: 1px solid #e1e4ea; border-radius: 20px; padding: 16px 14px 12px; box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+.pw-head { display: flex; align-items: center; gap: 12px; }
+.pw-head b { display: block; font-size: 16px; font-weight: 500; }
+.pw-head small { color: #6b6f7a; font-size: 13.5px; }
+.pw-dots { display: flex; justify-content: center; gap: 14px; margin: 16px 0 12px; }
+.pw-dots i { width: 14px; height: 14px; border-radius: 50%; background: #dfe2e8; transition: background .15s; }
+.pw-dots i.on { background: #0b57d0; }
+.pw-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.pw-keys button { border: 0; background: #f4f6f9; border-radius: 12px; height: 44px; font-size: 20px; color: #1c1d21; }
+.pw-keys button:active { background: #e3e7ee; }
+.pw-note { display: flex; align-items: center; justify-content: center; gap: 4px; color: #6b6f7a; font-size: 12.5px; margin: 10px 0 0; }
+.pw-note .ms { font-size: 15px; vertical-align: 0; }
+.bubble.pw-done { display: inline-flex; align-items: center; gap: 6px; }
+.bubble.pw-done .ms { font-size: 18px; vertical-align: 0; }

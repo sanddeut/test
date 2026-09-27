@@ -138,7 +138,7 @@ function scriptDefaults(cond) {
     add("final.ask", "최종 이체 확인", "거부 시", "무엇을 수정할까요?");
   } else add("final", "최종 이체 확인", "안내", "{출금계좌}에서 {받는분}으로 {금액}을 보낼게요.");
 
-  add("password", "[직접조작] 비밀번호", "안내", "이체를 위해 계좌비밀번호 입력이 필요해요. 화면을 열어 직접 입력해주세요.");
+  add("password", "비밀번호 입력", "안내", "이체를 위해 계좌 비밀번호 4자리를 입력해주세요.");
   add("done", "완료 안내", "안내", "{받는분}으로 {금액}을 보냈어요.");
 
   add("stop.ask", "중지·직접 조작", "중지를 눌렀을 때", "진행을 멈췄어요. 어떻게 바꿀까요?");
@@ -466,8 +466,8 @@ function buildSteps(complexity, participantName) {
     {
       id: "password",
       kind: "password",
-      label: "[직접조작] 비밀번호 입력 요청",
-      guide: "계좌 비밀번호를 참가자가 직접 입력해야 하는 단계. ‘화면 열기’를 누르면 입력 화면이 열림",
+      label: "비밀번호 입력 요청",
+      guide: "계좌 비밀번호를 참가자가 대화창의 비밀번호 입력 칸(보안 키패드)에 직접 입력하는 단계. 비밀번호는 에이전트에게 전달되지 않음",
       low: { messages: msg("password") },
       high: { messages: msg("password") },
       apply: (s) => { s.phone.sheet = "pin"; },

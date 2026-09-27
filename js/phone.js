@@ -289,7 +289,7 @@ function bankOverlay() {
   const p = S.phone;
   const f = S.form;
   // 시트·팝업이 처음 나타날 때만 등장 애니메이션 (키패드 입력 등 다시 그릴 때는 그대로)
-  const cur = `${p.popup ? "popup" : ""}|${p.sheet === "pin" && !S.pinOpen ? "" : p.sheet || ""}`;
+  const cur = `${p.popup ? "popup" : ""}|${p.sheet || ""}`;
   const enter = cur !== p.overlayShown ? "enter" : "";
   p.overlayShown = cur;
   if (p.popup) {
@@ -306,7 +306,7 @@ function bankOverlay() {
       ${S.complexity === "B" ? `<div class="kv"><span>받는 분 통장표기</span><b>${esc(f.memo || S.cfg.name)}</b></div>` : ""}
       <div class="bk-btn2"><span>취소</span><span class="primary">이체</span></div></div></div>`;
   }
-  if (p.sheet === "pin" && S.pinOpen) {
+  if (p.sheet === "pin") {
     const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
     return `<div class="dim ${enter}"><div class="sheet pin ${enter}"><h3>계좌 비밀번호</h3><p class="muted">비밀번호 4자리를 입력해주세요</p>
       <div class="dots">${[0, 1, 2, 3].map((i) => `<i class="${i < p.pin.length ? "on" : ""}"></i>`).join("")}</div>

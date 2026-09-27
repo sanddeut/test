@@ -34,6 +34,7 @@ function newSession(cfg) {
     paused: false,
     manual: false,
     pinOpen: false,
+    showRun: false, // 참가자가 「실행화면 보기」로 진행 화면을 연 상태 (기본은 대화창)
     finished: false,
     userAmount: null, // 오류 단계 이전에 참가자가 미리 정정한 금액
     waiter: null, // 러너가 참가자 입력을 기다릴 때 {resolve, options}
@@ -79,22 +80,72 @@ const chat = () => $("#chat");
 // 대화창을 맨 아래로 (화면 전환·버튼 표시로 높이가 바뀐 뒤에 맞춤)
 const scrollChat = () => requestAnimationFrame(() => { const c = chat(); c.scrollTop = c.scrollHeight; });
 
-// 진행 화면에 있을 때 나온 말은 대화창에 쌓지 않고 보관했다가, 대화창으로 넘어갈 때 같은 단계의 마지막 몇 개만 이어서 보여줌
-// (갤럭시 에이전트처럼 대화창에는 진행 로그 대신 대화만 남김)
+// 대화창에는 대화(질문·답·응답)만 말풍선으로 남기고, 진행 상황은 진행 카드 한 곳에서 짧게 바뀌며 보여줌 (로그는 남기지 않음)
 function appendBubble(role, text) {
-  if (S && role === "user") S.statusLines = null; // 참가자가 답하면 진행 문구를 새로 시작
-  if (S && wantedView() !== "chat") {
-    S.unflushed = [...(S.unflushed || []), { role, text, step: S.stepIdx }].slice(-6);
-    return;
-  }
+  if (S && role === "user") resetStatus(); // 참가자가 답하면 진행 문구를 새로 시작
   renderBubble(role, text);
 }
 
-function flushUnflushed() {
-  if (!S?.unflushed?.length) return;
-  const recent = S.unflushed.filter((b) => b.step === S.stepIdx).slice(-3);
-  S.unflushed = [];
-  recent.forEach((b) => renderBubble(b.role, b.text));
+// 진행 문구를 새로 시작 (이전 단계 문구·아직 말풍선으로 옮기지 않은 문구 지움)
+function resetStatus() {
+  if (!S) return;
+  S.statusLines = null;
+  S.pendingLines = [];
+}
+
+// 진행 중에 한 말은 우선 진행 카드에만 보이고, 참가자의 답이 필요해지면 그 말을 대화창 말풍선으로 옮김
+function promote() {
+  if (!S?.pendingLines?.length) return;
+  const ls = S.pendingLines; S.pendingLines = [];
+  ls.forEach((t) => renderBubble("agent", t));
+  setCard({ status: "답변을 기다리고 있어요", thinking: false });
+}
+
+// ---------- 진행 카드 (대화창 안: 할 일 처리 중 / 짧은 진행 문구 / 실행화면 보기·중지·직접 조작) ----------
+function ensureRunCard() {
+  let c = $("#run-card");
+  if (c) return c;
+  c = document.createElement("div");
+  c.id = "run-card";
+  c.className = "run-card";
+  c.innerHTML = `<div class="rc-head"><span class="rc-icon"><span class="ms">auto_awesome</span></span>
+      <div class="rc-text"><b id="rc-title">할 일 처리하는 중</b><small id="rc-status"></small></div></div>
+    <button type="button" id="rc-open" class="rc-open">실행화면 보기</button>
+    <div class="rc-actions"><button type="button" id="rc-stop">중지</button><button type="button" id="rc-manual">직접 조작</button></div>`;
+  chat().insertBefore(c, $("#chips"));
+  c.querySelector("#rc-open").onclick = () => showRun(true);
+  c.querySelector("#rc-stop").onclick = () => S && handleStop("button");
+  c.querySelector("#rc-manual").onclick = () => S && startManual();
+  scrollChat();
+  return c;
+}
+
+// 진행 카드를 대화창 맨 아래(선택지 바로 위)로: 참가자가 답한 뒤 작업이 이어질 때
+function placeCard() {
+  const c = $("#run-card");
+  if (!c) return;
+  if (c.nextElementSibling !== $("#chips") || $("#typing")) {
+    chat().insertBefore(c, $("#chips"));
+    const t = $("#typing");
+    if (t) chat().insertBefore(t, $("#chips"));
+    scrollChat();
+  }
+}
+
+function setCard({ status, thinking, title } = {}) {
+  const c = $("#run-card");
+  if (!c) return;
+  if (title != null) c.querySelector("#rc-title").textContent = title;
+  const st = c.querySelector("#rc-status");
+  if (status != null) st.textContent = status;
+  if (thinking != null) st.classList.toggle("thinking", thinking);
+}
+
+function showRun(on) {
+  if (!S) return;
+  S.showRun = on;
+  logEvent(on ? "run_view_open" : "run_view_close");
+  syncControls();
 }
 
 function renderBubble(role, text) {
@@ -111,6 +162,12 @@ function setStatus(text, thinking = false) {
   if (!el) return;
   if (text != null) el.textContent = text;
   el.classList.toggle("thinking", thinking);
+  // 대화창의 진행 카드도 같은 문구로 (진행 중일 때)
+  if (!S?.running || S.finished) return;
+  if (text != null) {
+    setCard({ status: text.split("\n").at(-1), thinking });
+    placeCard();
+  } else setCard({ thinking });
 }
 
 function showTyping(on) {
@@ -127,20 +184,23 @@ function showTyping(on) {
 }
 
 // gated=true: 러너가 말할 때. 중지 중이면 재개될 때까지 기다렸다가 말함
-async function agentSay(text, { gated = false } = {}) {
+// talk=true: 진행 중이라도 바로 대화창 말풍선으로 (참가자 말에 대한 응답)
+async function agentSay(text, { gated = false, talk = false } = {}) {
+  const card = S.running && !S.finished && !talk; // 진행 중 문구 → 진행 카드
   const inChat = wantedView() === "chat";
-  // 진행 화면에서는 화면 로딩(스플래시·스피너)이 끝난 뒤에 문구를 띄움
-  if (!inChat) await waitLoading();
-  const typingMs = (inChat ? Math.min(1600, 450 + text.length * 14) : 150) * PACE;
+  // 진행 중 문구는 화면 로딩(스플래시·스피너)이 끝난 뒤에 띄움 (대화창에 있어도 실제 화면과 같은 시점)
+  if (card || !inChat) await waitLoading();
+  const typingMs = (!card && inChat ? Math.min(1600, 450 + text.length * 14) : 150) * PACE;
   for (;;) {
     if (gated) await gate();
     if (S.finished && gated) return;
-    showTyping(true);
+    if (card) setStatus(null, true); else showTyping(true);
     await sleep(typingMs);
-    showTyping(false);
+    if (card) setStatus(null, false); else showTyping(false);
     if (!gated || !S.paused) break;
   }
-  appendBubble("agent", text);
+  if (card) S.pendingLines = [...(S.pendingLines || []), text];
+  else appendBubble("agent", text);
   // 진행 화면 문구: 같은 단계의 연속 문구는 최근 2개까지 함께 보여줌 (예: "최종 확인해주세요" + 송금 내용)
   const same = S.statusStep === S.stepIdx && S.statusLines;
   S.statusLines = same ? [...S.statusLines, text].slice(-2) : [text];
@@ -160,6 +220,7 @@ async function sayKey(key, vars, opts) {
 // 승인/거부·단일 버튼은 알약 버튼, 그 외 여러 선택지는 세로 목록(stacked list)
 function setChips(options, onPick) {
   const opts = options || [];
+  if (opts.length) promote(); // 답이 필요해지면 방금 한 말을 대화창 말풍선으로
   const isList = opts.length >= 2 && !opts.every((o) => o.id === "approve" || o.id === "reject");
   ["#chips", "#pv-chips"].forEach((sel) => {
     const box = $(sel);
@@ -203,7 +264,6 @@ function waitRunnerInput(options) {
       resolve({ type: "button", id: o.id });
     };
     S.waiter = { resolve, options, onPick };
-    S.chatOpen = false; // 단순 선택은 대화창을 닫고 축소 화면 아래 버튼으로 노출
     setChips(options, onPick);
     syncControls();
   });
@@ -228,6 +288,7 @@ function waitText() {
   return new Promise((resolve) => {
     S.waiter = { resolve, options: null };
     setChips([]);
+    promote();
     syncControls();
   }).then((r) => r.text);
 }
@@ -322,14 +383,20 @@ function syncControls() {
   const live = S.running && !S.finished && !S.pinOpen && !S.pwWait;
   $("#btn-stop").disabled = !live || S.paused;
   $("#btn-manual").disabled = !live || S.paused;
+  const rc = $("#run-card");
+  if (rc) {
+    rc.querySelector("#rc-stop").disabled = !live || S.paused;
+    rc.querySelector("#rc-manual").disabled = !live || S.paused;
+    rc.classList.toggle("ended", S.finished);
+  }
   $("#pv-title").textContent = S.finished ? "작업 완료" : S.paused && !S.manual ? "작업 멈춤" : "작업 진행 중";
   syncView();
 }
 
 // 화면 전환
 // - direct  : 직접 작업·비밀번호 입력·팝업 직접 닫기 → 앱 화면을 실제 크기로
-// - chat    : 말로 답해야 할 때(과업 요청, "어떻게 바꿀까요?" 등) → 대화창 전체 화면
-// - progress: 그 외 → 앱 화면을 축소해 진행 상황을 보여주고, 단순 선택은 버튼으로 바로 노출
+// - chat    : 기본 화면. 진행 상황은 진행 카드로, 선택·입력은 대화창 안 자체 UI로
+// - progress: 「실행화면 보기」를 누른 경우 → 앱 화면을 축소해 보여주고, 단순 선택은 그 아래 버튼으로
 function wantedView() {
   if (!S) return "chat";
   if (S.manual || S.pinOpen || S.phone.popupClosable || S.awaitDoneConfirm) return "direct";
@@ -338,7 +405,7 @@ function wantedView() {
   if (S.waiter && !S.waiter.options) return "chat";
   if (!S.running || S.finished) return "chat";
   if (S.phone.app === "home") return "chat"; // 첫 앱을 열기 전에는 폰 홈 화면 대신 대화창에서 진행
-  return S.chatOpen ? "chat" : "progress"; // 참가자가 직접 대화창을 연 경우에만 대화창
+  return S.showRun ? "progress" : "chat";
 }
 
 function syncView() {
@@ -352,7 +419,6 @@ function syncView() {
     const before = zoom ? clip.getBoundingClientRect() : null;
     phone.dataset.view = v;
     if (S) logEvent("view", { view: v });
-    if (v === "chat") flushUnflushed();
     // 대화창 ↔ 진행 화면 전환 효과 (길고 분명하게)
     if ((prev === "chat" && v === "progress") || (prev === "progress" && v === "chat")) {
       phone.dataset.trans = v;
@@ -421,12 +487,6 @@ function openTask(on) {
   if (S) logEvent(on ? "task_open" : "task_close");
 }
 
-function openChat(on) {
-  if (!S) return;
-  S.chatOpen = on;
-  logEvent(on ? "chat_open" : "chat_close");
-  syncView();
-}
 
 // =====================================================================
 // 중지 / 직접조작 (높은 자동화)
@@ -524,7 +584,7 @@ async function handleInterjection(text) {
     return handleStop("text");
   }
   if (o.intent === "cancel") return cancelTransfer();
-  await agentSay(o.reply);
+  await agentSay(o.reply, { talk: true });
   resume();
 }
 
@@ -544,7 +604,7 @@ async function handleStop(via) {
   const saved = S.waiter?.options ? { options: S.waiter.options, onPick: S.waiter.onPick } : null;
   syncControls();
 
-  S.statusLines = null; // 진행 문구를 새로 시작
+  resetStatus(); // 진행 문구를 새로 시작
   let said = await sayKey("stop.ask");
   for (;;) {
     setChips([{ id: "resume", label: "계속하기" }], (o) => {
@@ -571,7 +631,7 @@ async function handleStop(via) {
   }
   S.stopped = false;
   setChips([]);
-  S.statusLines = null;
+  resetStatus();
   await sayKey("stop.continue");
   await finishIntervention(saved);
 }
@@ -588,7 +648,7 @@ async function finishIntervention(saved) {
     w.resolve({ type: "reask" });
   } else if (saved && S.waiter) {
     // 멈추기 전 질문을 다시 보여주고 선택지를 함께 띄움
-    S.statusLines = null;
+    resetStatus();
     if (S.lastQuestion) await agentSay(S.lastQuestion);
     if (S.waiter) setChips(saved.options, saved.onPick);
   }
@@ -640,7 +700,7 @@ async function endManual() {
   logEvent("manual_end", { changes });
   syncControls();
   renderPhone();
-  S.statusLines = null;
+  resetStatus();
   await sayKey("manual.resume");
   const w = S.waiter;
   await finishIntervention(w?.options ? { options: w.options, onPick: w.onPick } : null);
@@ -670,6 +730,9 @@ async function run() {
   }
 
   S.running = true;
+  showTyping(false);
+  ensureRunCard();
+  setStatus("", true);
   syncControls();
 
   // 2) 단계 진행
@@ -693,7 +756,7 @@ const resolveMsgs = (m) => (typeof m === "function" ? m(S) : m);
 async function doApply(step, choice, { announced = false } = {}) {
   if (step.act && !announced) {
     // 새 조작이 시작되면 이전 문구(이미 답한 질문, 이전 결과)는 지우고 "…" 표시
-    S.statusLines = null;
+    resetStatus();
     setStatus("", true);
   }
   if (step.act) {
@@ -704,7 +767,7 @@ async function doApply(step, choice, { announced = false } = {}) {
   renderPhone();
   if (step.act) {
     // 화면이 바뀌었으니 이전 안내 문구는 지우고, 다음 문구가 나올 때까지 "…" 표시
-    S.statusLines = null;
+    resetStatus();
     setStatus("", true);
   }
 }
@@ -720,7 +783,7 @@ async function dwell(ms = 1800) {
 async function doPre(step) {
   if (!step.pre) return;
   // 새 단계의 준비 동작이 시작되면 이전 단계 문구는 지우고 "…" 표시
-  S.statusLines = null;
+  resetStatus();
   setStatus("", true);
   setActing(true);
   try { await step.pre(S); } finally { setActing(false); }
@@ -952,6 +1015,7 @@ function waitPopupClose() {
     S.popupResolve = () => done({ type: "click" });
     S.waiter = { resolve: (r) => done(r), options: null };
     setChips([]);
+    promote();
     renderPhone();
     syncControls();
   });
@@ -1075,56 +1139,82 @@ async function runHighStep(step) {
   return true;
 }
 
-// ---------- 비밀번호 (직접조작, 공통) ----------
+// ---------- 비밀번호 (공통) ----------
+// 앱 화면으로 넘기지 않고, 대화창 안의 자체 입력 UI(보안 키패드)로 받음
 async function runPassword(step, spec) {
-  // 직접 조작이 필요하면 갤럭시 에이전트처럼 대화창으로 전환해 안내하고, 「화면 열기」 카드를 보여줌
   if (S.automation === "high") await gate();
   S.pwWait = true;
-  syncView();
+  syncControls();
   await sleep(900 * PACE);
+  S.phone.pin = "";
+  step.apply(S); // 은행 앱에도 비밀번호 입력 창을 띄움 (입력은 대화창에서)
+  renderPhone();
   for (const m of resolveMsgs(spec.messages)) await agentSay(m, { gated: S.automation === "high" });
+  logEvent("pin_open");
+  const t = now();
   for (;;) {
-    const r = await waitRunnerInput([{ id: "open", label: "화면 열기", card: { title: BANK_NAME, sub: "계좌 비밀번호 입력" } }]);
-    if (r.type === "reask") continue;
-    if (r.type === "button") break;
+    const r = await waitPin();
+    if (r.type === "pin") break;
     if (S.automation === "high") {
       // 높은 자동화: 말을 걸면 중지로 간주하고 개입 대화 후 다시 대기
       await handleInterjection(r.text);
       if (S.finished) return false;
       continue;
     }
-    const o = await turn(r.text, { said: resolveMsgs(spec.messages).join(" "), intents: ["open", "other"] });
-    if (o.intent === "open") break;
-    await agentSay(o.reply);
+    const o = await turn(r.text, { said: resolveMsgs(spec.messages).join(" "), intents: ["other"] });
+    await agentSay(o.reply, { talk: true });
   }
-  // 화면 열기 → 잠깐 뒤 실제 크기 앱 화면으로 전환, 비밀번호 창은 그다음 아래에서 올라옴
-  await sleep(800 * PACE);
-  S.pwWait = false;
-  S.pinOpen = true;
-  syncControls();
-  S.phone.pin = "";
-  step.apply(S);
-  renderPhone();
-  logEvent("pin_open");
-  const t = now();
-  await new Promise((r) => (S.pinResolve = r));
   logEvent("pin_entered", { duration_ms: now() - t });
+  renderPinDone();
+  S.pwWait = false;
   S.phone.sheet = "sending";
   renderPhone();
-  await sleep(1800 * PACE);
-  // 비밀번호 입력이 끝나면 다시 축소 화면으로 돌아가 완료 과정을 보여줌
-  S.pinOpen = false;
   syncControls();
+  setStatus("", true);
+  await sleep(1800 * PACE);
   // 이 시점에 오류 결과 확정
   S.m.errorOutcome = S.form.amount === ERROR_AMOUNT ? "accepted" : "corrected";
   return true;
 }
 
+// 대화창에 비밀번호 입력 카드를 띄우고 4자리 입력(또는 말)을 기다림
+function waitPin() {
+  return new Promise((resolve) => {
+    S.pinResolve = () => { S.waiter = null; setChips([]); resolve({ type: "pin" }); };
+    S.waiter = { resolve: (r) => { S.pinResolve = null; resolve(r); }, options: null, pin: true };
+    setChips([]);
+    promote();
+    renderPinCard();
+    syncControls();
+  });
+}
+
+const PIN_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
+function renderPinCard() {
+  const box = $("#chips");
+  box.innerHTML = `<div class="pw-card">
+    <div class="pw-head"><span class="bk-logo sm"><i></i></span><span><b>계좌 비밀번호</b><small>${esc(BANK_NAME)} · ${esc(ACCOUNTS[S.form.source].label)}</small></span></div>
+    <div class="pw-dots">${[0, 1, 2, 3].map((i) => `<i class="${i < S.phone.pin.length ? "on" : ""}"></i>`).join("")}</div>
+    <div class="pw-keys">${PIN_KEYS.map((k) => (k ? `<button type="button" data-k="${k}">${k === "del" ? '<span class="ms">backspace</span>' : k}</button>` : "<span></span>")).join("")}</div>
+    <p class="pw-note"><span class="ms">lock</span>비밀번호는 AI에게 전달되지 않아요</p></div>`;
+  box.querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => pinPress(b.dataset.k)));
+  scrollChat();
+}
+
+function renderPinDone() {
+  const div = document.createElement("div");
+  div.className = "bubble user pw-done";
+  div.innerHTML = '<span class="ms">lock</span> 비밀번호 입력 완료';
+  chat().insertBefore(div, $("#chips"));
+  scrollChat();
+}
+
 function pinPress(k) {
-  if (!S?.pinOpen || !S.pinResolve) return;
+  if (!S?.pinResolve) return;
   if (k === "del") S.phone.pin = S.phone.pin.slice(0, -1);
   else if (S.phone.pin.length < 4) S.phone.pin += k;
   renderPhone();
+  document.querySelectorAll(".pw-dots i").forEach((el, i) => el.classList.toggle("on", i < S.phone.pin.length));
   if (S.phone.pin.length === 4) {
     const r = S.pinResolve; S.pinResolve = null;
     setTimeout(r, 300);
@@ -1140,9 +1230,11 @@ function finish(status) {
   S.m.finishedAt = now();
   logEvent("session_end", { status, summary: summary() });
   S.status = status;
-  // 이체 완료 화면은 참가자가 [확인]을 누를 때까지 그대로 둠 → 누르면 대화창으로
-  if (status === "completed") S.awaitDoneConfirm = true;
+  // 실행화면을 보고 있었다면 이체 완료 화면을 [확인]을 누를 때까지 그대로 둠 → 누르면 대화창으로
+  if (status === "completed" && S.showRun) S.awaitDoneConfirm = true;
   setChips([]);
+  promote();
+  setCard({ title: "할 일 마무리", status: status === "completed" ? "송금을 마쳤어요" : "송금을 취소했어요", thinking: false });
   syncControls();
   saveSession();
   return false;
@@ -1151,6 +1243,7 @@ function finish(status) {
 function confirmDone() {
   if (!S?.awaitDoneConfirm) return;
   S.awaitDoneConfirm = false;
+  S.showRun = false;
   logEvent("done_confirm");
   saveSession();
   syncControls();
@@ -1318,7 +1411,7 @@ function start() {
   $("#task-list").innerHTML = sit.task.map((t) => `<li>${esc(t.replace("OOO", cfg.name))}</li>`).join("");
   $("#cond-title").textContent = CONDITIONS[S.cond].title;
 
-  chat().querySelectorAll(".bubble").forEach((b) => b.remove());
+  chat().querySelectorAll(".bubble, #run-card").forEach((b) => b.remove());
   $("#chips").innerHTML = "";
   $("#pv-chips").innerHTML = "";
   setStatus("");
@@ -1596,6 +1689,7 @@ function init() {
   $("#btn-stop").onclick = () => S && handleStop("button");
   $("#btn-manual").onclick = () => S && startManual();
   $("#btn-manual-done").onclick = () => S && endManual();
+  $("#btn-back").onclick = () => showRun(false);
   $("#btn-task-close").onclick = () => openTask(false);
   $("#task-dim").onclick = () => openTask(false);
   // 연구자 패널: 세션 중에는 상단 제목을 세 번 연속 탭 (또는 Ctrl + .)
