@@ -811,6 +811,10 @@ async function finishIntervention(saved) {
   if (reask) {
     const w = S.waiter; S.waiter = null;
     w.resolve({ type: "reask" });
+  } else if (S.waiter?.pin) {
+    // 비밀번호 입력 중 취소(중지) → 계속하기: 비밀번호 카드를 다시 보여줌
+    promote(true);
+    renderPinCard();
   } else if (saved && S.waiter) {
     // 멈추기 전 질문을 다시 보여주고 선택지를 함께 띄움
     resetStatus();
@@ -873,6 +877,9 @@ async function endManual() {
     // 낮은 자동화에서 내용이 바뀌었으면 바뀐 내용으로 다시 물음
     S.waiter = null;
     w.resolve({ type: "reask" });
+  } else if (w?.pin) {
+    promote(true);
+    renderPinCard();
   } else if (w?.options) {
     if (S.waiter) setChips(w.options, w.onPick);
   }
@@ -1339,11 +1346,13 @@ async function runPassword(step, spec) {
   step.apply(S); // 은행 앱에도 비밀번호 입력 창을 띄움 (입력은 대화창에서)
   renderPhone();
   for (const m of resolveMsgs(spec.messages)) await agentSay(m, { gated: S.automation === "high" });
+  S.lastQuestion = resolveMsgs(spec.messages).join("\n");
   logEvent("pin_open");
   const t = now();
   for (;;) {
     const r = await waitPin();
     if (r.type === "pin") break;
+    if (r.type === "reask") continue; // 취소(중지) 후 계속하기 → 다시 비밀번호 입력
     if (S.automation === "high") {
       // 높은 자동화: 말을 걸면 중지로 간주하고 개입 대화 후 다시 대기
       await handleInterjection(r.text);
@@ -1383,13 +1392,15 @@ const PIN_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
 function renderPinCard() {
   const box = chipsBox();
   box.innerHTML = `<div class="pw-card">
-    <div class="pw-head"><span class="bk-logo sm"><i></i></span><span><b>계좌 비밀번호 4자리</b><small>${esc(BANK_NAME)} · ${esc(ACCOUNTS[S.form.source].label)}</small></span></div>
+    <div class="pw-head"><span class="bk-logo"><i></i></span><span><b>계좌 비밀번호를 입력해주세요</b><small><span class="ms">lock</span> ${esc(BANK_NAME)} · ${esc(ACCOUNTS[S.form.source].label)}</small></span></div>
     <div class="pw-dots">${[0, 1, 2, 3].map((i) => `<i class="${i < S.phone.pin.length ? "on" : ""}"></i>`).join("")}</div>
     <div class="pw-keys">${PIN_KEYS.map((k) => (k ? `<button type="button" data-k="${k}">${k === "del" ? '<span class="ms">backspace</span>' : k}</button>` : "<span></span>")).join("")}</div>
-    <button type="button" class="pw-direct">은행 앱에서 직접 입력하기</button>
-    <p class="pw-note"><span class="ms">lock</span>비밀번호는 AI에게 전달되지 않아요</p></div>`;
+    <p class="pw-note">비밀번호는 은행 앱에 바로 입력되고, AI에게 전달되거나 저장되지 않아요.</p>
+    <div class="pw-foot"><button type="button" class="pw-direct">은행 앱에서 직접 입력하기</button><button type="button" class="pw-cancel">취소</button></div></div>`;
   box.querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => pinPress(b.dataset.k)));
   // chatGPT의 "Sign in manually instead"처럼: 앱 화면 전체로 전환해 은행 앱의 비밀번호 창에 직접 입력
+  // 취소: 중지와 같음 → "진행을 멈췄어요. 어떻게 바꿀까요?" (계속하기를 누르면 다시 비밀번호 입력)
+  box.querySelector(".pw-cancel").onclick = () => { if (S.pinResolve) handleStop("pin_cancel"); };
   box.querySelector(".pw-direct").onclick = () => {
     if (!S.pinResolve) return;
     S.pinOpen = true;

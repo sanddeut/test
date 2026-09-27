@@ -539,11 +539,11 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .pw-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .pw-keys button { border: 0; background: #f4f6f9; border-radius: 12px; height: 44px; font-size: 20px; color: #1c1d21; }
 .pw-keys button:active { background: #e3e7ee; }
-.pw-note { display: flex; align-items: center; justify-content: center; gap: 4px; color: #6b6f7a; font-size: 12.5px; margin: 10px 0 0; }
+.pw-note { color: #6b6f7a; font-size: 13px; line-height: 1.5; margin: 14px 2px 0; padding-top: 12px; border-top: 1px solid #eef0f3; }
 .pw-note .ms { font-size: 15px; vertical-align: 0; }
 .bubble.pw-done { display: inline-flex; align-items: center; gap: 6px; }
 .bubble.pw-done .ms { font-size: 18px; vertical-align: 0; }
-.send[data-mode="stop"] { background: #d93025; }
+.send[data-mode="stop"] { background: #a8463f; }
 .send[data-mode="stop"] .ms { font-size: 20px; vertical-align: 0; }
 .start-btns { margin-top: 16px; }
 .start-btns .btn-ghost { background: #fff; }
@@ -579,7 +579,11 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .run-card.asking.can-manual .rc-manual { display: block; }
 .rc-manual:disabled { opacity: .4; }
 .run-card.away { display: none; }
-.pw-direct { display: block; margin: 12px auto 0; border: 0; background: none; color: #0b57d0; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+.pw-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.pw-direct { border: 0; background: none; color: #5f6470; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; padding: 4px 2px; }
+.pw-cancel { border: 1px solid #d5d8de; background: #fff; color: #1c1d21; border-radius: 999px; padding: 8px 18px; font-size: 14.5px; font-weight: 500; }
+.pw-head .bk-logo { width: 44px; height: 44px; border-radius: 12px; }
+.pw-head small .ms { font-size: 14px; vertical-align: -2px; }
 /* 입력창 원형 버튼(마이크·보내기·중지): 아이콘을 정가운데로 */
 .composer .send, .composer .mic { display: grid; place-items: center; padding: 0; line-height: 1; }
 .composer .send .ms, .composer .mic .ms { display: block; vertical-align: 0; line-height: 1; font-size: 22px; }
