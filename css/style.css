@@ -592,3 +592,11 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .app-icon.live { cursor: pointer; }
 .app-icon.live .ai { box-shadow: 0 0 0 3px rgba(255,255,255,.9); }
 .llm-status { cursor: pointer; }
+/* 연구자용 응답 출처 표시 */
+.src-toggle { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 12px 0 4px; font-size: 14px; font-weight: 600; }
+.src-toggle small { font-weight: 400; color: var(--muted); font-size: 12px; }
+body.show-src .bubble.agent[data-src]::after, body.show-src .rc-q[data-src]::after { display: block; margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: .2px; }
+body.show-src [data-src="script"]::after { content: "시나리오"; color: #9aa0ab; }
+body.show-src [data-src="llm"]::after { content: "LLM"; color: #1a73e8; }
+body.show-src [data-src="rules"]::after { content: "규칙 대체 (Gemini 실패)"; color: #c5221f; }
+.setup-src { margin: 16px 0 0; }

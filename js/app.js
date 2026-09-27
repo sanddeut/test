@@ -104,10 +104,12 @@ function promote(ask = false) {
       S.pendingLines = [];
       const q = $("#rc-q");
       q.textContent = ls.join("\n");
+      q.dataset.src = srcOf(q.textContent);
       q.hidden = false;
     } else if (!$("#rc-q").textContent.trim() && S.lastQuestion) {
       // 같은 질문으로 돌아온 경우(거부 후 "그대로 해", 직접 조작 후 복귀): 마지막 질문을 다시 카드에
       $("#rc-q").textContent = S.lastQuestion;
+      $("#rc-q").dataset.src = srcOf(S.lastQuestion);
       $("#rc-q").hidden = false;
     }
     $("#run-card").classList.add("asking");
@@ -134,6 +136,7 @@ function freezeQuestion() {
     const div = document.createElement("div");
     div.className = "bubble agent";
     div.textContent = q.textContent;
+    div.dataset.src = srcOf(q.textContent);
     chat().insertBefore(div, c);
   }
   q.textContent = "";
@@ -201,6 +204,7 @@ function showNotice(text) {
     freezeQuestion();
     S.noticeStep = S.stepIdx;
     q.textContent = text;
+    q.dataset.src = srcOf(text);
     const pv = stepPreview();
     if (pv) $("#rc-choices").appendChild(pv);
     c.classList.remove("away");
@@ -263,10 +267,18 @@ function showRun(on) {
   syncControls();
 }
 
+// 문구의 출처: 시나리오(고정 문구) / llm / rules(규칙 대체)
+function srcOf(text) {
+  const map = S?.srcByText || {};
+  const hit = String(text).split("\n").map((t) => map[t]).find(Boolean);
+  return map[text] || hit || "script";
+}
+
 function renderBubble(role, text) {
   const div = document.createElement("div");
   div.className = `bubble ${role}`;
   div.textContent = text;
+  if (role === "agent") div.dataset.src = srcOf(text);
   chat().insertBefore(div, $("#chips"));
   chat().scrollTop = chat().scrollHeight;
 }
@@ -478,6 +490,9 @@ async function interpret(kind, text, context) {
   // 답이 바로 튀어나오지 않게 "…"을 최소한 잠깐 보여줌
   await sleep(Math.max(0, REPLY_PAUSE * PACE - (performance.now() - t0)));
   showTyping(false);
+  // 응답 출처 기록 (연구자용 표시): LLM이 만든 답인지, Gemini 실패로 규칙이 대신한 답인지
+  const replyText = res.output?.reply ?? res.output?.clarification;
+  if (replyText) (S.srcByText ||= {})[replyText] = res.source === "gemini" ? "llm" : "rules";
   S.m.llmCalls++;
   if (res.source === "rules" && LLM.enabled) {
     S.m.llmFallbacks++;
@@ -1977,6 +1992,12 @@ function init() {
     vv.addEventListener("resize", fitViewport);
     fitViewport();
   }
+  // 응답 출처 표시 (연구자 패널, 이 기기에만 저장)
+  // 설정 화면과 연구자 패널의 두 스위치를 같이 움직임
+  const srcBoxes = [$("#show-src"), $("#show-src-setup")];
+  const setSrc = (on) => { store.set("show_src", on); document.body.classList.toggle("show-src", on); srcBoxes.forEach((b) => (b.checked = on)); };
+  setSrc(Boolean(store.get("show_src", false)));
+  srcBoxes.forEach((b) => (b.onchange = () => setSrc(b.checked)));
   $("#btn-researcher").onclick = () => document.body.classList.toggle("drawer-open");
   $("#btn-close-drawer").onclick = () => document.body.classList.remove("drawer-open");
   $("#btn-reset").onclick = backToSetup;

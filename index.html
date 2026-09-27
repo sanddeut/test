@@ -71,6 +71,7 @@
         <textarea id="prompt" class="prompt-box" rows="16" spellcheck="false"></textarea>
       </details>
 
+      <label class="src-toggle setup-src"><input type="checkbox" id="show-src-setup"> 응답 출처 표시 <small>(연구자용 · 대화창 AI 말풍선 아래에 시나리오 / LLM / 규칙 대체 표시)</small></label>
       <!-- 웹에서 보기 = 이 브라우저에서 세션 시작 / 앱 설치 = 홈 화면에 설치 -->
       <div class="start-btns">
         <button type="submit" id="btn-web" class="btn-ghost">웹에서 보기</button>
@@ -137,6 +138,7 @@
       <b>연구자 패널</b>
       <button id="btn-close-drawer" type="button" class="btn-ghost">닫기</button>
     </div>
+    <label class="src-toggle"><input type="checkbox" id="show-src"> 응답 출처 표시 <small>(AI 말풍선 아래에 시나리오 / LLM / 규칙 대체 표시 · 이 기기에만 저장)</small></label>
     <h3>진행 단계</h3>
     <ol id="stepper" class="stepper"></ol>
     <h3>요약</h3>
