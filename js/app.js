@@ -1711,7 +1711,18 @@ function setupInstall() {
   }
 }
 
+// 코드의 기본 문구(시나리오 문구·프롬프트)를 새로 정리하면 이 값을 바꿈
+// → 브라우저에 저장된 예전 수정본을 지우고 최신 기본값을 쓰게 함 (이후 새로 고친 내용은 다시 저장됨)
+const CONTENT_VERSION = "2026-09-27";
+function resetOldContent() {
+  if (store.get("content_version", null) === CONTENT_VERSION) return;
+  store.del("script_overrides");
+  store.del("prompt");
+  store.set("content_version", CONTENT_VERSION);
+}
+
 function init() {
+  resetOldContent();
   const fromLink = readKeyFromLink();
   const installedApp = matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches || navigator.standalone;
   if (fromLink && !installedApp) $("#welcome").hidden = false;
