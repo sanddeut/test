@@ -220,7 +220,7 @@ mark.on { background: #ffe066; }
 .tgl { width: 28px; height: 16px; border-radius: 999px; background: #555; position: relative; }
 .tgl::after { content: ""; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
 .bk-cards { flex: 1; min-height: 0; overflow: auto; padding: 0 14px; display: flex; flex-direction: column; gap: 12px; margin-top: -8px; position: relative; }
-.bk-card { position: relative; background: #fff; border-radius: 18px; padding: 16px 16px 16px 14px; display: flex; gap: 12px; transition: box-shadow .25s; }
+.bk-card { position: relative; background: #fff; border-radius: 18px; padding: 16px 16px 16px 14px; display: flex; gap: 12px; transition: box-shadow .25s; box-shadow: 0 0 0 1px #e1e4ea; }
 .bk-card-main { display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .bk-card-main b { font-size: 17px; font-weight: 600; }
 .bk-card-main small { color: #7a7f89; font-size: 13.5px; }
@@ -231,8 +231,6 @@ mark.on { background: #ffe066; }
 .bk-send.on { background: #2f7cf6; border-color: #2f7cf6; color: #fff; }
 .bk-card-promo { position: absolute; left: 0; right: 0; bottom: -34px; height: 34px; background: #3b8cf5; color: #fff; font-size: 13px; font-weight: 600; display: flex; align-items: center; padding-left: 26px; border-radius: 0 0 18px 18px; }
 .bk-card:has(.bk-card-promo) { border-radius: 18px 18px 0 0; margin-bottom: 34px; }
-.bk-card.hl { box-shadow: 0 0 0 3px #2f7cf6; }
-.bk-card.tapped { box-shadow: 0 0 0 2px #2f7cf6; }
 .bk-tabbar { display: flex; justify-content: space-around; background: #f3f5f8; padding: 8px 0 10px; font-size: 11.5px; color: #555; flex: none; }
 .bk-tabbar span { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .bk-tabbar i { font-style: normal; font-size: 20px; }

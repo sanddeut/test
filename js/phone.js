@@ -161,7 +161,6 @@ function bankHome() {
     <div class="bk-top"><div class="seg-toggle"><span class="on">일반홈</span><span>쉬운</span></div>
       <div class="bk-icons"><span class="ai-badge">AI</span>${mi("notifications")}${mi("menu")}</div></div>
     <div class="bk-hero">
-      <div class="bk-notice"><span class="bell">${mi("notifications_active")}</span><div>가을맞이 정기적금<br>우대금리 미리 확인해보세요</div>${mi("close", "x")}</div>
       <div class="moon"></div>
       <div class="bk-hero-row"><span class="pill">${mi("settings")} 홈계좌설정</span><span class="pill">잔액숨김 <i class="tgl"></i></span></div>
     </div>
