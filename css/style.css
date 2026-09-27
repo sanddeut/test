@@ -517,7 +517,7 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .rc-text small.thinking::after { content: " …"; animation: blink 1s infinite; }
 .rc-open { display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; background: #fff; color: #0b57d0; border-radius: 999px; padding: 11px; font-size: 15.5px; font-weight: 500; box-shadow: 0 0 0 1px #d6dce6; }
 .rc-open .ms { font-size: 18px; vertical-align: 0; }
-.rc-q { font-size: 16.5px; line-height: 1.55; white-space: pre-wrap; word-break: keep-all; overflow-wrap: break-word; padding-top: 12px; border-top: 1px solid #dde2ea; }
+.rc-q { font-size: 16.5px; line-height: 1.55; white-space: pre-wrap; word-break: keep-all; overflow-wrap: break-word; margin-top: 10px; padding-top: 22px; border-top: 1px solid #dde2ea; }
 .rc-choices { display: flex; gap: 8px; flex-wrap: wrap; }
 .rc-choices:empty { display: none; }
 .rc-choices .chip:not(.choice) { flex: 1; padding: 12px 10px; }
