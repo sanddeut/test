@@ -581,3 +581,5 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .rc-manual { display: none; border: 0; background: none; color: #5f6470; font-size: 13.5px; text-decoration: underline; text-underline-offset: 3px; padding: 2px; align-self: center; }
 .run-card.asking.can-manual .rc-manual { display: block; }
 .rc-manual:disabled { opacity: .4; }
+.run-card.away { display: none; }
+.pw-direct { display: block; margin: 12px auto 0; border: 0; background: none; color: #0b57d0; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }

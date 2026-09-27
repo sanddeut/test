@@ -136,7 +136,7 @@ const INTENT_MEANINGS = {
   direct_input: "계좌를 직접 입력하겠다고 함 (번호는 말하지 않음)",
   unsuitable_app: "지정된 앱이 아닌 다른 앱(다른 은행 앱, 전화, 카메라 등)을 말함",
   pause: "바꿀 내용 없이 진행을 멈추라고만 함 (멈춰, 기다려 등)",
-  continue: "바꿀 것 없이 그대로 진행하라고 함",
+  continue: "바꿀 것 없이 그대로(하던 대로) 진행하라고 함. 예: '그냥 해', '하던 거 해', '괜찮아 계속해', '없어'",
   cancel: "송금 자체를 취소하라고 함",
   other: "위 어느 것에도 해당하지 않음 (질문, 잡담, 이해하기 어려운 말 등)",
 };
@@ -357,7 +357,7 @@ const Rules = {
     if (allowed.has("reject") && NO.test(t)) return out("reject");
     if (allowed.has("approve") && YES.test(t)) return out("approve");
     if (allowed.has("open") && YES.test(t)) return out("open");
-    if (allowed.has("continue") && (YES.test(t) || /(그대로|없어|없어요)/.test(t))) return out("continue");
+    if (allowed.has("continue") && (YES.test(t) || /(그대로|없어|하던|원래대로|다시\s?해|그냥\s?(해|진행|보내)|이대로)/.test(t))) return out("continue");
     return out("other");
   },
 };

@@ -105,16 +105,22 @@ function promote(ask = false) {
       const q = $("#rc-q");
       q.textContent = ls.join("\n");
       q.hidden = false;
+    } else if (!$("#rc-q").textContent.trim() && S.lastQuestion) {
+      // 같은 질문으로 돌아온 경우(거부 후 "그대로 해", 직접 조작 후 복귀): 마지막 질문을 다시 카드에
+      $("#rc-q").textContent = S.lastQuestion;
+      $("#rc-q").hidden = false;
     }
     $("#run-card").classList.add("asking");
+    $("#run-card").classList.remove("away");
     setCard({ status: "확인이 필요해요", thinking: false });
     placeCard();
     return;
   }
+  // 말로 답하는 질문(거부 후 "무엇을 수정할까요?" 등) 동안에는 진행 카드를 숨김
+  if (cardLive()) $("#run-card").classList.add("away");
   if (!ls.length) return;
   S.pendingLines = [];
   ls.forEach((t) => renderBubble("agent", t));
-  setCard({ status: "답변을 기다리고 있어요", thinking: false });
 }
 
 const cardLive = () => Boolean($("#run-card") && S?.running && !S.finished);
@@ -133,6 +139,7 @@ function freezeQuestion() {
   q.textContent = "";
   q.hidden = true;
   c.querySelector("#rc-choices").innerHTML = "";
+  if (c.classList.contains("asking")) setCard({ status: "" }); // 답했으면 "확인이 필요해요"를 지움
   c.classList.remove("asking", "notice", "can-manual");
   S.noticeStep = null;
 }
@@ -196,6 +203,7 @@ function showNotice(text) {
     q.textContent = text;
     const pv = stepPreview();
     if (pv) $("#rc-choices").appendChild(pv);
+    c.classList.remove("away");
   } else q.textContent += `\n${text}`;
   q.hidden = false;
   c.classList.add("notice");
@@ -272,6 +280,7 @@ function setStatus(text, thinking = false) {
   // 대화창의 진행 카드도 같은 문구로 (진행 중일 때)
   if (!S?.running || S.finished) return;
   if (text != null) {
+    $("#run-card")?.classList.remove("away"); // 작업이 이어지면 카드를 다시 보여줌
     // 카드 본문(알림·질문)에 이미 보이는 문구는 상태 줄에 반복하지 않음
     const last = text.split("\n").at(-1);
     const shown = last && ($("#rc-q")?.textContent || "").split("\n").includes(last);
@@ -291,6 +300,14 @@ function showTyping(on) {
     chat().scrollTop = chat().scrollHeight;
   } else if (!on && t) t.remove();
   setStatus(null, on);
+}
+
+// 참가자가 답한 뒤 다음 반응까지: 말풍선 자리에 "…"을 잠깐 보여준 뒤 이어감
+const REPLY_PAUSE = 1500;
+async function replyPause() {
+  showTyping(true);
+  await sleep(REPLY_PAUSE * PACE);
+  showTyping(false);
 }
 
 // gated=true: 러너가 말할 때. 중지 중이면 재개될 때까지 기다렸다가 말함
@@ -386,7 +403,7 @@ function waitRunnerInput(options) {
       setChips([]);
       appendBubble("user", o.label);
       logEvent("user_button", { choice: o.id, label: o.label });
-      resolve({ type: "button", id: o.id });
+      replyPause().then(() => resolve({ type: "button", id: o.id }));
     };
     S.waiter = { resolve, options, onPick };
     setChips(options, onPick);
@@ -456,7 +473,10 @@ async function turn(text, { said, intents, hint, fallback, fallbackBy, appKeywor
 
 async function interpret(kind, text, context) {
   showTyping(true);
+  const t0 = performance.now();
   const res = await LLM.interpret(kind, text, context);
+  // 답이 바로 튀어나오지 않게 "…"을 최소한 잠깐 보여줌
+  await sleep(Math.max(0, REPLY_PAUSE * PACE - (performance.now() - t0)));
   showTyping(false);
   S.m.llmCalls++;
   if (res.source === "rules" && LLM.enabled) S.m.llmFallbacks++;
@@ -751,7 +771,7 @@ async function handleStop(via) {
       const w = S.ivWaiter; S.ivWaiter = null;
       appendBubble("user", o.label);
       logEvent("user_button", { choice: o.id, label: o.label });
-      w({ [o.id]: true });
+      replyPause().then(() => w({ [o.id]: true }));
     });
     const r = await new Promise((res) => { S.ivWaiter = res; syncControls(); });
     if (r?.resume) break;
@@ -827,7 +847,7 @@ function startManual() {
   S.manualAmount = String(S.form.amount ?? S.phone.pendingAmount ?? S.userAmount ?? "");
   S.manualMemo = null;
   S.phone.sheet = null; // 확인 시트가 떠 있으면 내려서 수정 가능하게
-  setChips([]); // 직접 조작이 끝나고 질문을 다시 할 때까지 선택지 숨김
+  $("#pv-chips").innerHTML = ""; // 대화창의 질문 카드는 그대로 두고, 돌아오면 같은 질문을 이어서 보여줌
   showTyping(false);
   renderPhone();
   syncControls();
@@ -845,12 +865,18 @@ async function endManual() {
   S.phone.sheet = snap.sheet;
   S.manual = false;
   logEvent("manual_end", { changes });
-  syncControls();
-  renderPhone();
-  resetStatus();
-  await sayKey("manual.resume");
+  // "이어서 진행할게요" 없이, 직접 조작 전의 말풍선·카드를 그대로 이어서 보여줌
   const w = S.waiter;
-  await finishIntervention(w?.options ? { options: w.options, onPick: w.onPick } : null);
+  const reask = S.needReask && w;
+  S.needReask = false;
+  resume();
+  if (reask) {
+    // 낮은 자동화에서 내용이 바뀌었으면 바뀐 내용으로 다시 물음
+    S.waiter = null;
+    w.resolve({ type: "reask" });
+  } else if (w?.options) {
+    if (S.waiter) setChips(w.options, w.onPick);
+  }
 }
 
 // =====================================================================
@@ -1328,7 +1354,8 @@ async function runPassword(step, spec) {
     const o = await turn(r.text, { said: resolveMsgs(spec.messages).join(" "), intents: ["other"] });
     await agentSay(o.reply, { talk: true });
   }
-  logEvent("pin_entered", { duration_ms: now() - t });
+  logEvent("pin_entered", { duration_ms: now() - t, via: S.pinOpen ? "app" : "chat" });
+  if (S.pinOpen) { await sleep(500 * PACE); S.pinOpen = false; }
   renderPinDone();
   S.pwWait = false;
   S.phone.sheet = "sending";
@@ -1360,8 +1387,17 @@ function renderPinCard() {
     <div class="pw-head"><span class="bk-logo sm"><i></i></span><span><b>계좌 비밀번호 4자리</b><small>${esc(BANK_NAME)} · ${esc(ACCOUNTS[S.form.source].label)}</small></span></div>
     <div class="pw-dots">${[0, 1, 2, 3].map((i) => `<i class="${i < S.phone.pin.length ? "on" : ""}"></i>`).join("")}</div>
     <div class="pw-keys">${PIN_KEYS.map((k) => (k ? `<button type="button" data-k="${k}">${k === "del" ? '<span class="ms">backspace</span>' : k}</button>` : "<span></span>")).join("")}</div>
+    <button type="button" class="pw-direct">은행 앱에서 직접 입력하기</button>
     <p class="pw-note"><span class="ms">lock</span>비밀번호는 AI에게 전달되지 않아요</p></div>`;
   box.querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => pinPress(b.dataset.k)));
+  // chatGPT의 "Sign in manually instead"처럼: 앱 화면 전체로 전환해 은행 앱의 비밀번호 창에 직접 입력
+  box.querySelector(".pw-direct").onclick = () => {
+    if (!S.pinResolve) return;
+    S.pinOpen = true;
+    logEvent("pin_direct");
+    renderPhone();
+    syncControls();
+  };
   scrollChat();
 }
 

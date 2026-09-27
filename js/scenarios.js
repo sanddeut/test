@@ -151,7 +151,6 @@ function scriptDefaults(cond) {
   if (B) add("change.memo", "중지·직접 조작", "중지 중 메모를 바꿨을 때", "받는 분 통장 메모를 ‘{메모}’으로 바꿨어요.");
   add("change.source", "중지·직접 조작", "중지 중 출금계좌를 바꿨을 때", "{출금계좌}에서 출금할게요.");
   add("stop.continue", "중지·직접 조작", "계속하기를 눌렀을 때", "계속 진행할게요.");
-  add("manual.resume", "중지·직접 조작", "직접 조작 후 AI에게 맡겼을 때", "이어서 진행할게요.");
   add("cancel", "기타", "송금을 취소했을 때", "송금을 취소했어요.");
   return L;
 }
