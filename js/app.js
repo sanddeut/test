@@ -1421,7 +1421,10 @@ function applyLLMSettings() {
   const savedModel = store.get("gemini_model", DEFAULT_MODEL);
   LLM.model = savedModel === "gemini-2.5-flash" ? DEFAULT_MODEL : savedModel || DEFAULT_MODEL;
   const st = $("#llm-status-text");
-  if (st) st.textContent = LLM.enabled ? `Gemini 연결됨 · ${LLM.model}` : "API 키 없음 · 규칙 기반 해석으로 동작";
+  if (st) {
+    st.textContent = LLM.enabled ? `Gemini 연결됨 · ${LLM.model}` : "Gemini 연결 안 됨";
+    st.classList.toggle("off", !LLM.enabled);
+  }
   store.set("gemini_model", LLM.model);
   const chip = $("#llm-chip");
   chip.textContent = LLM.enabled ? `Gemini · ${LLM.model}` : "규칙 기반 해석";
@@ -1652,7 +1655,9 @@ function readKeyFromLink() {
 // 키가 없을 때(예: 아이폰에 설치한 앱) 받은 링크를 붙여넣어 키 저장
 function setupPasteKey() {
   const box = $("#paste-key");
-  const refresh = () => { applyLLMSettings(); box.hidden = LLM.enabled; };
+  // 평소에는 숨기고, 「연결 안 됨」 문구를 누르면 링크 붙여넣기 칸이 열림
+  const refresh = () => { applyLLMSettings(); if (LLM.enabled) box.hidden = true; };
+  $("#llm-status-text").onclick = () => { if (!LLM.enabled) box.hidden = !box.hidden; };
   $("#btn-paste-key").onclick = () => {
     const ok = saveKeyFrom($("#paste-link").value);
     if (!ok) { alert("링크에서 키를 찾지 못했어요. 받은 링크 전체를 붙여넣어 주세요."); return; }
