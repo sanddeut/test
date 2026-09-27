@@ -133,7 +133,8 @@ function freezeQuestion() {
   q.textContent = "";
   q.hidden = true;
   c.querySelector("#rc-choices").innerHTML = "";
-  c.classList.remove("asking");
+  c.classList.remove("asking", "notice");
+  S.noticeStep = null;
 }
 
 // 단계별 재구성 UI (승인 질문과 함께 진행 카드 안에 표시)
@@ -153,6 +154,12 @@ function stepPreview() {
     case "bank_open": return appTile(BANK_NAME, "account_balance", "#2f7cf6", "은행 앱");
     case "popup":
       return el("pv-evt", `<span class="ms fill">redeem</span><span><b>가을맞이 정기적금 이벤트</b><small>지금 가입하면 최대 연 4.5% 우대금리!</small></span>`);
+    case "source": {
+      // 높은 자동화: 고른 계좌 표시 (낮은 자동화는 선택 목록이 대신함)
+      const rows = ["main", "savings"].map((k) =>
+        `<div class="${S.form.source === k ? "on" : ""}"><span><b>${esc(ACCOUNTS[k].label)}</b><small>잔액 ${esc(won0(ACCOUNTS[k].balance))}</small></span>${S.form.source === k ? '<span class="ms">check_circle</span>' : ""}</div>`).join("");
+      return el("pv-accts", rows);
+    }
     case "recipient":
       return S.complexity === "B" ? null : acct("동창회 총무 · 김영숙", "농협 302-1234-5678 · 자주 사용하는 계좌");
     case "amount": {
@@ -177,6 +184,22 @@ function transferSummary() {
   div.className = "rc-summary";
   div.innerHTML = rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join("");
   return div;
+}
+
+// 높은 자동화 알림 카드: 같은 단계 문구는 이어 붙이고, 새 단계가 되면 이전 알림을 대화 기록(말풍선)으로 남김
+function showNotice(text) {
+  const c = $("#run-card");
+  const q = $("#rc-q");
+  if (S.noticeStep !== S.stepIdx || !q.textContent) {
+    freezeQuestion();
+    S.noticeStep = S.stepIdx;
+    q.textContent = text;
+    const pv = stepPreview();
+    if (pv) $("#rc-choices").appendChild(pv);
+  } else q.textContent += `\n${text}`;
+  q.hidden = false;
+  c.classList.add("notice");
+  placeCard();
 }
 
 // 선택지를 넣을 곳: 진행 중에는 진행 카드 안, 그 외에는 대화창 아래
@@ -246,7 +269,10 @@ function setStatus(text, thinking = false) {
   // 대화창의 진행 카드도 같은 문구로 (진행 중일 때)
   if (!S?.running || S.finished) return;
   if (text != null) {
-    setCard({ status: text.split("\n").at(-1), thinking });
+    // 카드 본문(알림·질문)에 이미 보이는 문구는 상태 줄에 반복하지 않음
+    const last = text.split("\n").at(-1);
+    const shown = last && ($("#rc-q")?.textContent || "").split("\n").includes(last);
+    setCard({ status: shown ? "작업 중이에요" : last, thinking });
     placeCard();
   } else setCard({ thinking });
 }
@@ -281,7 +307,11 @@ async function agentSay(text, { gated = false, talk = false } = {}) {
     if (!gated || !S.paused) break;
   }
   // "~하고 있어요 …" 같은 진행 문구는 진행 카드에만 보이고 대화창 말풍선으로 옮기지 않음
-  if (card) { if (!isProgressLine(text)) S.pendingLines = [...(S.pendingLines || []), text]; }
+  if (card && !isProgressLine(text)) {
+    // 높은 자동화: 승인 없이 진행하되, 낮은 자동화의 승인 카드와 같은 내용(문구+재구성 UI)을 알림 카드로 보여줌
+    if (S.automation === "high" && !S.paused && S.stepIdx >= 0 && cardLive()) showNotice(text);
+    else S.pendingLines = [...(S.pendingLines || []), text];
+  }
   else appendBubble("agent", text);
   // 진행 화면 문구: 같은 단계의 연속 문구는 최근 2개까지 함께 보여줌 (예: "최종 확인해주세요" + 송금 내용)
   let prev = S.statusStep === S.stepIdx && S.statusLines ? S.statusLines : [];
