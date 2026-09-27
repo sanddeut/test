@@ -140,9 +140,9 @@ body.in-session .topbar { display: none; }
 .txt-btn[hidden], .primary-btn[hidden] { display: inline-block !important; visibility: hidden; }
 
 /* 직접 작업 */
-.direct-bar { align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; background: #fff4e0 !important; font-size: 13px; flex: none; }
-.direct-bar button { border: 0; background: #0b57d0; color: #fff; border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: 13px; flex: none; }
-.direct-bar button[hidden] { display: none; }
+.direct-bar { align-items: center; padding: 4px 6px; flex: none; min-height: 44px; }
+.direct-back { border: 0; background: none; width: 40px; height: 40px; display: grid; place-items: center; color: #1c1d21; }
+.direct-back .ms { font-size: 20px; vertical-align: 0; }
 
 /* 대화창 (전체 화면) */
 .chat-head { align-items: center; gap: 8px; padding: 8px 14px; flex: none; }
@@ -514,7 +514,7 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 @keyframes glowdot { 50% { box-shadow: 0 0 0 5px rgba(120,150,250,.22); } }
 .rc-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .rc-text b { font-size: 16px; font-weight: 500; }
-.rc-text small { color: #5f6470; font-size: 14px; line-height: 1.45; word-break: keep-all; overflow-wrap: break-word; min-height: 1.45em; }
+.rc-text small { color: #5f6470; font-size: 15.5px; line-height: 1.45; word-break: keep-all; overflow-wrap: break-word; min-height: 1.45em; }
 .rc-text small.thinking::after { content: " …"; animation: blink 1s infinite; }
 .rc-open { display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; background: #fff; color: #0b57d0; border-radius: 999px; padding: 11px; font-size: 15.5px; font-weight: 500; box-shadow: 0 0 0 1px #d6dce6; }
 .rc-open .ms { font-size: 18px; vertical-align: 0; }

@@ -591,11 +591,9 @@ function syncView() {
     }
   }
   requestAnimationFrame(fitScreen);
-  const bar = $("#direct-msg");
-  if (bar && S) {
-    bar.textContent = S.manual ? "직접 조작 중입니다." : "팝업 내용을 보시고 직접 닫아주세요.";
-    $("#btn-manual-done").hidden = !S.manual;
-    $(".direct-bar").classList.toggle("off", Boolean(S.pinOpen || S.awaitDoneConfirm)); // 비밀번호 입력·완료 화면은 안내 띠 없이 앱 화면만
+  if (S) {
+    // 직접 조작·비밀번호 직접 입력 중에는 왼쪽 위 뒤로(<) 버튼만 → 누르면 대화로 돌아감 (팝업 직접 닫기·완료 화면은 버튼 없이 앱 화면만)
+    $(".direct-bar").classList.toggle("off", !(S.manual || S.pinOpen));
   }
 }
 
@@ -864,6 +862,7 @@ async function endManual() {
   if (S.form.source !== snap.source) { changes.source = S.form.source; S.phone.tapped = S.form.source; if (S.automation === "low") S.needReask = true; }
   S.phone.sheet = snap.sheet;
   S.manual = false;
+  S.showRun = false; // 뒤로(<)를 누르면 대화창으로
   logEvent("manual_end", { changes });
   // "이어서 진행할게요" 없이, 직접 조작 전의 말풍선·카드를 그대로 이어서 보여줌
   const w = S.waiter;
@@ -1395,6 +1394,12 @@ function renderPinCard() {
     if (!S.pinResolve) return;
     S.pinOpen = true;
     logEvent("pin_direct");
+    // 은행 앱 화면으로 넘어가는 동안 흰 화면 + 스피너
+    const p = S.phone;
+    p.loading = "splash-app";
+    p.loadingUntil = Date.now() + 1200 * PACE;
+    clearTimeout(p.loadingTimer);
+    p.loadingTimer = setTimeout(() => { p.loading = null; renderPhone(); }, 1200 * PACE);
     renderPhone();
     syncControls();
   };
@@ -1898,7 +1903,11 @@ function init() {
   $("#msg").addEventListener("input", syncSendButton);
   $("#btn-stop").onclick = () => S && handleStop("button");
   $("#btn-manual").onclick = () => S && startManual();
-  $("#btn-manual-done").onclick = () => S && endManual();
+  $("#btn-manual-done").onclick = () => {
+    if (!S) return;
+    if (S.manual) return endManual();
+    if (S.pinOpen) { S.pinOpen = false; logEvent("pin_direct_back"); renderPhone(); syncControls(); } // 대화창 키패드로 돌아감
+  };
   $("#btn-back").onclick = () => showRun(false);
   $("#btn-task-close").onclick = () => openTask(false);
   $("#task-dim").onclick = () => openTask(false);
