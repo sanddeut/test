@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#f7f8fa">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>택시 호출 에이전트 프로토타입</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..600,0..1,0&display=block" rel="stylesheet">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <!-- 배포 후 휴대폰에 예전 파일이 남지 않도록 CSS·JS는 항상 새로 받음 -->
+  <script>window.__V = Date.now(); document.write('<link rel="stylesheet" href="css/style.css?v=' + window.__V + '">');</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">연구1 v2 · 택시 호출 에이전트 프로토타입</div>
+    <div class="top-right">
+      <span id="llm-chip" class="chip-status">규칙 기반 해석</span>
+      <button id="btn-researcher" type="button" class="btn-ghost" title="Ctrl + .">연구자 패널</button>
+    </div>
+  </header>
+
+  <!-- ============ 설정 화면 (연구자용) ============ -->
+  <main id="setup" class="setup">
+    <form id="setup-form" class="card setup-card">
+      <div class="setup-head"><h1>세션 설정</h1></div>
+
+      <fieldset>
+        <legend>참가자</legend>
+        <div class="grid2">
+          <label>참가자 ID<input id="pid" placeholder="P01" autocomplete="off"></label>
+          <label>이름<input id="pname" placeholder="홍길동" autocomplete="off"></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>실험 조건</legend>
+        <div class="cond-grid">
+          <label class="cond"><input type="radio" name="cond" value="A1" checked><b>A1</b><span>낮은 복잡도 × 낮은 자동화</span></label>
+          <label class="cond"><input type="radio" name="cond" value="A2"><b>A2</b><span>낮은 복잡도 × 높은 자동화</span></label>
+          <label class="cond"><input type="radio" name="cond" value="B1"><b>B1</b><span>높은 복잡도 × 낮은 자동화</span></label>
+          <label class="cond"><input type="radio" name="cond" value="B2"><b>B2</b><span>높은 복잡도 × 높은 자동화</span></label>
+        </div>
+      </fieldset>
+
+      <div id="paste-key" class="paste-key" hidden>
+        <p class="hint">받으신 공유 링크를 붙여넣으면 API 키가 저장돼요.</p>
+        <div class="paste-row"><input id="paste-link" placeholder="받은 링크 붙여넣기" autocomplete="off" spellcheck="false"><button id="btn-paste-key" type="button" class="btn-ghost">적용</button></div>
+      </div>
+
+
+      <details class="acc">
+        <summary>시나리오 문구</summary>
+        <p class="hint">에이전트가 정해진 순서대로 말하는 문구예요. 조건을 골라 고치면 이 브라우저에 바로 저장돼요. 한 줄이 말풍선 하나예요. 자리표시자 <code>{목적지}</code> <code>{택시종류}</code> <code>{결제}</code> <code>{쿠폰}</code> <code>{요금}</code> <code>{이름}</code>는 진행 중 실제 값으로 바뀌어요.</p>
+        <div class="seg-tabs" id="script-tabs">
+          <button type="button" data-cond="A1" class="on">A1</button><button type="button" data-cond="A2">A2</button><button type="button" data-cond="B1">B1</button><button type="button" data-cond="B2">B2</button>
+        </div>
+        <div id="script-list" class="script-list"></div>
+      </details>
+      <details class="acc">
+        <summary>프롬프트</summary>
+        <p class="hint">참가자가 예상 밖의 말을 했을 때 에이전트가 어떻게 답할지 정하는 프롬프트예요. 고치면 이 브라우저에 바로 저장돼요. 응답 형식(JSON) 지시는 자동으로 뒤에 붙어요.</p>
+        <textarea id="prompt" class="prompt-box" rows="16" spellcheck="false"></textarea>
+      </details>
+
+      <label class="src-toggle setup-src"><input type="checkbox" id="show-src-setup"> 응답 출처 표시 <small>(연구자용 · 대화창 AI 말풍선 아래에 시나리오 / LLM / 규칙 대체 표시)</small></label>
+      <!-- 웹에서 보기 = 이 브라우저에서 세션 시작 / 앱 설치 = 홈 화면에 설치 -->
+      <div class="start-btns">
+        <button type="submit" id="btn-web" class="btn-ghost">웹에서 보기</button>
+        <button type="button" id="btn-install-big" class="btn-install"><span class="ms">install_mobile</span> 앱 설치</button>
+      </div>
+      <p id="install-hint" class="hint" hidden></p>
+    </form>
+    <p class="llm-status" id="llm-status-text">Gemini 연결 확인 중…</p>
+  </main>
+
+  <!-- ============ 실험 화면 ============ -->
+  <main id="stage" class="app-shell" hidden>
+    <!-- 상황·과업 카드: 데스크톱에서는 옆에, 모바일에서는 하단 시트 -->
+    <div id="task-dim" class="task-dim"></div>
+    <aside id="task-card" class="task-card">
+      <div class="cond-title" id="cond-title"></div>
+      <h2>상황</h2>
+      <div id="task-situation"></div>
+      <h2>과업 <small>AI에게 아래 과업을 요청해주세요</small></h2>
+      <ul id="task-list"></ul>
+      <button type="button" id="btn-task-close" class="task-close">확인</button>
+    </aside>
+
+    <div class="phone" data-view="chat">
+      <!-- 진행 화면 헤더 -->
+      <div class="pv-head only-progress">
+        <button type="button" id="btn-back" class="pv-back" title="대화창으로"><span class="ms">arrow_back_ios_new</span></button>
+        <b id="pv-title" class="secret">작업 진행 중</b>
+      </div>
+      <!-- 직접 작업 안내 -->
+      <div class="direct-bar only-direct">
+        <button type="button" id="btn-manual-done" class="pv-back" title="대화로 돌아가기"><span class="ms">arrow_back_ios_new</span></button>
+        <b>직접 조작 중</b>
+      </div>
+      <!-- 대화창 헤더 -->
+      <div class="chat-head only-chat">
+        <span class="agent-avatar">AI</span><b class="secret">AI 도우미</b>
+      </div>
+
+      <div class="screen-box only-screen"><div class="screen-clip"><div id="screen" class="screen"></div><div id="touch-layer" class="touch-layer"></div></div></div>
+
+      <!-- 진행 문구 + 선택지: 높이를 고정해 축소 화면 크기가 바뀌지 않게 함 -->
+      <div class="pv-panel only-progress">
+        <div id="pv-status" class="pv-status" aria-live="polite"></div>
+        <div id="pv-chips" class="pv-chips"></div>
+      </div>
+      <div class="pv-bottom only-progress">
+        <button id="btn-stop" type="button" class="txt-btn">중지</button>
+        <button id="btn-manual" type="button" class="primary-btn">직접 조작</button>
+      </div>
+
+      <div id="chat" class="chat only-chat" aria-live="polite"><div id="chips" class="chips"></div></div>
+      <form id="composer" class="composer only-chat" autocomplete="off">
+        <button id="mic" type="button" class="mic" title="음성 입력"><span class="ms">mic</span></button>
+        <input id="msg" placeholder="AI에게 말하기…">
+        <button id="send" type="submit" class="send" title="보내기"><span class="ms">arrow_upward</span></button>
+      </form>
+    </div>
+  </main>
+
+  <!-- ============ 연구자 패널 ============ -->
+  <aside class="drawer">
+    <div class="drawer-head">
+      <b>연구자 패널</b>
+      <button id="btn-close-drawer" type="button" class="btn-ghost">닫기</button>
+    </div>
+    <label class="src-toggle"><input type="checkbox" id="show-src"> 응답 출처 표시 <small>(AI 말풍선 아래에 시나리오 / LLM / 규칙 대체 표시 · 이 기기에만 저장)</small></label>
+    <h3>진행 단계</h3>
+    <ol id="stepper" class="stepper"></ol>
+    <h3>요약</h3>
+    <div id="summary" class="summary"></div>
+    <div class="btn-row wrap">
+      <button id="btn-json" type="button" class="btn-ghost">이 세션 JSON</button>
+      <button id="btn-csv" type="button" class="btn-ghost">이 세션 이벤트 CSV</button>
+      <button id="btn-all" type="button" class="btn-ghost">전체 세션 요약 CSV (<span id="session-count">0</span>)</button>
+      <button id="btn-clear" type="button" class="btn-ghost danger">기록 지우기</button>
+      <button id="btn-reset" type="button" class="btn-ghost">설정으로 / 새 세션</button>
+    </div>
+    <h3>프롬프트 <small id="prompt-live-meta"></small></h3>
+    <textarea id="prompt-live" class="prompt-box" rows="10" spellcheck="false"></textarea>
+    <div class="btn-row"><button id="btn-prompt-apply" type="button" class="btn-ghost">적용 (다음 응답부터)</button><span id="prompt-apply-msg" class="test-out"></span></div>
+    <h3>이벤트 로그</h3>
+    <div id="log-wrap" class="log-wrap">
+      <table id="log"><thead><tr><th>초</th><th>단계</th><th>이벤트</th><th>내용</th></tr></thead><tbody></tbody></table>
+    </div>
+  </aside>
+
+  <script>["scenarios", "llm", "phone", "app"].forEach(function (n) { document.write('<script src="js/' + n + '.js?v=' + window.__V + '"><\/script>'); });</script>
+</body>
+</html>

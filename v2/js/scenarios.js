@@ -1,0 +1,366 @@
+// 연구1 v2 시나리오 정의 (택시 호출) — classic script, 전역으로 노출
+// 송금 버전의 원칙(2×2, 오류 1회, 낮은 자동화=단계별 승인 / 높은 자동화=안내 후 진행)을 그대로 따릅니다.
+// 에이전트 고정 문구는 여기서만 관리합니다. 스크립트에 없는 응답은 LLM이 상황에 맞게 생성합니다.
+
+const TAXI_APP = "마음택시";
+
+// 목적지 검색 결과 (같은 이름의 여러 지점)
+const PLACES = {
+  gangnam: { name: "담소한정식 강남점", addr: "서울 강남구 테헤란로 152", dist: "8.4km", fare: 15800 },
+  gucheong: { name: "담소한정식 강남구청점", addr: "서울 강남구 학동로 426", dist: "7.1km", fare: 13900 },
+  yeoksam: { name: "담소한정식 역삼점", addr: "서울 강남구 논현로 508", dist: "9.2km", fare: 16700 },
+};
+const SEARCH_ORDER = ["gucheong", "gangnam", "yeoksam"]; // 검색 결과 순서 (에이전트는 맨 위 강남구청점을 고름)
+const SEARCH_QUERY = "담소한정식";
+const TARGET_PLACE = "gangnam"; // 참가자가 요청하는 목적지
+const ERROR_PLACE = "gucheong"; // 에이전트가 잘못 고르는 목적지
+
+const CAR_TYPES = {
+  normal: { label: "일반택시", desc: "가까운 택시를 빠르게", rate: 1 },
+  deluxe: { label: "모범택시", desc: "넓고 편안한 차량", rate: 1.6 },
+  large: { label: "대형택시", desc: "6인 이상 · 짐이 많을 때", rate: 1.9 },
+};
+
+const PAY = {
+  auto: { label: "자동결제", desc: "마음카드 ****1234" },
+  direct: { label: "직접결제", desc: "내릴 때 기사님께 결제" },
+};
+
+const COUPON = { name: "가을맞이 3,000원 할인 쿠폰", amount: 3000 };
+
+const CONDITIONS = {
+  A1: { complexity: "A", automation: "low", title: "A1 · 낮은 복잡도 × 낮은 자동화" },
+  A2: { complexity: "A", automation: "high", title: "A2 · 낮은 복잡도 × 높은 자동화" },
+  B1: { complexity: "B", automation: "low", title: "B1 · 높은 복잡도 × 낮은 자동화" },
+  B2: { complexity: "B", automation: "high", title: "B2 · 높은 복잡도 × 높은 자동화" },
+};
+
+const SITUATION = {
+  A: {
+    situation: [
+      "오늘 저녁 7시에 동창회 모임이 있습니다.",
+      "모임 장소는 ‘담소한정식 강남점’입니다.",
+      "지금 집에서 택시를 타고 가려고 합니다.",
+    ],
+    task: ["지금 ‘담소한정식 강남점’으로 가는 택시 호출"],
+  },
+  B: {
+    situation: [
+      "오늘 저녁 7시에 동창회 모임이 있습니다.",
+      "모임 장소는 ‘담소한정식 강남점’입니다.",
+      "오늘은 정장을 입어서 편하게 모범택시를 타려고 합니다.",
+      "요금은 내릴 때 기사님께 직접 내고, 택시 앱에 있는 할인 쿠폰도 쓰려고 합니다.",
+    ],
+    task: [
+      "지금 ‘담소한정식 강남점’으로 가는 택시 호출",
+      "택시 종류를 모범택시로 바꾸기",
+      "결제 방식을 직접결제로 바꾸기",
+      "할인 쿠폰 적용하기",
+    ],
+  },
+};
+
+const won0 = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
+
+// 예상 요금: 목적지 기본요금 × 택시 종류 배율 − 쿠폰
+function fareOf(f, destKey = f.dest) {
+  const base = PLACES[destKey || TARGET_PLACE].fare;
+  const fare = Math.round((base * CAR_TYPES[f.car].rate) / 100) * 100;
+  return Math.max(0, fare - (f.coupon ? COUPON.amount : 0));
+}
+
+// 승인/거부 버튼 순서: 거부(왼쪽) · 승인(오른쪽)
+const APPROVE = [
+  { id: "reject", label: "거부" },
+  { id: "approve", label: "승인" },
+];
+
+// =====================================================================
+// 시나리오 문구 (설정 화면에서 조건별로 수정 가능)
+// - 한 줄 = 말풍선 하나
+// - 자리표시자: {목적지} {택시종류} {결제} {쿠폰} {요금} {이름}
+// =====================================================================
+const SCRIPT_VARS = ["목적지", "택시종류", "결제", "쿠폰", "요금", "이름"];
+
+// 조건별 기본 문구 목록 (화면에 보이는 순서대로)
+function scriptDefaults(cond) {
+  const { complexity, automation } = CONDITIONS[cond];
+  const B = complexity === "B";
+  const low = automation === "low";
+  const L = [];
+  const add = (key, group, label, text) => L.push({ key, group, label, text });
+
+  add("greet", "시작", "첫 인사", "무엇을 도와드릴까요?");
+
+  if (low) {
+    add("taxi_open", "택시 앱 실행", "승인 요청", "택시 앱을 실행할까요?");
+    add("app.which", "택시 앱 실행", "거부 시", "어떤 앱으로 실행할까요?");
+    add("taxi_open.launched", "택시 앱 실행", "거부 후 택시 앱을 말했을 때", "택시 앱을 실행할게요.");
+  } else add("taxi_open", "택시 앱 실행", "안내", "택시 앱을 실행할게요.");
+  add("taxi_open.opening", "택시 앱 실행", "진행 문구 (앱을 여는 동안)", "택시 앱을 열고 있어요 …");
+
+  add("dest.busy", "[오류] 목적지 설정", "진행 문구 (검색 중)", "목적지를 검색하고 있어요 …");
+  if (low) {
+    add("dest", "[오류] 목적지 설정", "승인 요청 ({목적지} = 강남구청점)", "요청하신 ‘{목적지}’을 찾았어요. 여기로 갈까요?");
+    add("dest.ask", "[오류] 목적지 설정", "거부 시", "어디로 갈까요?");
+    add("dest.confirm", "[오류] 목적지 설정", "목적지를 말했을 때", "‘{목적지}’으로 갈까요?");
+  } else {
+    add("dest", "[오류] 목적지 설정", "안내 ({목적지} = 강남구청점)", "요청하신 ‘{목적지}’을 목적지로 설정했어요.");
+  }
+
+  if (B) {
+    if (low) add("car", "택시 종류 변경", "선택 요청", "택시 종류가 3개예요. 어떤 택시로 할까요?");
+    else add("car", "택시 종류 변경", "안내", "말씀하신 {택시종류}로 바꿨어요.");
+  }
+
+  if (low) add("pay", "결제 방식", "선택 요청", "결제 방식이 2개예요. 어떻게 결제할까요?");
+  else if (B) add("pay", "결제 방식", "안내", "말씀하신 {결제}로 바꿨어요.");
+  else add("pay", "결제 방식", "안내", "{결제}(마음카드)로 결제할게요.");
+
+  if (B) {
+    if (low) {
+      add("coupon", "쿠폰 적용", "승인 요청", "쓸 수 있는 쿠폰이 있어요. ‘{쿠폰}’을 적용할까요?");
+      add("coupon.skip", "쿠폰 적용", "거부 시", "쿠폰은 적용하지 않을게요.");
+    } else add("coupon", "쿠폰 적용", "안내", "‘{쿠폰}’을 적용했어요.");
+  }
+
+  if (low) {
+    add("final", "최종 호출 확인", "승인 요청", "호출 내용을 최종 확인해주세요.");
+    add("final.ask", "최종 호출 확인", "거부 시", "무엇을 수정할까요?");
+  } else add("final", "최종 호출 확인", "안내", "‘{목적지}’으로 가는 {택시종류}를 호출할게요.");
+
+  add("done", "완료 안내", "안내", "{택시종류}를 호출했어요. 기사님이 3분 뒤 도착해요.");
+
+  add("stop.ask", "중지·직접 조작", "중지를 눌렀을 때", "진행을 멈췄어요. 어떻게 바꿀까요?");
+  add("change.dest", "중지·직접 조작", "중지 중 목적지를 바꿨을 때", low ? "목적지를 ‘{목적지}’으로 바꿀게요." : "목적지를 ‘{목적지}’으로 바꿨어요.");
+  if (B) add("change.car", "중지·직접 조작", "중지 중 택시 종류를 바꿨을 때", "택시 종류를 {택시종류}로 바꿨어요.");
+  add("change.pay", "중지·직접 조작", "중지 중 결제 방식을 바꿨을 때", "결제 방식을 {결제}로 바꿨어요.");
+  if (B) {
+    add("change.coupon.on", "중지·직접 조작", "중지 중 쿠폰을 적용했을 때", "‘{쿠폰}’을 적용했어요.");
+    add("change.coupon.off", "중지·직접 조작", "중지 중 쿠폰을 뺐을 때", "쿠폰 적용을 취소했어요.");
+  }
+  add("stop.continue", "중지·직접 조작", "계속하기를 눌렀을 때", "계속 진행할게요.");
+  add("cancel", "기타", "호출을 취소했을 때", "택시 호출을 취소했어요.");
+  return L;
+}
+
+// 수정본: { A1: { key: text }, ... } (설정 화면에서 편집, 브라우저에 저장)
+let SCRIPT_OVERRIDES = {};
+
+function scriptText(cond, key) {
+  const o = SCRIPT_OVERRIDES[cond]?.[key];
+  if (typeof o === "string") return o;
+  const d = scriptDefaults(cond).find((x) => x.key === key);
+  return d ? d.text : "";
+}
+
+// 자리표시자 채우기 → 말풍선 목록
+function lines(key, s, vars = {}) {
+  const f = s.form || {};
+  const dest = vars.dest ?? f.dest ?? s.phone?.pendingDest ?? TARGET_PLACE;
+  const car = vars.car ?? f.car ?? "normal";
+  const pay = vars.pay ?? f.pay ?? "auto";
+  const map = {
+    목적지: PLACES[dest].name,
+    택시종류: CAR_TYPES[car].label,
+    결제: PAY[pay].label,
+    쿠폰: COUPON.name,
+    요금: won0(fareOf({ ...f, car }, dest)),
+    이름: s.cfg?.name || "OOO",
+  };
+  return scriptText(s.cond, key)
+    .split("\n")
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .map((t) => t.replace(/\{(목적지|택시종류|결제|쿠폰|요금|이름)\}/g, (_, k) => map[k]));
+}
+const line = (key, s, vars) => lines(key, s, vars).join("\n");
+
+// 높은 자동화(B)에서 바꿀 값: 참가자가 이미 직접 바꿨으면 그 값, 아니면 과업의 값
+const carTarget = (s) => (s.userSet?.car ? s.form.car : "deluxe");
+const payTarget = (s) => (s.userSet?.pay ? s.form.pay : s.complexity === "B" ? "direct" : "auto");
+
+// 단계 정의
+// - low.messages / low.options : 낮은 자동화 (승인·선택 요청)
+// - low.reject : 거부 시 처리 유형 (app | coupon | final)
+// - high.messages / high.applyFirst : 높은 자동화 (applyFirst=true면 화면 조작 후 “~했어요” 안내)
+// - guide : 스크립트 밖 응답을 LLM이 만들 때 참고할 단계 설명
+// - act(state, choice) : 화면에서 누르고 입력하는 연출 / apply(state, choice) : 상태 반영
+function buildSteps(complexity) {
+  const B = complexity === "B";
+  const msg = (key) => (s) => lines(key, s);
+  const steps = [];
+
+  steps.push({
+    id: "taxi_open",
+    label: "택시 앱 실행",
+    guide: "택시를 부르기 위해 택시 앱을 여는 단계",
+    low: {
+      messages: msg("taxi_open"),
+      options: APPROVE,
+      reject: "app",
+      launched: "taxi_open.launched",
+      opening: "taxi_open.opening",
+      app: { target: "택시 앱", purpose: "택시 호출", keywords: "마음택시|택시\\s?앱|^택시" },
+    },
+    high: { messages: msg("taxi_open"), opening: "taxi_open.opening" },
+    apply: (s) => { s.phone.app = "taxi"; s.phone.taxiView = "home"; s.phone.sheet = null; },
+  });
+
+  steps.push({
+    id: "dest",
+    kind: "error_place",
+    busy: "dest.busy",
+    label: "[오류] 강남점을 강남구청점으로 잘못 골라 목적지 설정",
+    guide: `목적지를 검색해 고르는 단계. 검색 결과는 ${SEARCH_ORDER.map((k) => PLACES[k].name).join(", ")} 세 곳이고, 에이전트는 ‘${PLACES[ERROR_PLACE].name}’을 목적지로 고르려 함`,
+    low: { messages: (s) => lines("dest", s, { dest: ERROR_PLACE }), options: APPROVE, reject: "dest" },
+    high: { messages: (s) => lines("dest", s, { dest: ERROR_PLACE }), applyFirst: true },
+    correction: {
+      lowAsk: (s) => line("dest.ask", s),
+      lowConfirm: (s, k) => line("dest.confirm", s, { dest: k }),
+    },
+    // 검색창을 누르고 가게 이름을 입력 → 검색 결과가 나옴
+    pre: async (s) => {
+      const p = s.phone;
+      if (p.taxiView === "search" && p.searchTyped === SEARCH_QUERY) return;
+      await tap(".tx-search");
+      p.taxiView = "search";
+      p.searchTyped = "";
+      renderPhone();
+      await actSleep(400);
+      await typeText((v) => (p.searchTyped = v), SEARCH_QUERY, 170);
+      await actSleep(500);
+      p.results = true;
+      renderPhone();
+      await actSleep(600);
+    },
+    act: async (s, choice) => {
+      const k = choice || s.form.dest || ERROR_PLACE;
+      const p = s.phone;
+      if (p.taxiView === "search") {
+        await tap(`.tx-res[data-place="${k}"]`);
+        p.tappedPlace = k;
+        renderPhone();
+        await actSleep(300);
+      }
+      s.form.dest = k;
+      p.taxiView = "ride";
+      renderPhone();
+    },
+    apply: (s, choice) => { s.form.dest = choice || s.form.dest || ERROR_PLACE; s.phone.taxiView = "ride"; s.phone.focus = null; },
+  });
+
+  if (B) {
+    steps.push({
+      id: "car",
+      label: "택시 종류 변경",
+      guide: "택시 종류(일반택시 / 모범택시 / 대형택시)를 고르는 단계. 기본은 일반택시",
+      low: {
+        messages: msg("car"),
+        // 예상 요금은 목적지·쿠폰에 따라 바뀌므로 물을 때마다 새로 계산
+        get options() { return Object.entries(CAR_TYPES).map(([id, c]) => ({ id, label: c.label, desc: `${c.desc} · 예상 ${won0(fareOf({ ...S.form, car: id }))}` })); },
+      },
+      high: { messages: (s) => lines("car", s, { car: carTarget(s) }), applyFirst: true },
+      pre: async (s) => { s.phone.focus = "car"; renderPhone(); await actSleep(400); },
+      act: async (s, choice) => {
+        const k = choice || carTarget(s);
+        await tap(`.tx-car[data-car="${k}"]`);
+        s.form.car = k;
+        s.phone.focus = null;
+        renderPhone();
+      },
+      apply: (s, choice) => { s.form.car = choice || carTarget(s); s.phone.focus = null; },
+    });
+  }
+
+  steps.push({
+    id: "pay",
+    label: "결제 방식",
+    guide: `결제 방식(자동결제: 마음카드 ****1234 / 직접결제: 내릴 때 기사님께)을 고르는 단계. 기본은 자동결제`,
+    low: {
+      messages: msg("pay"),
+      options: Object.entries(PAY).map(([id, p]) => ({ id, label: p.label, desc: p.desc })),
+    },
+    high: B ? { messages: (s) => lines("pay", s, { pay: payTarget(s) }), applyFirst: true } : { messages: (s) => lines("pay", s, { pay: payTarget(s) }) },
+    pre: async (s) => {
+      if (s.phone.sheet === "pay") return;
+      await tap(".tx-pay");
+      s.phone.sheet = "pay";
+      renderPhone();
+      await actSleep(400);
+    },
+    act: async (s, choice) => {
+      const k = choice || payTarget(s);
+      if (s.phone.sheet !== "pay") { s.phone.sheet = "pay"; renderPhone(); await actSleep(400); }
+      await tap(`.tx-pay-opt[data-pay="${k}"]`);
+      s.form.pay = k;
+      s.phone.sheet = null;
+      renderPhone();
+    },
+    apply: (s, choice) => { s.form.pay = choice || payTarget(s); s.phone.sheet = null; },
+  });
+
+  if (B) {
+    steps.push({
+      id: "coupon",
+      label: "쿠폰 적용",
+      guide: `쿠폰 목록에서 ‘${COUPON.name}’(${won0(COUPON.amount)} 할인)을 적용하는 단계. 쓸 수 있는 쿠폰은 이것 하나`,
+      low: { messages: msg("coupon"), options: APPROVE, reject: "coupon" },
+      high: { messages: msg("coupon"), applyFirst: true },
+      pre: async (s) => {
+        if (s.phone.sheet === "coupon") return;
+        await tap(".tx-coupon");
+        s.phone.sheet = "coupon";
+        renderPhone();
+        await actSleep(400);
+      },
+      act: async (s, choice) => {
+        const on = choice !== "reject";
+        if (s.phone.sheet !== "coupon") { s.phone.sheet = "coupon"; renderPhone(); await actSleep(400); }
+        await tap(on ? ".tx-cpn-item" : ".tx-cpn-none");
+        s.form.coupon = on;
+        s.phone.sheet = null;
+        renderPhone();
+      },
+      apply: (s, choice) => { s.form.coupon = choice !== "reject"; s.phone.sheet = null; },
+    });
+  }
+
+  steps.push(
+    {
+      id: "final",
+      label: "최종 호출 확인",
+      guide: `호출 내용을 최종 확인하는 단계. 목적지·결제 방식${B ? "·택시 종류·쿠폰" : ""}을 바꿀 수 있음`,
+      low: { messages: msg("final"), options: APPROVE, reject: "final", ask: "final.ask" },
+      high: { messages: msg("final") },
+      pre: async (s) => {
+        if (s.phone.sheet === "confirm") return;
+        if (s.phone.sheet) { s.phone.sheet = null; renderPhone(); await actSleep(300); }
+        await tap(".tx-call");
+        s.phone.sheet = "confirm";
+        renderPhone();
+        await actSleep(500);
+      },
+      act: async (s) => {
+        if (s.phone.sheet !== "confirm") { s.phone.sheet = "confirm"; renderPhone(); await actSleep(400); }
+        await tap(".sheet .primary");
+        s.phone.sheet = null;
+        s.phone.taxiView = "calling";
+        renderPhone();
+      },
+      apply: (s) => { s.phone.sheet = null; s.phone.taxiView = "calling"; },
+    },
+    {
+      id: "done",
+      kind: "done",
+      label: "완료 안내",
+      low: { messages: msg("done"), applyFirst: true },
+      high: { messages: msg("done"), applyFirst: true },
+      // 주변 택시를 찾는 화면을 잠시 보여준 뒤 배차 완료
+      act: async () => { await actSleep(2600); },
+      apply: (s) => { s.phone.sheet = null; s.phone.taxiView = "complete"; s.phone.focus = null; },
+    },
+  );
+
+  return steps;
+}
