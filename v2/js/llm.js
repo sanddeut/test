@@ -6,9 +6,9 @@
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const DEFAULT_MODEL = "gemini-3.5-flash";
 
-// 기본 프롬프트 (연구팀 제공). 설정 화면에서 수정할 수 있고, 수정본은 브라우저에 저장됨
+// 기본 프롬프트 (연구팀 제공, 송금 버전을 택시 호출에 맞게 옮김). 설정 화면에서 수정할 수 있고, 수정본은 브라우저에 저장됨
 const DEFAULT_PROMPT = `# 역할
-너는 고령 사용자의 모바일 금융 업무를 돕는 AI 에이전트야. 사용자의 모바일앱을 대리 조작해서 사용자가 원하는 과업을 완수해주어야 해.
+너는 고령 사용자의 모바일 앱 사용을 돕는 AI 에이전트야. 사용자의 택시 앱을 대리 조작해서 사용자가 원하는 택시 호출 과업을 완수해주어야 해.
 
 # 응답하는 경우
 사용자 발화가 현재 단계에서 예상한 응답(승인, 거부, 선택지 선택, 버튼 입력)인 경우에는 정해진 시나리오 문구가 출력되므로 네가 응답하지 않아. 예상한 응답에 해당하지 않을 때만 네가 응답해.
@@ -17,15 +17,15 @@ const DEFAULT_PROMPT = `# 역할
 1. 사용자의 발화를 먼저 짧게 받아준 뒤, 현재 단계로 자연스럽게 돌아와.
 2. 흐름으로 되돌릴 때 강압적으로 하지 마. 거절하거나 같은 요청을 반복해서 재촉하지 말고, 사용자가 이어서 진행할 수 있도록 부드럽게 안내해.
 3. 과업과 무관한 말(잡담, 다른 질문)에도 짧게 반응한 뒤 현재 단계로 돌아와.
-4. 사용자가 지정된 은행 앱이 아닌 다른 앱을 말하면 은행 앱으로 안내해. 그 앱으로는 송금할 수 없다는 사실을 알려줘.
-5. 사용자가 다른 계좌를 찾아달라고 하면 같은 계좌(김영숙, 농협 302-1234-5678)를 다시 안내하고, 직접 입력도 가능하다고 알려줘.
+4. 사용자가 지정된 택시 앱(마음택시)이 아닌 다른 앱을 말하면 택시 앱으로 안내해. 그 앱으로는 택시를 호출할 수 없다는 사실을 알려줘.
+5. 목적지 검색 결과는 담소한정식 강남구청점(서울 강남구 학동로 426), 담소한정식 강남점(서울 강남구 테헤란로 152), 담소한정식 역삼점(서울 강남구 논현로 508) 세 곳뿐이야. 다른 곳을 찾아달라고 하면 이 세 곳을 알려줘.
 
 # 조건 유지 규칙
 - 낮은 자동화: 현재 단계로 돌아올 때 사용자에게 승인을 묻는 형태로 끝내.
 - 높은 자동화: 승인을 묻지 마. 진행 상황을 알리는 형태로 끝내고, 사용자는 '중지'·'직접조작' 버튼으로만 개입해.
 - 높은 자동화에서 사용자가 '중지'를 누른 경우: 사용자의 발화에 응답한 뒤, 사용자가 '계속하기'를 누를 때까지 진행하지 말고 기다려. 재개 여부를 말로 묻지 말고 '계속하기' 버튼을 안내해. 재개 후에는 다시 높은 자동화 방식으로 진행해.
 - 시나리오의 단계 순서를 바꾸거나 단계를 건너뛰거나 새 단계를 추가하지 마.
-- 송금액 오류(10만원) 단계에서는 네가 먼저 오류를 알아채거나 30만원으로 고치거나 오류를 암시하지 마. 사용자가 직접 수정을 요청할 때만 30만원으로 바꿔.
+- 목적지 오류(강남구청점) 단계에서는 네가 먼저 오류를 알아채거나 강남점으로 고치거나 오류를 암시하지 마. 사용자가 직접 수정을 요청할 때만 목적지를 바꿔.
 
 # 말투와 정보량
 - 해요체를 사용해.
@@ -39,86 +39,89 @@ const DEFAULT_PROMPT = `# 역할
 
 ## 예시 1 — 과업과 무관한 질문
 - 자동화수준: 낮은 자동화
-- 현재 단계: 출금계좌 선택
-- 사용자: "요즘 적금 이자는 얼마나 붙나?"
-- 좋은 응답: "이자 내역은 송금을 마친 뒤 확인하실 수 있어요. 주거래와 적금출금 계좌 중 어떤 계좌에서 출금할까요?"
-- 나쁜 응답: "그 질문에는 답할 수 없어요. 출금 계좌를 선택해주세요." (거절하고 재촉하는 강압적인 복귀)
+- 현재 단계: 결제 방식
+- 사용자: "요즘 택시 기본요금이 얼마야?"
+- 좋은 응답: "예상 요금은 호출 화면에 함께 보여드려요. 자동결제와 직접결제 중 어떻게 결제할까요?"
+- 나쁜 응답: "그 질문에는 답할 수 없어요. 결제 방식을 선택해주세요." (거절하고 재촉하는 강압적인 복귀)
 
 ## 예시 2 — 중지 후 진행 중 내용에 대한 질문
 - 자동화수준: 높은 자동화
-- 현재 단계: 광고 팝업 닫기 (사용자가 '중지'를 누름)
-- 사용자: "잠깐, 이거 무슨 이벤트야?"
-- 좋은 응답: "은행 앱의 이벤트 안내 팝업이었어요. 계속하기를 누르시면 송금을 이어서 진행할게요."
-- 나쁜 응답: "은행 앱의 이벤트 안내 팝업이었어요. 팝업을 닫고 송금을 이어서 진행할게요." (사용자의 재개 없이 자동으로 진행함)
-- 나쁜 응답: "이벤트 팝업을 닫을까요?" (높은 자동화에서 승인을 물음)
+- 현재 단계: 쿠폰 적용 (사용자가 '중지'를 누름)
+- 사용자: "잠깐, 이 쿠폰 언제까지 쓸 수 있어?"
+- 좋은 응답: "가을맞이 3,000원 할인 쿠폰은 10월 31일까지 쓸 수 있어요. 계속하기를 누르시면 이어서 진행할게요."
+- 나쁜 응답: "10월 31일까지예요. 쿠폰을 적용하고 이어서 진행할게요." (사용자의 재개 없이 자동으로 진행함)
+- 나쁜 응답: "쿠폰을 적용할까요?" (높은 자동화에서 승인을 물음)
 
 ## 예시 3 — 대상에 대한 불안
 - 자동화수준: 낮은 자동화
-- 현재 단계: 받는계좌 입력
-- 사용자: "영숙이 계좌 맞아? 바뀌었다던 것 같은데."
-- 좋은 응답: "자주 사용하는 계좌 목록에 '동창회 총무' 김영숙님 계좌(농협 302-1234-5678)로 저장돼 있어요. 이 계좌로 송금할까요?"
-- 나쁜 응답: "아마 맞는 계좌일 거예요. 이 계좌로 송금할까요?" (확신 정도를 표현함)
+- 현재 단계: 택시 종류 변경
+- 사용자: "모범택시가 뭐가 달라?"
+- 좋은 응답: "모범택시는 넓고 편안한 차량이고 요금이 일반택시보다 높아요. 일반, 모범, 대형 중 어떤 택시로 할까요?"
+- 나쁜 응답: "아마 더 편하실 거예요. 모범택시로 할까요?" (확신 정도를 표현하고 선택을 유도함)
 
 ## 예시 4 — 오류 단계에서 되물음
 - 자동화수준: 낮은 자동화
-- 현재 단계: [오류] 송금액 입력
-- 사용자: "응? 뭐라고?"
-- 좋은 응답: "송금액을 10만원으로 입력하려고 해요. 이대로 입력할까요?"
-- 나쁜 응답: "혹시 30만원을 말씀하신 건가요? 금액을 다시 확인해주세요." (에이전트가 먼저 오류를 암시함)
+- 현재 단계: [오류] 목적지 설정
+- 사용자: "응? 어디라고?"
+- 좋은 응답: "목적지를 담소한정식 강남구청점으로 설정하려고 해요. 여기로 갈까요?"
+- 나쁜 응답: "혹시 강남점을 말씀하신 건가요? 목적지를 다시 확인해주세요." (에이전트가 먼저 오류를 암시함)
 
 ## 예시 5 — 잡담
 - 자동화수준: 높은 자동화
-- 현재 단계: 받는계좌 입력
+- 현재 단계: 결제 방식
 - 사용자: "고마워, 똑똑하네."
-- 좋은 응답: "도움이 돼서 다행이에요. 문자에서 복사한 김영숙님(농협 302-1234-5678) 계좌를 입력했어요."
-- 나쁜 응답: "감사합니다! 저는 여러 금융 업무를 도와드릴 수 있어요. 송금을 계속 진행할게요." (불필요한 부가설명)
+- 좋은 응답: "도움이 돼서 다행이에요. 결제 방식을 직접결제로 바꿨어요."
+- 나쁜 응답: "감사합니다! 저는 여러 앱 업무를 도와드릴 수 있어요. 호출을 계속 진행할게요." (불필요한 부가설명)
 
-## 예시 6 — 송금할 수 없는 앱을 지정
+## 예시 6 — 호출할 수 없는 앱을 지정
 - 자동화수준: 낮은 자동화
-- 현재 단계: 은행 앱 접속
-- 사용자: "은행 앱 말고 전화 앱 켜줘."
-- 좋은 응답: "전화 앱으로는 송금을 할 수 없어요. 송금을 위해 은행 앱을 실행할까요?"
-- 나쁜 응답: "전화 앱을 실행할게요." (송금할 수 없는 앱으로 흐름을 벗어남)`;
+- 현재 단계: 택시 앱 실행
+- 사용자: "택시 앱 말고 전화 앱 켜줘."
+- 좋은 응답: "전화 앱으로는 택시를 호출할 수 없어요. 택시 호출을 위해 택시 앱을 실행할까요?"
+- 나쁜 응답: "전화 앱을 실행할게요." (호출할 수 없는 앱으로 흐름을 벗어남)`;
 
 // 출력 형식 (편집 불가: 앱이 응답을 해석하는 데 필요해서 프롬프트 뒤에 항상 붙임)
 const OUTPUT_FORMAT = `# 출력 형식
 항상 지정된 JSON 스키마로만 답해.
 - intent: 사용자 발화가 "분류할 의도" 목록 중 무엇에 해당하는지 id로 골라. 어느 것에도 맞지 않으면 other.
-- 금액은 원 단위 정수로 바꿔. 예: "30만원", "삼십만 원", "300,000원" → 300000. 구어체, 맞춤법 오류, 음성인식 오류(예: "삼심만원")는 너그럽게 해석해.
+- place: 사용자가 말한 목적지 지점. 강남점 → gangnam, 강남구청점 → gucheong, 역삼점 → yeoksam. 구어체, 맞춤법 오류, 음성인식 오류(예: "강남 구청점", "강남쩜")는 너그럽게 해석해. 세 곳이 아니면 null.
+- car_type: 일반택시 → normal, 모범택시 → deluxe, 대형택시 → large.
+- pay_method: 자동결제(카드) → auto, 직접결제(현금·기사님께) → direct.
+- coupon: 쿠폰을 적용하라고 하면 true, 빼라고 하면 false.
 - reply: 위 원칙에 따라 에이전트가 할 말. intent가 other이거나 "이번 턴 지침"이 응답을 요구할 때 화면에 출력돼.`;
 
 const LLM_TASKS = {
   request:
-    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 송금 요청이면 clarification은 null로 둬. 송금 요청인데 금액을 알 수 없을 때만 금액을 되물어. " +
-    "송금 요청이 아니면(인사, 잡담, 의미 없는 말, 다른 부탁 등) 먼저 송금을 꺼내지 말고, 발화를 짧게 받아준 뒤 휴대폰 앱을 대신 조작해서 할 수 있는 일(예: 송금·이체, 문자 확인, 앱 실행)을 알려주고 무엇을 도와드릴지 물어. clarification은 해요체 2문장 이내.",
+    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 택시 호출 요청이면 clarification은 null로 둬. 택시 호출 요청인데 목적지를 알 수 없을 때만 목적지를 되물어. " +
+    "택시 호출 요청이 아니면(인사, 잡담, 의미 없는 말, 다른 부탁 등) 먼저 택시를 꺼내지 말고, 발화를 짧게 받아준 뒤 휴대폰 앱을 대신 조작해서 할 수 있는 일(예: 택시 호출, 앱 실행)을 알려주고 무엇을 도와드릴지 물어. clarification은 해요체 2문장 이내.",
   turn: "현재 상태에서 사용자가 말했어. 의도를 분류하고 필요한 값을 채운 뒤, reply를 써.",
 };
 
 const sch = (type, extra = {}) => ({ type, ...extra });
+const PLACE_ENUM = ["gangnam", "gucheong", "yeoksam"];
 const REQUEST_SCHEMA = sch("OBJECT", {
   properties: {
-    is_transfer_request: sch("BOOLEAN"),
-    amount_won: sch("INTEGER", { nullable: true }),
-    source_account: sch("STRING", { enum: ["main", "savings", "unspecified"] }),
-    recipient_hint: sch("STRING", { nullable: true }),
-    wants_sms_lookup: sch("BOOLEAN"),
-    memo: sch("STRING", { nullable: true }),
+    is_ride_request: sch("BOOLEAN"),
+    destination: sch("STRING", { nullable: true }),
+    car_type: sch("STRING", { nullable: true, enum: ["normal", "deluxe", "large"] }),
+    pay_method: sch("STRING", { nullable: true, enum: ["auto", "direct"] }),
+    wants_coupon: sch("BOOLEAN"),
     clarification: sch("STRING", { nullable: true }),
   },
-  required: ["is_transfer_request", "amount_won", "source_account", "recipient_hint", "wants_sms_lookup", "memo", "clarification"],
+  required: ["is_ride_request", "destination", "car_type", "pay_method", "wants_coupon", "clarification"],
 });
 
 function turnSchema(intentIds) {
   return sch("OBJECT", {
     properties: {
       intent: sch("STRING", { enum: intentIds }),
-      amount_won: sch("INTEGER", { nullable: true }),
-      memo: sch("STRING", { nullable: true }),
-      source_account: sch("STRING", { nullable: true, enum: ["main", "savings"] }),
-      account_number: sch("STRING", { nullable: true }),
+      place: sch("STRING", { nullable: true, enum: PLACE_ENUM }),
+      car_type: sch("STRING", { nullable: true, enum: ["normal", "deluxe", "large"] }),
+      pay_method: sch("STRING", { nullable: true, enum: ["auto", "direct"] }),
+      coupon: sch("BOOLEAN", { nullable: true }),
       reply: sch("STRING"),
     },
-    required: ["intent", "amount_won", "memo", "source_account", "account_number", "reply"],
+    required: ["intent", "place", "car_type", "pay_method", "coupon", "reply"],
   });
 }
 
@@ -126,19 +129,19 @@ function turnSchema(intentIds) {
 const INTENT_MEANINGS = {
   approve: "도우미의 제안에 동의·승인 (네, 좋아요, 그렇게 해줘 등)",
   reject: "도우미의 제안을 거절하거나 틀렸다고 함",
-  main: "주거래 통장을 고름",
-  savings: "적금출금 계좌를 고름",
-  open: "비밀번호 입력 화면을 열겠다고 함",
-  set_amount: "송금액을 특정 금액으로 바꾸라고 함 (amount_won 채움)",
-  set_memo: "받는 분 통장 메모를 특정 문구로 하라고 함 (memo 채움)",
-  set_source: "출금 계좌를 바꾸라고 함 (source_account 채움)",
-  set_account: "송금할 계좌번호를 직접 말함 (account_number 채움)",
-  find_other: "다른 계좌를 찾아보라고 함",
-  direct_input: "계좌를 직접 입력하겠다고 함 (번호는 말하지 않음)",
-  unsuitable_app: "지정된 앱이 아닌 다른 앱(다른 은행 앱, 전화, 카메라 등)을 말함",
+  normal: "일반택시를 고름",
+  deluxe: "모범택시를 고름",
+  large: "대형택시를 고름",
+  auto: "자동결제(등록된 카드)를 고름",
+  direct: "직접결제(내릴 때 기사님께)를 고름",
+  set_dest: "목적지를 특정 지점으로 바꾸라고 함 (place 채움)",
+  set_car: "택시 종류를 바꾸라고 함 (car_type 채움)",
+  set_pay: "결제 방식을 바꾸라고 함 (pay_method 채움)",
+  set_coupon: "쿠폰을 적용하거나 빼라고 함 (coupon 채움)",
+  unsuitable_app: "지정된 앱이 아닌 다른 앱(다른 택시 앱, 전화, 카메라 등)을 말함",
   pause: "바꿀 값 없이 진행을 멈추라고 하거나 무언가 잘못됐다고 지적함 (멈춰, 기다려, 잘못했잖아, 이상해 등)",
   continue: "바꿀 것 없이 그대로(하던 대로) 진행하라고 함. 예: '그냥 해', '하던 거 해', '괜찮아 계속해', '없어'",
-  cancel: "송금 자체를 취소하라고 함",
+  cancel: "택시 호출 자체를 취소하라고 함",
   other: "위 어느 것에도 해당하지 않음 (질문, 잡담, 이해하기 어려운 말 등)",
 };
 
@@ -222,7 +225,7 @@ function buildPrompt(kind, text, c) {
   if (c.step) lines.push(`- 현재 단계: ${c.step}`);
   if (c.agent_said) lines.push(`- 현재 단계의 에이전트 문구: ${c.agent_said}`);
   if (c.step_guide) lines.push(`- 단계 설명: ${c.step_guide}`);
-  if (c.current_transfer) lines.push(`- 현재까지 입력된 송금 정보: ${JSON.stringify(c.current_transfer)}`);
+  if (c.current_ride) lines.push(`- 현재까지 입력된 호출 정보: ${JSON.stringify(c.current_ride)}`);
   if (c.recent) lines.push(`- 최근 대화:\n${c.recent.map((r) => `  ${r}`).join("\n")}`);
   if (kind === "turn") {
     if (c.reply_hint) lines.push("", "# 이번 턴 지침", c.reply_hint);
@@ -307,101 +310,79 @@ async function geminiRequest(key, model, prompt, schema, thinking) {
 // ---------------- 규칙 기반 해석 (키 없음 / 실패 시) ----------------
 // 예상 밖 답변을 몇 가지 유형으로 나누고, 유형별로 정해진 답변을 돌려줍니다.
 
-const KO_DIGIT = { 영: 0, 공: 0, 일: 1, 한: 1, 이: 2, 두: 2, 삼: 3, 세: 3, 사: 4, 네: 4, 오: 5, 육: 6, 륙: 6, 칠: 7, 팔: 8, 구: 9 };
-const KO_UNIT = { 십: 10, 백: 100, 천: 1000 };
-
-function parseKoreanNumber(str) {
-  // "삼십만", "30만", "30만 5천", "300,000" 등 → 정수
-  const s = str.replace(/[,\s]/g, "").replace(/원$/, "");
-  if (/^\d+$/.test(s)) return Number(s);
-  let total = 0, section = 0, num = 0, seen = false;
-  for (const ch of s) {
-    if (/\d/.test(ch)) { num = num * 10 + Number(ch); seen = true; }
-    else if (ch in KO_DIGIT) { num = KO_DIGIT[ch]; seen = true; }
-    else if (ch in KO_UNIT) { section += (num || 1) * KO_UNIT[ch]; num = 0; seen = true; }
-    else if (ch === "만") { total += (section + num || 1) * 10000; section = 0; num = 0; seen = true; }
-    else if (ch === "억") { total += (section + num || 1) * 100000000; section = 0; num = 0; seen = true; }
-    else return null;
-  }
-  return seen ? total + section + num : null;
+// 목적지 지점: "강남구청" → gucheong, "역삼" → yeoksam, "강남(점)" → gangnam
+function extractPlace(text) {
+  const t = text.replace(/\s+/g, "");
+  if (/구청/.test(t)) return "gucheong";
+  if (/역삼/.test(t)) return "yeoksam";
+  if (/강남/.test(t)) return "gangnam";
+  return null;
 }
+const extractCar = (t) => (/모범/.test(t) ? "deluxe" : /대형|큰\s?차|밴/.test(t) ? "large" : /일반/.test(t) ? "normal" : null);
+const extractPay = (t) => (/직접|현금|기사님께|내릴\s?때/.test(t) ? "direct" : /자동|카드/.test(t) ? "auto" : null);
 
-function extractAmount(text) {
-  const m = text.match(/([0-9][0-9,]*|[0-9영공일이삼사오육륙칠팔구십백천만억\s]+?)\s*(만\s*원|만원|원|만)(?![가-힣]*요일)/);
-  if (!m) return null;
-  const n = parseKoreanNumber(m[1] + (m[2].startsWith("만") ? "만" : ""));
-  return n && n >= 1000 ? n : null;
-}
-
-const extractAccount = (text) => (text.match(/\d{2,6}(?:[-\s]\d{2,8}){1,3}/) || [null])[0];
-
-const YES = /(^|\s)(네|예|응|그래|좋아|좋아요|맞아|맞아요|맞습니다|승인|진행|계속|괜찮|오케이|ok|okay|그렇게|닫아|열어)/i;
+const YES = /(^|\s)(네|예|응|그래|좋아|좋아요|맞아|맞아요|맞습니다|승인|진행|계속|괜찮|오케이|ok|okay|그렇게|열어|적용)/i;
 const NO = /(아니|아뇨|거부|아냐|틀려|틀렸|잘못|안\s?돼|하지\s?마|싫어|멈춰|잠깐|바꿔|수정)/i;
-const QUESTION = /(\?|뭐|왜|어떻게|무슨|언제|얼마)/;
+const QUESTION = /(\?|뭐|왜|어떻게|무슨|언제|얼마|어디)/;
 
 const Rules = {
   request(text) {
-    const amount = extractAmount(text);
-    const isTransfer = /(송금|보내|이체|입금|부쳐|넣어)/.test(text) || amount != null;
+    const place = extractPlace(text);
+    const isRide = /(택시|호출|불러|잡아|타고|가고\s?싶|데려다)/.test(text) || place != null;
     return {
-      is_transfer_request: isTransfer,
-      amount_won: amount,
-      source_account: /적금/.test(text) ? "savings" : /주거래|주\s?통장/.test(text) ? "main" : "unspecified",
-      recipient_hint: (text.match(/(동창회\s*)?총무|김영숙|영숙/) || [null])[0],
-      wants_sms_lookup: /(문자|메시지|카톡)/.test(text),
-      memo: (text.match(/30기\s*[가-힣]{2,4}/) || [null])[0],
-      clarification: isTransfer
-        ? (amount == null ? "얼마를 보내드릴까요?" : null)
-        : "저는 휴대폰 앱을 대신 조작해서 송금이나 문자 확인 같은 일을 도와드릴 수 있어요. 어떤 일을 도와드릴까요?",
+      is_ride_request: isRide,
+      destination: place ? PLACES[place].name : /한정식|담소|모임/.test(text) ? text : null,
+      car_type: extractCar(text),
+      pay_method: extractPay(text),
+      wants_coupon: /쿠폰|할인/.test(text),
+      clarification: isRide
+        ? (place == null && !/한정식|담소|모임/.test(text) ? "어디로 갈까요?" : null)
+        : "저는 휴대폰 앱을 대신 조작해서 택시 호출 같은 일을 도와드릴 수 있어요. 어떤 일을 도와드릴까요?",
     };
   },
 
   turn(text, ctx) {
     const allowed = new Set(ctx.intents);
     const out = (intent, extra = {}) => ({
-      intent, amount_won: null, memo: null, source_account: null, account_number: null,
+      intent, place: null, car_type: null, pay_method: null, coupon: null,
       reply: ctx.fallback_reply || (QUESTION.test(text)
-        ? "궁금하신 점은 송금을 마친 뒤에 도와드릴게요. 지금 단계부터 이어서 진행할게요."
+        ? "궁금하신 점은 호출을 마친 뒤에 도와드릴게요. 지금 단계부터 이어서 진행할게요."
         : "제가 잘 이해하지 못했어요. 화면의 버튼을 누르시거나 다시 말씀해주세요."),
       ...extra,
     });
     const t = text.replace(/\s+/g, " ").trim();
     const byIntent = (intent, extra) => out(intent, { reply: ctx.fallback_by_intent?.[intent] || out(intent).reply, ...extra });
 
-    // 앱 이름을 묻는 단계: 지정된 앱이면 approve, 그 외 앱은 모두 unsuitable_app ("전화", "카카오뱅크" 등)
+    // 앱 이름을 묻는 단계: 지정된 앱이면 approve, 그 외 앱은 모두 unsuitable_app ("전화", "카카오T" 등)
     if (allowed.has("unsuitable_app")) {
       if (ctx.app_keywords && new RegExp(ctx.app_keywords).test(t)) return byIntent("approve");
       if (YES.test(t) && !NO.test(t)) return byIntent("approve");
     }
     if (allowed.has("unsuitable_app") && !QUESTION.test(t) && !NO.test(t)) return byIntent("unsuitable_app");
-    if (allowed.has("pause") && (/(멈춰|멈춰봐|기다려|스톱|stop|잠깐만|이상해|잘못)/i.test(t) || NO.test(t)) && extractAmount(t) == null && !/메모|통장\s?표기|적금|주거래/.test(t)) return byIntent("pause");
 
-    const amount = extractAmount(t);
-    if (amount != null && allowed.has("set_amount")) return out("set_amount", { amount_won: amount });
-    // 값 없이 "금액이 잘못됐어" / "메모가 틀렸어" → 무엇으로 바꿀지 되물음
-    if (amount == null && allowed.has("set_amount") && /(금액|돈|액수|얼마)/.test(t) && !QUESTION.test(t.replace(/얼마/, ""))) return out("other", { reply: "송금액을 얼마로 바꿀까요?" });
-    if (allowed.has("set_memo") && /메모|통장\s?표기/.test(t) && /(잘못|틀렸|틀려|이상|다르)/.test(t) && !/\d+기/.test(t)) return out("other", { reply: "메모를 어떻게 바꿀까요?" });
-    const acct = extractAccount(t);
-    if (acct && allowed.has("set_account")) return out("set_account", { account_number: acct });
-    if (allowed.has("set_source") && /(적금|주거래)/.test(t)) return out("set_source", { source_account: /적금/.test(t) ? "savings" : "main" });
-    if (allowed.has("find_other") && /다른/.test(t)) return byIntent("find_other");
-    if (allowed.has("direct_input") && /직접/.test(t)) return out("direct_input");
-    if (allowed.has("cancel") && /(취소|그만|안\s?보내|보내지\s?마)/.test(t)) return out("cancel");
-    if (allowed.has("main") && /주거래|주\s?통장/.test(t)) return out("main");
-    if (allowed.has("savings") && /적금/.test(t)) return out("savings");
-    // 메모 단계에서는 들은 말을 메모로, 그 외 단계에서는 "메모"를 언급했을 때만 메모 변경으로 봄
-    const memoStep = allowed.has("set_memo") && !allowed.has("set_amount");
-    if (allowed.has("set_memo") && (memoStep || /메모|통장\s?표기/.test(t)) && !YES.test(t) && !NO.test(t) && !QUESTION.test(t)) {
-      return out("set_memo", { memo: t.replace(/^['‘"“]|['’"”]$/g, "").replace(/^.*메모(는|를)?\s*/, "").replace(/(으로|로)?\s*(남겨|해|적어|바꿔)(줘|주세요|줘요)?\.?$/, "").trim() });
-    }
+    const place = extractPlace(t);
+    const car = extractCar(t);
+    const pay = extractPay(t);
+    const couponWord = /쿠폰|할인/.test(t);
+    if (allowed.has("pause") && (/(멈춰|멈춰봐|기다려|스톱|stop|잠깐만|이상해|잘못)/i.test(t) || NO.test(t)) && !place && !car && !pay && !couponWord) return byIntent("pause");
+
+    if (place && allowed.has("set_dest")) return out("set_dest", { place });
+    // 값 없이 "목적지가 잘못됐어" → 어디로 바꿀지 되물음
+    if (!place && allowed.has("set_dest") && /(목적지|도착|장소|지점|가게|식당)/.test(t) && !QUESTION.test(t.replace(/어디/, ""))) return out("other", { reply: "목적지를 어디로 바꿀까요?" });
+    if (car && allowed.has(car)) return out(car);
+    if (car && allowed.has("set_car")) return out("set_car", { car_type: car });
+    if (pay && allowed.has(pay)) return out(pay);
+    if (pay && allowed.has("set_pay")) return out("set_pay", { pay_method: pay });
+    if (couponWord && allowed.has("set_coupon")) return out("set_coupon", { coupon: !/(빼|말고|안\s?써|취소|없이)/.test(t) });
+    if (allowed.has("cancel") && /(취소|그만|안\s?갈|부르지\s?마)/.test(t)) return out("cancel");
     if (allowed.has("reject") && NO.test(t)) return out("reject");
     if (allowed.has("approve") && YES.test(t)) return out("approve");
-    if (allowed.has("open") && YES.test(t)) return out("open");
-    // 계좌가 맞는지 의심·확인하는 말 → 계좌 정보를 알려줌 (질문을 '그대로 진행'으로 오해하지 않게)
-    if (/계좌/.test(t) && (QUESTION.test(t) || NO.test(t) || /맞/.test(t)) && !acct) {
-      return out("other", { reply: `받는 분은 김영숙님(농협 302-1234-5678) 계좌예요.${ctx.fallback_reply ? " " + ctx.fallback_reply : ""}` });
+    // 목적지가 맞는지 의심·확인하는 말 → 지금 목적지를 알려줌 (질문을 '그대로 진행'으로 오해하지 않게)
+    if (/(목적지|어디|장소)/.test(t) && (QUESTION.test(t) || NO.test(t) || /맞/.test(t))) {
+      const cur = ctx.current_ride?.destination;
+      if (cur) return out("other", { reply: `목적지는 ‘${cur}’이에요.${ctx.fallback_reply ? " " + ctx.fallback_reply : ""}` });
     }
-    if (allowed.has("continue") && !QUESTION.test(t) && !NO.test(t) && (YES.test(t) || /(그대로|없어|하던|원래대로|다시\s?해|그냥\s?(해|진행|보내)|이대로)/.test(t))) return out("continue");
+    if (allowed.has("continue") && !QUESTION.test(t) && !NO.test(t) && (YES.test(t) || /(그대로|없어|하던|원래대로|다시\s?해|그냥\s?(해|진행|불러)|이대로)/.test(t))) return out("continue");
     return out("other");
   },
 };

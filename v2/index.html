@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <title>송금 에이전트 프로토타입 v2</title>
+  <title>택시 호출 에이전트 프로토타입</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
@@ -21,7 +21,7 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">연구1 · 송금 에이전트 프로토타입</div>
+    <div class="brand">연구1 v2 · 택시 호출 에이전트 프로토타입</div>
     <div class="top-right">
       <span id="llm-chip" class="chip-status">규칙 기반 해석</span>
       <button id="btn-researcher" type="button" class="btn-ghost" title="Ctrl + .">연구자 패널</button>
@@ -37,7 +37,7 @@
         <legend>참가자</legend>
         <div class="grid2">
           <label>참가자 ID<input id="pid" placeholder="P01" autocomplete="off"></label>
-          <label>이름 <small>(메모 ‘30기 OOO’에 사용)</small><input id="pname" placeholder="홍길동" autocomplete="off"></label>
+          <label>이름<input id="pname" placeholder="홍길동" autocomplete="off"></label>
         </div>
       </fieldset>
 
@@ -59,7 +59,7 @@
 
       <details class="acc">
         <summary>시나리오 문구</summary>
-        <p class="hint">에이전트가 정해진 순서대로 말하는 문구예요. 조건을 골라 고치면 이 브라우저에 바로 저장돼요. 한 줄이 말풍선 하나예요. 자리표시자 <code>{금액}</code> <code>{이름}</code> <code>{메모}</code> <code>{출금계좌}</code> <code>{받는분}</code> <code>{계좌번호}</code>는 진행 중 실제 값으로 바뀌어요.</p>
+        <p class="hint">에이전트가 정해진 순서대로 말하는 문구예요. 조건을 골라 고치면 이 브라우저에 바로 저장돼요. 한 줄이 말풍선 하나예요. 자리표시자 <code>{목적지}</code> <code>{택시종류}</code> <code>{결제}</code> <code>{쿠폰}</code> <code>{요금}</code> <code>{이름}</code>는 진행 중 실제 값으로 바뀌어요.</p>
         <div class="seg-tabs" id="script-tabs">
           <button type="button" data-cond="A1" class="on">A1</button><button type="button" data-cond="A2">A2</button><button type="button" data-cond="B1">B1</button><button type="button" data-cond="B2">B2</button>
         </div>

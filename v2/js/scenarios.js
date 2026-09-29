@@ -1,14 +1,32 @@
-// 연구1 시나리오 정의 (PDF "연구1 시나리오 설계" 수정본 기준) — classic script, 전역으로 노출
+// 연구1 v2 시나리오 정의 (택시 호출) — classic script, 전역으로 노출
+// 송금 버전의 원칙(2×2, 오류 1회, 낮은 자동화=단계별 승인 / 높은 자동화=안내 후 진행)을 그대로 따릅니다.
 // 에이전트 고정 문구는 여기서만 관리합니다. 스크립트에 없는 응답은 LLM이 상황에 맞게 생성합니다.
 
-const RECIPIENT = { name: "김영숙", bank: "농협", account: "302-1234-5678" };
-const REQUESTED_AMOUNT = 300000; // 참가자가 요청하는 금액
-const ERROR_AMOUNT = 100000; // 에이전트가 잘못 알아듣는 금액
+const TAXI_APP = "마음택시";
 
-const ACCOUNTS = {
-  main: { label: "주거래 통장", number: "123-456-789012", balance: 1523400 },
-  savings: { label: "적금출금 계좌", number: "123-987-654321", balance: 482000 },
+// 목적지 검색 결과 (같은 이름의 여러 지점)
+const PLACES = {
+  gangnam: { name: "담소한정식 강남점", addr: "서울 강남구 테헤란로 152", dist: "8.4km", fare: 15800 },
+  gucheong: { name: "담소한정식 강남구청점", addr: "서울 강남구 학동로 426", dist: "7.1km", fare: 13900 },
+  yeoksam: { name: "담소한정식 역삼점", addr: "서울 강남구 논현로 508", dist: "9.2km", fare: 16700 },
 };
+const SEARCH_ORDER = ["gucheong", "gangnam", "yeoksam"]; // 검색 결과 순서 (에이전트는 맨 위 강남구청점을 고름)
+const SEARCH_QUERY = "담소한정식";
+const TARGET_PLACE = "gangnam"; // 참가자가 요청하는 목적지
+const ERROR_PLACE = "gucheong"; // 에이전트가 잘못 고르는 목적지
+
+const CAR_TYPES = {
+  normal: { label: "일반택시", desc: "가까운 택시를 빠르게", rate: 1 },
+  deluxe: { label: "모범택시", desc: "넓고 편안한 차량", rate: 1.6 },
+  large: { label: "대형택시", desc: "6인 이상 · 짐이 많을 때", rate: 1.9 },
+};
+
+const PAY = {
+  auto: { label: "자동결제", desc: "마음카드 ****1234" },
+  direct: { label: "직접결제", desc: "내릴 때 기사님께 결제" },
+};
+
+const COUPON = { name: "가을맞이 3,000원 할인 쿠폰", amount: 3000 };
 
 const CONDITIONS = {
   A1: { complexity: "A", automation: "low", title: "A1 · 낮은 복잡도 × 낮은 자동화" },
@@ -20,38 +38,35 @@ const CONDITIONS = {
 const SITUATION = {
   A: {
     situation: [
-      "동창회 정기모임 회비를 매년 총무에게 보내고 계십니다.",
-      "총무 김영숙님의 계좌는 ‘자주 사용하는 계좌’ 목록에 저장돼있습니다.",
-      "올해 회비 30만원을 보내려고 합니다.",
+      "오늘 저녁 7시에 동창회 모임이 있습니다.",
+      "모임 장소는 ‘담소한정식 강남점’입니다.",
+      "지금 집에서 택시를 타고 가려고 합니다.",
     ],
-    task: ["나의 주거래 통장에서 동창회 총무 계좌로 30만원 송금"],
+    task: ["지금 ‘담소한정식 강남점’으로 가는 택시 호출"],
   },
   B: {
     situation: [
-      "동창회 정기모임 회비를 매년 총무에게 보내고 계십니다.",
-      "올해 총무인 김영숙님이 문자로 계좌번호를 보내며 회비를 입금해달라고 하셨습니다.",
-      "총무에게 올해 회비 30만원을 보내며, 선생님 기수와 성명을 메모로 남기려고 합니다.",
+      "오늘 저녁 7시에 동창회 모임이 있습니다.",
+      "모임 장소는 ‘담소한정식 강남점’입니다.",
+      "오늘은 정장을 입어서 편하게 모범택시를 타려고 합니다.",
+      "요금은 내릴 때 기사님께 직접 내고, 택시 앱에 있는 할인 쿠폰도 쓰려고 합니다.",
     ],
     task: [
-      "총무가 보낸 문자를 읽고",
-      "나의 주거래 통장에서 총무 계좌로 30만원 송금",
-      "받는 사람에게 ‘30기 OOO’이라고 메모 남기기",
+      "지금 ‘담소한정식 강남점’으로 가는 택시 호출",
+      "택시 종류를 모범택시로 바꾸기",
+      "결제 방식을 직접결제로 바꾸기",
+      "할인 쿠폰 적용하기",
     ],
   },
 };
 
-const SMS_TEXT = () =>
-  `안녕하세요, 30기 총무 김영숙이에요.\n올해 동창회 회비 30만원 입금 부탁드려요.\n\n회비 입금 계좌: 농협 302-1234-5678 (김영숙)\n\n입금하실 때 기수와 성함을 메모로 남겨주세요.`;
+const won0 = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
 
-function won(n) {
-  if (n == null) return "";
-  if (n % 10000 === 0) return `${(n / 10000).toLocaleString("ko-KR")}만원`;
-  return `${n.toLocaleString("ko-KR")}원`;
-}
-
-// 받는 분 표기 (참가자가 계좌를 직접 입력하면 바뀜)
-function rcpt(s) {
-  return s.form.recipientCustom ? `입력하신 계좌(${s.form.recipientCustom})` : "김영숙(농협 302-1234-5678)";
+// 예상 요금: 목적지 기본요금 × 택시 종류 배율 − 쿠폰
+function fareOf(f, destKey = f.dest) {
+  const base = PLACES[destKey || TARGET_PLACE].fare;
+  const fare = Math.round((base * CAR_TYPES[f.car].rate) / 100) * 100;
+  return Math.max(0, fare - (f.coupon ? COUPON.amount : 0));
 }
 
 // 승인/거부 버튼 순서: 거부(왼쪽) · 승인(오른쪽)
@@ -63,9 +78,9 @@ const APPROVE = [
 // =====================================================================
 // 시나리오 문구 (설정 화면에서 조건별로 수정 가능)
 // - 한 줄 = 말풍선 하나
-// - 자리표시자: {금액} {이름} {메모} {출금계좌} {받는분} {계좌번호}
+// - 자리표시자: {목적지} {택시종류} {결제} {쿠폰} {요금} {이름}
 // =====================================================================
-const SCRIPT_VARS = ["금액", "이름", "메모", "출금계좌", "받는분", "계좌번호"];
+const SCRIPT_VARS = ["목적지", "택시종류", "결제", "쿠폰", "요금", "이름"];
 
 // 조건별 기본 문구 목록 (화면에 보이는 순서대로)
 function scriptDefaults(cond) {
@@ -77,81 +92,55 @@ function scriptDefaults(cond) {
 
   add("greet", "시작", "첫 인사", "무엇을 도와드릴까요?");
 
-  if (B) {
-    if (low) {
-      add("sms_open", "문자 앱 실행", "승인 요청", "문자 앱을 실행할까요?");
-      add("sms_open.launched", "문자 앱 실행", "승인 후 / 거부 후 앱 이름을 말했을 때", "문자 앱을 실행할게요.");
-    } else add("sms_open", "문자 앱 실행", "안내", "문자 앱을 실행할게요.");
-    add("sms_find", "총무 문자 찾기", "안내", "문자 목록 확인 중 …\n김영숙 님의 문자를 찾았어요.\n계좌번호를 찾는 중 …");
-    add("sms_account", "문자 속 계좌번호 찾아 복사하기", low ? "승인 요청" : "안내",
-      low ? "문자에서 ‘회비 입금 계좌’를 찾았어요. (김영숙 농협 302-1234-5678)\n이 계좌로 송금을 진행할까요?"
-          : "문자에서 ‘회비 입금 계좌’를 찾았어요. (김영숙 농협 302-1234-5678)\n이 계좌로 송금을 진행할게요.");
-  }
-
   if (low) {
-    add("bank_open", "은행 앱 실행", "승인 요청", B ? "송금을 위해 은행 앱을 실행할까요?" : "은행 앱을 실행할까요?");
-    add("app.which", "은행 앱 실행", "거부 시", "어떤 앱으로 실행할까요?");
-    add("bank_open.launched", "은행 앱 실행", "거부 후 은행 앱을 말했을 때", "은행 앱을 실행할게요.");
-  } else add("bank_open", "은행 앱 실행", "안내", B ? "이제 은행 앱을 실행할게요." : "은행 앱을 실행할게요.");
-  // B2는 설계상 "열고 있어요" 문구 없음 (비워두면 말하지 않음)
-  add("bank_open.opening", "은행 앱 실행", "진행 문구 (앱을 여는 동안)", cond === "B2" ? "" : "은행 앱을 열고 있어요 …");
+    add("taxi_open", "택시 앱 실행", "승인 요청", "택시 앱을 실행할까요?");
+    add("app.which", "택시 앱 실행", "거부 시", "어떤 앱으로 실행할까요?");
+    add("taxi_open.launched", "택시 앱 실행", "거부 후 택시 앱을 말했을 때", "택시 앱을 실행할게요.");
+  } else add("taxi_open", "택시 앱 실행", "안내", "택시 앱을 실행할게요.");
+  add("taxi_open.opening", "택시 앱 실행", "진행 문구 (앱을 여는 동안)", "택시 앱을 열고 있어요 …");
 
-  if (B) {
-    if (low) {
-      add("popup", "광고 팝업 닫기", "승인 요청", "이벤트 안내 팝업이 떴어요. 닫을까요?");
-      add("popup.closed", "광고 팝업 닫기", "거부 후 닫아달라고 했을 때", "이벤트 안내 팝업을 닫았어요.");
-    } else add("popup", "광고 팝업 닫기", "안내", "이벤트 안내 팝업을 닫았어요.");
-  }
-
-  add("source.busy", "출금계좌 선택", "진행 문구 (계좌 확인 중)", "계좌를 확인하고 있어요 …");
-  add("source", "출금계좌 선택", low ? "선택 요청" : "안내",
-    low ? "계좌가 2개에요. 어떤 계좌에서 출금할까요?" : "2개의 계좌를 발견했어요.\n말씀하신 ‘주거래 통장’에서 출금할게요.");
-
-  if (B) {
-    add("recipient", "받는계좌 입력", "안내", low ? "문자에서 복사한 김영숙님(농협 302-1234-5678) 계좌를 입력할게요." : "문자에서 복사한 김영숙님(농협 302-1234-5678) 계좌를 입력했어요.");
-    if (low) add("recipient.custom", "받는계좌 입력", "계좌번호를 직접 말했을 때", "{받는분}를 입력할게요.");
+  add("dest.busy", "[오류] 목적지 설정", "진행 문구 (검색 중)", "목적지를 검색하고 있어요 …");
+  if (low) {
+    add("dest", "[오류] 목적지 설정", "승인 요청 ({목적지} = 강남구청점)", "요청하신 ‘{목적지}’을 찾았어요. 여기로 갈까요?");
+    add("dest.ask", "[오류] 목적지 설정", "거부 시", "어디로 갈까요?");
+    add("dest.confirm", "[오류] 목적지 설정", "목적지를 말했을 때", "‘{목적지}’으로 갈까요?");
   } else {
-    add("recipient.busy", "받는계좌 입력", "진행 문구 (자주 사용하는 계좌 확인 중)", "자주 사용하는 계좌를 확인하고 있어요 …");
-    add("recipient", "받는계좌 입력", low ? "승인 요청" : "안내",
-      low ? "자주 사용하는 계좌 목록에서 ‘동창회 총무’ 김영숙님 계좌(농협 302-1234-5678)를 찾았어요. 이 계좌로 송금할까요?"
-          : "자주 사용하는 계좌에서 ‘동창회 총무’ 김영숙님 계좌(농협 302-1234-5678)를 찾았어요.\n이 계좌로 송금할게요.");
-  }
-  if (low) {
-    add("account.ask", "계좌 거부 시", "거부 시", "어떤 계좌로 송금할까요?");
-    add("account.direct", "계좌 거부 시", "직접 입력하겠다고 했을 때", "송금할 계좌번호를 말씀해주세요.");
-    add("account.custom", "계좌 거부 시", "계좌번호를 말했을 때", "입력하신 계좌({계좌번호})로 송금할게요.");
-  }
-
-  if (low) {
-    add("amount", "[오류] 송금액 입력", "승인 요청 ({금액} = 10만원)", "송금액을 입력할게요. 요청하신 {금액}으로 입력할까요?");
-    add("amount.ask", "[오류] 송금액 입력", "거부 시", B ? "어떻게 바꿀까요?" : "무엇을 수정할까요?");
-    add("amount.confirm", "[오류] 송금액 입력", "금액을 말했을 때", "송금액 {금액}을 입력할까요?");
-  } else {
-    add("amount", "[오류] 송금액 입력", "안내 ({금액} = 10만원)", "요청하신 송금액 {금액}을 입력했어요.");
+    add("dest", "[오류] 목적지 설정", "안내 ({목적지} = 강남구청점)", "요청하신 ‘{목적지}’을 목적지로 설정했어요.");
   }
 
   if (B) {
+    if (low) add("car", "택시 종류 변경", "선택 요청", "택시 종류가 3개예요. 어떤 택시로 할까요?");
+    else add("car", "택시 종류 변경", "안내", "말씀하신 {택시종류}로 바꿨어요.");
+  }
+
+  if (low) add("pay", "결제 방식", "선택 요청", "결제 방식이 2개예요. 어떻게 결제할까요?");
+  else if (B) add("pay", "결제 방식", "안내", "말씀하신 {결제}로 바꿨어요.");
+  else add("pay", "결제 방식", "안내", "{결제}(마음카드)로 결제할게요.");
+
+  if (B) {
     if (low) {
-      add("memo", "받는 분 통장 메모", "승인 요청", "받는 분 통장에 ‘{메모}’으로 메모를 남길까요?");
-      add("memo.ask", "받는 분 통장 메모", "거부 시", "어떻게 메모를 남길까요?");
-    } else add("memo", "받는 분 통장 메모", "안내", "받는 분 통장에 ‘{메모}’으로 메모를 남겼어요.");
+      add("coupon", "쿠폰 적용", "승인 요청", "쓸 수 있는 쿠폰이 있어요. ‘{쿠폰}’을 적용할까요?");
+      add("coupon.skip", "쿠폰 적용", "거부 시", "쿠폰은 적용하지 않을게요.");
+    } else add("coupon", "쿠폰 적용", "안내", "‘{쿠폰}’을 적용했어요.");
   }
 
   if (low) {
-    add("final", "최종 이체 확인", "승인 요청", "송금 내용을 최종 확인해주세요.");
-    add("final.ask", "최종 이체 확인", "거부 시", "무엇을 수정할까요?");
-  } else add("final", "최종 이체 확인", "안내", "{출금계좌}에서 {받는분}으로 {금액}을 보낼게요.");
+    add("final", "최종 호출 확인", "승인 요청", "호출 내용을 최종 확인해주세요.");
+    add("final.ask", "최종 호출 확인", "거부 시", "무엇을 수정할까요?");
+  } else add("final", "최종 호출 확인", "안내", "‘{목적지}’으로 가는 {택시종류}를 호출할게요.");
 
-  add("password", "비밀번호 입력", "안내", "이체를 위해 계좌비밀번호 입력이 필요해요. 아래에 직접 입력해주세요.");
-  add("done", "완료 안내", "안내", "{받는분}으로 {금액}을 보냈어요.");
+  add("done", "완료 안내", "안내", "{택시종류}를 호출했어요. 기사님이 3분 뒤 도착해요.");
 
   add("stop.ask", "중지·직접 조작", "중지를 눌렀을 때", "진행을 멈췄어요. 어떻게 바꿀까요?");
-  add("change.amount", "중지·직접 조작", "중지 중 금액을 바꿨을 때",
-    low ? "송금액을 {금액}으로 바꿀게요." : B ? "송금액 {금액}을 입력했어요." : "요청하신 금액인 {금액}을 입력했어요.");
-  if (B) add("change.memo", "중지·직접 조작", "중지 중 메모를 바꿨을 때", "받는 분 통장 메모를 ‘{메모}’으로 바꿨어요.");
-  add("change.source", "중지·직접 조작", "중지 중 출금계좌를 바꿨을 때", "{출금계좌}에서 출금할게요.");
+  add("change.dest", "중지·직접 조작", "중지 중 목적지를 바꿨을 때", low ? "목적지를 ‘{목적지}’으로 바꿀게요." : "목적지를 ‘{목적지}’으로 바꿨어요.");
+  if (B) add("change.car", "중지·직접 조작", "중지 중 택시 종류를 바꿨을 때", "택시 종류를 {택시종류}로 바꿨어요.");
+  add("change.pay", "중지·직접 조작", "중지 중 결제 방식을 바꿨을 때", "결제 방식을 {결제}로 바꿨어요.");
+  if (B) {
+    add("change.coupon.on", "중지·직접 조작", "중지 중 쿠폰을 적용했을 때", "‘{쿠폰}’을 적용했어요.");
+    add("change.coupon.off", "중지·직접 조작", "중지 중 쿠폰을 뺐을 때", "쿠폰 적용을 취소했어요.");
+  }
   add("stop.continue", "중지·직접 조작", "계속하기를 눌렀을 때", "계속 진행할게요.");
-  add("cancel", "기타", "송금을 취소했을 때", "송금을 취소했어요.");
+  add("cancel", "기타", "호출을 취소했을 때", "택시 호출을 취소했어요.");
   return L;
 }
 
@@ -167,316 +156,199 @@ function scriptText(cond, key) {
 
 // 자리표시자 채우기 → 말풍선 목록
 function lines(key, s, vars = {}) {
-  const name = s.cfg?.name || "OOO";
-  const amount = vars.amount ?? s.form?.amount ?? s.phone?.pendingAmount ?? null;
+  const f = s.form || {};
+  const dest = vars.dest ?? f.dest ?? s.phone?.pendingDest ?? TARGET_PLACE;
+  const car = vars.car ?? f.car ?? "normal";
+  const pay = vars.pay ?? f.pay ?? "auto";
   const map = {
-    금액: amount != null ? won(amount) : "",
-    이름: name,
-    메모: vars.memo ?? s.pendingMemo ?? s.form?.memo ?? `30기 ${name}`,
-    출금계좌: ACCOUNTS[s.form?.source || "main"].label,
-    받는분: rcpt(s),
-    계좌번호: vars.account ?? s.form?.recipientCustom ?? "",
+    목적지: PLACES[dest].name,
+    택시종류: CAR_TYPES[car].label,
+    결제: PAY[pay].label,
+    쿠폰: COUPON.name,
+    요금: won0(fareOf({ ...f, car }, dest)),
+    이름: s.cfg?.name || "OOO",
   };
   return scriptText(s.cond, key)
     .split("\n")
     .map((t) => t.trim())
     .filter(Boolean)
-    .map((t) => t.replace(/\{(금액|이름|메모|출금계좌|받는분|계좌번호)\}/g, (_, k) => map[k]));
+    .map((t) => t.replace(/\{(목적지|택시종류|결제|쿠폰|요금|이름)\}/g, (_, k) => map[k]));
 }
 const line = (key, s, vars) => lines(key, s, vars).join("\n");
 
+// 높은 자동화(B)에서 바꿀 값: 참가자가 이미 직접 바꿨으면 그 값, 아니면 과업의 값
+const carTarget = (s) => (s.userSet?.car ? s.form.car : "deluxe");
+const payTarget = (s) => (s.userSet?.pay ? s.form.pay : s.complexity === "B" ? "direct" : "auto");
+
 // 단계 정의
-// - low.messages / low.options : 낮은 자동화 (승인 요청)
-// - low.reject : 거부 시 처리 유형 (app | account | popup | amount | memo | final)
+// - low.messages / low.options : 낮은 자동화 (승인·선택 요청)
+// - low.reject : 거부 시 처리 유형 (app | coupon | final)
 // - high.messages / high.applyFirst : 높은 자동화 (applyFirst=true면 화면 조작 후 “~했어요” 안내)
 // - guide : 스크립트 밖 응답을 LLM이 만들 때 참고할 단계 설명
-// - apply(state, choiceId) : 폰 화면/상태 변경
-// 금액 화면에 있으면 [확인]을 눌러 상세(통장표기) 화면으로
-async function confirmAmount(s) {
-  if (s.phone.app !== "bank" || s.phone.bankView !== "amount") return;
-  await tap(".bk-btn");
-  s.phone.bankView = "detail";
-  renderPhone();
-  await waitLoading();
-}
-
-function buildSteps(complexity, participantName) {
+// - act(state, choice) : 화면에서 누르고 입력하는 연출 / apply(state, choice) : 상태 반영
+function buildSteps(complexity) {
   const B = complexity === "B";
-  const memo = `30기 ${participantName || "OOO"}`;
   const msg = (key) => (s) => lines(key, s);
   const steps = [];
 
-  if (B) {
-    steps.push(
-      {
-        id: "sms_open",
-        label: "문자 앱 실행",
-        guide: "총무가 보낸 문자를 읽기 위해 문자 앱을 여는 단계",
-        low: {
-          messages: msg("sms_open"), options: APPROVE, reject: "app", launched: "sms_open.launched",
-          app: { target: "문자 앱", purpose: "총무 문자 확인", keywords: "문자|메시지" },
-        },
-        high: { messages: msg("sms_open") },
-        apply: (s) => { s.phone.app = "sms_list"; },
-      },
-      {
-        id: "sms_find",
-        label: "총무 문자 찾기",
-        guide: "문자 목록에서 총무 김영숙님의 문자를 찾는 단계",
-        low: { messages: msg("sms_find"), split: 1 },
-        high: { messages: msg("sms_find"), split: 1 },
-        act: async (s) => {
-          await waitLoading();
-          await actSleep(1800); // 문자 목록을 살펴보는 시간
-          await tap(".sms-row.unread");
-          s.phone.app = "sms_detail";
-          renderPhone();
-        },
-        apply: (s) => { s.phone.app = "sms_detail"; },
-      },
-      {
-        id: "sms_account",
-        label: "문자 속 계좌번호 찾아 복사하기",
-        guide: "문자에서 회비 입금 계좌(김영숙 농협 302-1234-5678)를 찾아 송금할 계좌로 정하는 단계. 다른 계좌를 찾아달라고 해도 문자에 있는 계좌는 이것뿐임",
-        low: { messages: msg("sms_account"), options: APPROVE, reject: "account" },
-        high: { messages: msg("sms_account"), split: 1 },
-        pre: async (s) => { await actSleep(300); s.phone.smsHighlight = true; renderPhone(); await actSleep(400); },
-        act: async (s) => { s.phone.smsHighlight = true; await tap("mark", { hold: 700 }); s.phone.toast = "계좌번호를 복사했어요"; renderPhone(); await actSleep(500); },
-        apply: (s) => { s.phone.smsHighlight = true; s.phone.toast = "계좌번호를 복사했어요"; },
-      },
-    );
-  }
-
   steps.push({
-    id: "bank_open",
-    label: "은행 앱 실행",
-    guide: "송금을 위해 은행 앱을 여는 단계",
+    id: "taxi_open",
+    label: "택시 앱 실행",
+    guide: "택시를 부르기 위해 택시 앱을 여는 단계",
     low: {
-      messages: msg("bank_open"),
+      messages: msg("taxi_open"),
       options: APPROVE,
       reject: "app",
-      launched: "bank_open.launched",
-      opening: "bank_open.opening",
-      app: { target: "은행 앱", purpose: "송금", keywords: "마음은행|^은행|은행\\s?앱" },
+      launched: "taxi_open.launched",
+      opening: "taxi_open.opening",
+      app: { target: "택시 앱", purpose: "택시 호출", keywords: "마음택시|택시\\s?앱|^택시" },
     },
-    high: { messages: msg("bank_open"), opening: "bank_open.opening" },
-    apply: (s) => {
-      s.phone.app = "bank";
-      s.phone.bankView = "home";
-      s.phone.toast = null;
-      // 광고 팝업은 높은 복잡도(B)에서만 뜸
-      if (B) s.phone.popup = true;
-      else s.phone.focus = "source";
-    },
+    high: { messages: msg("taxi_open"), opening: "taxi_open.opening" },
+    apply: (s) => { s.phone.app = "taxi"; s.phone.taxiView = "home"; s.phone.sheet = null; },
   });
 
-  if (B) {
-    steps.push({
-      id: "popup",
-      label: "광고 팝업 닫기",
-      guide: "은행 앱에 뜬 이벤트 광고 팝업을 닫는 단계. 참가자가 닫지 말라고 하면, 팝업 내용을 보고 화면의 ‘닫기’를 직접 누르면 이어서 진행한다고 안내",
-      low: { messages: msg("popup"), options: APPROVE, reject: "popup" },
-      high: { messages: msg("popup"), applyFirst: true },
-      act: async (s) => { await tap(".evt-close"); s.phone.popup = false; s.phone.focus = "source"; renderPhone(); },
-      apply: (s) => { s.phone.popup = false; s.phone.focus = "source"; },
-    });
-  }
-
   steps.push({
-    id: "source",
-    busy: "source.busy",
-    label: "출금계좌 선택",
-    guide: "출금할 계좌(주거래 통장 1,523,400원 / 적금출금 계좌 482,000원) 중 하나를 고르는 단계",
-    low: {
-      messages: msg("source"),
-      options: [
-        { id: "main", label: "주거래", desc: `잔액 ${ACCOUNTS.main.balance.toLocaleString("ko-KR")}원` },
-        { id: "savings", label: "적금출금 계좌", desc: `잔액 ${ACCOUNTS.savings.balance.toLocaleString("ko-KR")}원` },
-      ],
-    },
-    high: { messages: msg("source") },
-    act: async (s, choice) => {
-      const k = choice === "savings" ? "savings" : "main";
-      s.form.source = k;
-      s.phone.focus = null;
-      renderPhone();
-      await tap(`.bk-card[data-acct="${k}"] .bk-send`);
-      s.phone.tapped = k;
-      s.phone.toTab = "recent";
-      s.phone.bankView = "to";
-      renderPhone();
-      await actSleep(300);
-    },
-    apply: (s, choice) => {
-      s.form.source = choice === "savings" ? "savings" : "main";
-      s.phone.tapped = s.form.source; // 선택한 계좌 카드의 [이체]를 누름
-      s.phone.toTab = "recent";
-      s.phone.bankView = "to";
-      s.phone.focus = null;
-    },
-  });
-
-  if (B) {
-    steps.push({
-      id: "recipient",
-      label: "받는계좌 입력",
-      guide: "문자에서 복사한 계좌를 받는 분 계좌에 입력하는 단계",
-      low: { messages: (s) => lines(s.form.recipientCustom ? "recipient.custom" : "recipient", s) },
-      high: { messages: msg("recipient"), applyFirst: true },
-      act: async (s) => {
-        const p = s.phone;
-        await tap(".acct-field");
-        p.bankView = "acct_input";
-        renderPhone();
-        await actSleep(500);
-        if (s.form.recipientCustom) {
-          await typeText((v) => (p.acctTyped = v), s.form.recipientCustom, 120);
-        } else {
-          p.pasteTip = true;
-          renderPhone();
-          await tap(".paste-tip");
-          p.pasteTip = false;
-          p.acctTyped = "302-1234-5678";
-          renderPhone();
-        }
-        await tap(".line-select");
-        p.bankPicked = s.form.recipientCustom ? BANK_NAME : "농협";
-        renderPhone();
-        s.form.recipient = true; // 입력한 계좌 화면에서 멈춤 ([확인]은 송금액 단계에서 누름)
-      },
-      apply: (s) => { s.form.recipient = true; s.phone.focus = null; },
-    });
-  } else {
-    steps.push({
-      id: "recipient",
-      busy: "recipient.busy",
-      label: "받는계좌 입력",
-      guide: "자주 사용하는 계좌 목록에서 ‘동창회 총무’ 김영숙님 계좌(농협 302-1234-5678)를 받는 분으로 정하는 단계. 다른 계좌를 찾아달라고 해도 목록에서 맞는 계좌는 이것뿐임",
-      low: { messages: msg("recipient"), options: APPROVE, reject: "account" },
-      high: { messages: msg("recipient") },
-      pre: async (s) => {
-        if (s.phone.toTab !== "fav") {
-          await tap('[data-tab="fav"]');
-          s.phone.toTab = "fav";
-          renderPhone();
-          await actSleep(400);
-        }
-        s.phone.focus = "recipient";
-        renderPhone();
-        await actSleep(300);
-      },
-      act: async (s) => {
-        if (s.form.recipientCustom) {
-          await tap(".acct-field");
-          s.phone.bankView = "acct_input";
-          renderPhone();
-          await actSleep(400);
-          await typeText((v) => (s.phone.acctTyped = v), s.form.recipientCustom, 120);
-          await tap(".line-select");
-          s.phone.bankPicked = BANK_NAME;
-          renderPhone();
-          await tap(".bk-btn");
-        } else {
-          await tap(".to-row.target");
-        }
-        s.form.recipient = true;
-        s.phone.focus = null;
-        s.phone.bankView = "amount";
-        renderPhone();
-      },
-      apply: (s) => { s.form.recipient = true; s.phone.bankView = "amount"; s.phone.focus = null; },
-    });
-  }
-
-  steps.push({
-    id: "amount",
-    kind: "error_amount",
-    label: "[오류] 30만원을 10만원으로 잘못 알아듣고 송금 시도",
-    guide: "송금액을 입력하는 단계. 에이전트는 금액을 10만원으로 입력하려 함",
-    low: { messages: (s) => lines("amount", s, { amount: ERROR_AMOUNT }), options: APPROVE, reject: "amount" },
-    high: { messages: (s) => lines("amount", s, { amount: ERROR_AMOUNT }), applyFirst: true },
-    // 수정 분기 문구
+    id: "dest",
+    kind: "error_place",
+    busy: "dest.busy",
+    label: "[오류] 강남점을 강남구청점으로 잘못 골라 목적지 설정",
+    guide: `목적지를 검색해 고르는 단계. 검색 결과는 ${SEARCH_ORDER.map((k) => PLACES[k].name).join(", ")} 세 곳이고, 에이전트는 ‘${PLACES[ERROR_PLACE].name}’을 목적지로 고르려 함`,
+    low: { messages: (s) => lines("dest", s, { dest: ERROR_PLACE }), options: APPROVE, reject: "dest" },
+    high: { messages: (s) => lines("dest", s, { dest: ERROR_PLACE }), applyFirst: true },
     correction: {
-      lowAsk: (s) => line("amount.ask", s),
-      lowConfirm: (s, amt) => line("amount.confirm", s, { amount: amt }),
-      highAsk: (s) => line("stop.ask", s),
-      highDone: (s, amt) => line("change.amount", s, { amount: amt }),
+      lowAsk: (s) => line("dest.ask", s),
+      lowConfirm: (s, k) => line("dest.confirm", s, { dest: k }),
     },
-    // 계좌번호 입력 화면에 있으면 [확인]을 눌러 금액 화면으로
+    // 검색창을 누르고 가게 이름을 입력 → 검색 결과가 나옴
     pre: async (s) => {
-      if (s.phone.bankView !== "acct_input") return;
-      await tap(".bk-btn");
-      s.phone.bankView = "amount";
+      const p = s.phone;
+      if (p.taxiView === "search" && p.searchTyped === SEARCH_QUERY) return;
+      await tap(".tx-search");
+      p.taxiView = "search";
+      p.searchTyped = "";
+      renderPhone();
+      await actSleep(400);
+      await typeText((v) => (p.searchTyped = v), SEARCH_QUERY, 170);
+      await actSleep(500);
+      p.results = true;
+      renderPhone();
+      await actSleep(600);
+    },
+    act: async (s, choice) => {
+      const k = choice || s.form.dest || ERROR_PLACE;
+      const p = s.phone;
+      if (p.taxiView === "search") {
+        await tap(`.tx-res[data-place="${k}"]`);
+        p.tappedPlace = k;
+        renderPhone();
+        await actSleep(300);
+      }
+      s.form.dest = k;
+      p.taxiView = "ride";
       renderPhone();
     },
-    // 금액이 입력되는 순간 "입력했어요"가 뜨도록, [확인]은 다음 단계에서 누름
-    act: async (s) => {
-      s.phone.bankView = "amount";
-      renderPhone();
-      await typeAmount(s.form.amount);
-    },
-    apply: (s) => { s.phone.typedAmount = String(s.form.amount); },
+    apply: (s, choice) => { s.form.dest = choice || s.form.dest || ERROR_PLACE; s.phone.taxiView = "ride"; s.phone.focus = null; },
   });
 
   if (B) {
     steps.push({
-      id: "memo",
-      label: "받는 분 통장 메모 입력",
-      guide: `받는 분 통장에 표시될 메모를 정하는 단계. 기본 메모는 ‘${memo}’`,
-      defaultMemo: memo,
-      low: { messages: msg("memo"), options: APPROVE, reject: "memo", ask: "memo.ask" },
-      pre: async (s) => { await confirmAmount(s); s.phone.focus = "memo"; renderPhone(); await actSleep(300); },
-      high: { messages: msg("memo"), applyFirst: true },
-      act: async (s) => {
-        const text = s.pendingMemo ?? memo;
-        await confirmAmount(s);
-        await tap(".dt-row.memo");
-        s.phone.memoTyping = "";
-        renderPhone();
-        await actSleep(300);
-        await typeText((v) => (s.phone.memoTyping = v), text, 180);
-        await actSleep(300);
-        s.phone.memoTyping = null;
-        s.form.memo = text;
-        s.pendingMemo = null;
+      id: "car",
+      label: "택시 종류 변경",
+      guide: "택시 종류(일반택시 / 모범택시 / 대형택시)를 고르는 단계. 기본은 일반택시",
+      low: {
+        messages: msg("car"),
+        // 예상 요금은 목적지·쿠폰에 따라 바뀌므로 물을 때마다 새로 계산
+        get options() { return Object.entries(CAR_TYPES).map(([id, c]) => ({ id, label: c.label, desc: `${c.desc} · 예상 ${won0(fareOf({ ...S.form, car: id }))}` })); },
+      },
+      high: { messages: (s) => lines("car", s, { car: carTarget(s) }), applyFirst: true },
+      pre: async (s) => { s.phone.focus = "car"; renderPhone(); await actSleep(400); },
+      act: async (s, choice) => {
+        const k = choice || carTarget(s);
+        await tap(`.tx-car[data-car="${k}"]`);
+        s.form.car = k;
+        s.phone.focus = null;
         renderPhone();
       },
-      apply: (s) => { s.form.memo = s.pendingMemo ?? memo; s.pendingMemo = null; s.phone.focus = null; },
+      apply: (s, choice) => { s.form.car = choice || carTarget(s); s.phone.focus = null; },
+    });
+  }
+
+  steps.push({
+    id: "pay",
+    label: "결제 방식",
+    guide: `결제 방식(자동결제: 마음카드 ****1234 / 직접결제: 내릴 때 기사님께)을 고르는 단계. 기본은 자동결제`,
+    low: {
+      messages: msg("pay"),
+      options: Object.entries(PAY).map(([id, p]) => ({ id, label: p.label, desc: p.desc })),
+    },
+    high: B ? { messages: (s) => lines("pay", s, { pay: payTarget(s) }), applyFirst: true } : { messages: (s) => lines("pay", s, { pay: payTarget(s) }) },
+    pre: async (s) => {
+      if (s.phone.sheet === "pay") return;
+      await tap(".tx-pay");
+      s.phone.sheet = "pay";
+      renderPhone();
+      await actSleep(400);
+    },
+    act: async (s, choice) => {
+      const k = choice || payTarget(s);
+      if (s.phone.sheet !== "pay") { s.phone.sheet = "pay"; renderPhone(); await actSleep(400); }
+      await tap(`.tx-pay-opt[data-pay="${k}"]`);
+      s.form.pay = k;
+      s.phone.sheet = null;
+      renderPhone();
+    },
+    apply: (s, choice) => { s.form.pay = choice || payTarget(s); s.phone.sheet = null; },
+  });
+
+  if (B) {
+    steps.push({
+      id: "coupon",
+      label: "쿠폰 적용",
+      guide: `쿠폰 목록에서 ‘${COUPON.name}’(${won0(COUPON.amount)} 할인)을 적용하는 단계. 쓸 수 있는 쿠폰은 이것 하나`,
+      low: { messages: msg("coupon"), options: APPROVE, reject: "coupon" },
+      high: { messages: msg("coupon"), applyFirst: true },
+      pre: async (s) => {
+        if (s.phone.sheet === "coupon") return;
+        await tap(".tx-coupon");
+        s.phone.sheet = "coupon";
+        renderPhone();
+        await actSleep(400);
+      },
+      act: async (s, choice) => {
+        const on = choice !== "reject";
+        if (s.phone.sheet !== "coupon") { s.phone.sheet = "coupon"; renderPhone(); await actSleep(400); }
+        await tap(on ? ".tx-cpn-item" : ".tx-cpn-none");
+        s.form.coupon = on;
+        s.phone.sheet = null;
+        renderPhone();
+      },
+      apply: (s, choice) => { s.form.coupon = choice !== "reject"; s.phone.sheet = null; },
     });
   }
 
   steps.push(
     {
       id: "final",
-      label: "최종 이체 확인",
-      guide: "송금 내용을 최종 확인하는 단계. 금액·출금계좌·메모를 바꿀 수 있음",
+      label: "최종 호출 확인",
+      guide: `호출 내용을 최종 확인하는 단계. 목적지·결제 방식${B ? "·택시 종류·쿠폰" : ""}을 바꿀 수 있음`,
       low: { messages: msg("final"), options: APPROVE, reject: "final", ask: "final.ask" },
       high: { messages: msg("final") },
       pre: async (s) => {
-        await confirmAmount(s);
         if (s.phone.sheet === "confirm") return;
-        await tap(".bk-btn2 .primary");
+        if (s.phone.sheet) { s.phone.sheet = null; renderPhone(); await actSleep(300); }
+        await tap(".tx-call");
         s.phone.sheet = "confirm";
         renderPhone();
         await actSleep(500);
       },
       act: async (s) => {
-        await confirmAmount(s);
         if (s.phone.sheet !== "confirm") { s.phone.sheet = "confirm"; renderPhone(); await actSleep(400); }
         await tap(".sheet .primary");
         s.phone.sheet = null;
+        s.phone.taxiView = "calling";
         renderPhone();
       },
-      apply: (s) => { s.phone.sheet = null; },
-    },
-    {
-      id: "password",
-      kind: "password",
-      label: "비밀번호 입력 요청",
-      guide: "계좌 비밀번호를 참가자가 대화창의 비밀번호 입력 칸(보안 키패드)에 직접 입력하는 단계. 비밀번호는 에이전트에게 전달되지 않음",
-      low: { messages: msg("password") },
-      high: { messages: msg("password") },
-      apply: (s) => { s.phone.sheet = "pin"; },
+      apply: (s) => { s.phone.sheet = null; s.phone.taxiView = "calling"; },
     },
     {
       id: "done",
@@ -484,7 +356,9 @@ function buildSteps(complexity, participantName) {
       label: "완료 안내",
       low: { messages: msg("done"), applyFirst: true },
       high: { messages: msg("done"), applyFirst: true },
-      apply: (s) => { s.phone.sheet = null; s.phone.bankView = "complete"; s.phone.focus = null; },
+      // 주변 택시를 찾는 화면을 잠시 보여준 뒤 배차 완료
+      act: async () => { await actSleep(2600); },
+      apply: (s) => { s.phone.sheet = null; s.phone.taxiView = "complete"; s.phone.focus = null; },
     },
   );
 

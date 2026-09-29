@@ -601,3 +601,137 @@ body.show-src [data-src="llm"]::after { content: "LLM"; color: #1a73e8; }
 body.show-src [data-src="rules"]::after { content: "규칙 대체 (Gemini 실패)"; color: #c5221f; }
 body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gemini 실패: " attr(data-err) ")"; font-weight: 500; word-break: break-all; }
 .setup-src { margin: 16px 0 0; }
+
+/* =====================================================================
+   v2 · 마음택시 (가상 택시 앱)
+   ===================================================================== */
+.taxi { height: 100%; position: relative; background: #fff; font-size: 15px; overflow: hidden; }
+.tx-logo { width: 34px; height: 34px; border-radius: 10px; background: #ffc72c; color: #1c1d21; display: grid; place-items: center; flex: none; }
+.tx-logo .ms { font-size: 22px; }
+.tx-logo.sm { width: 28px; height: 28px; border-radius: 8px; }
+.tx-logo.sm .ms { font-size: 18px; }
+.tx-logo.big { width: 84px; height: 84px; border-radius: 24px; background: #1c1d21; color: #ffc72c; }
+.tx-logo.big .ms { font-size: 52px; }
+.ld.splash-taxi { background: #ffc72c; color: #1c1d21; }
+.ld.splash-taxi b { font-size: 24px; letter-spacing: 1px; }
+.ld.splash-taxi .ld-bar { background: rgba(0,0,0,.12); }
+.ld.splash-taxi .ld-bar i { background: #1c1d21; }
+
+.tx-page { height: 100%; position: relative; display: flex; flex-direction: column; }
+.tx-page.white { background: #fff; }
+
+/* 지도 */
+.tx-map { position: absolute; inset: 0; background: #eef1e8; overflow: hidden; }
+.tx-map i { position: absolute; display: block; }
+.tx-map .river { left: -10%; right: -10%; top: 30%; height: 38px; background: #b9d7f0; transform: rotate(-8deg); }
+.tx-map .road { background: #fff; box-shadow: 0 0 0 1px #e1e4d8; }
+.tx-map .r1 { left: 22%; top: 0; bottom: 0; width: 10px; }
+.tx-map .r2 { left: 60%; top: 0; bottom: 0; width: 8px; }
+.tx-map .r3 { top: 52%; left: 0; right: 0; height: 10px; }
+.tx-map .r4 { top: 22%; left: 0; right: 0; height: 7px; }
+.tx-map .me { position: absolute; left: 24%; top: 76%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: rgba(47,124,246,.2); display: grid; place-items: center; }
+.tx-map .me i { position: static; width: 14px; height: 14px; border-radius: 50%; background: #2f7cf6; box-shadow: 0 0 0 3px #fff; }
+.tx-route { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tx-route path { fill: none; stroke: #1c1d21; stroke-width: 1.6; stroke-linejoin: round; vector-effect: non-scaling-stroke; stroke-width: 5px; }
+.tx-map .pin.end { position: absolute; left: 76%; top: 24%; transform: translate(-50%, -92%); color: #e8453c; }
+.tx-map .pin.end .ms { font-size: 38px; }
+.tx-map.route { bottom: 50%; }
+
+.tx-top { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 16px 16px 8px; font-size: 18px; }
+.tx-top .tx-menu { margin-left: auto; background: #fff; border-radius: 50%; padding: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.tx-home-card { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; background: #fff; border-radius: 22px 22px 0 0; padding: 18px 18px 22px; box-shadow: 0 -4px 18px rgba(0,0,0,.08); display: flex; flex-direction: column; gap: 12px; }
+.tx-from { display: flex; align-items: center; gap: 8px; color: #555; font-size: 14.5px; }
+.tx-from .ms { color: #2f7cf6; font-size: 20px; }
+.tx-from small, .tx-od small { color: #8a8e98; }
+.tx-search { display: flex; align-items: center; gap: 10px; background: #f2f3f6; border-radius: 14px; padding: 15px 14px; font-size: 18px; font-weight: 700; }
+.tx-search .ph { color: #1c1d21; }
+.tx-search.hl { box-shadow: 0 0 0 3px #ffc72c; }
+.tx-quick { display: flex; gap: 8px; }
+.tx-quick span { display: flex; align-items: center; gap: 4px; border: 1px solid #e3e6ea; border-radius: 999px; padding: 6px 12px; font-size: 13.5px; color: #444; }
+.tx-quick .ms { font-size: 17px; }
+.tx-banner { display: flex; align-items: center; gap: 8px; background: #fff7dc; border-radius: 12px; padding: 10px 12px; font-size: 13.5px; }
+.tx-banner .ms { color: #d99a00; }
+
+/* 검색 */
+.tx-sbar { display: flex; align-items: center; gap: 8px; padding: 16px 14px 10px; }
+.tx-sbar .back { font-size: 22px; }
+.tx-sinput { flex: 1; background: #f2f3f6; border-radius: 12px; padding: 12px 14px; font-size: 16.5px; font-weight: 600; }
+.tx-sinput .ph { color: #9aa0ab; font-weight: 400; }
+.tx-sfrom { display: flex; align-items: center; gap: 6px; padding: 4px 18px 12px; color: #6b6f7a; font-size: 13.5px; border-bottom: 8px solid #f4f5f7; }
+.tx-sfrom .ms { font-size: 17px; color: #2f7cf6; }
+.tx-res-head { padding: 14px 18px 4px; font-size: 13px; color: #6b6f7a; }
+.tx-res-empty { padding: 30px 18px; text-align: center; color: #9aa0ab; font-size: 14px; }
+.tx-res { display: flex; align-items: center; gap: 12px; padding: 13px 18px; border-bottom: 1px solid #f0f1f4; }
+.tx-res .tx-res-ic { color: #e8453c; font-size: 24px; }
+.tx-res-main { flex: 1; min-width: 0; }
+.tx-res-main b { display: block; font-size: 16px; font-weight: 600; }
+.tx-res-main small { display: block; color: #7a7f89; font-size: 13px; margin-top: 2px; }
+.tx-dist { color: #7a7f89; font-size: 13px; flex: none; }
+.tx-res.hl { box-shadow: inset 0 0 0 3px #ffc72c; }
+.tx-res.tapped { background: #fff7dc; }
+[data-man-place], [data-man-car], [data-man-pay], [data-man-payopt], [data-man-coupon], [data-man-search], [data-man-close] { cursor: pointer; }
+
+/* 호출 화면 (경로 + 선택) */
+.tx-sheet-fixed { position: absolute; left: 0; right: 0; bottom: 0; top: 44%; z-index: 1; background: #fff; border-radius: 22px 22px 0 0; padding: 16px 16px 14px; box-shadow: 0 -4px 18px rgba(0,0,0,.08); display: flex; flex-direction: column; gap: 8px; overflow: auto; }
+.tx-sheet-fixed.center { align-items: center; justify-content: center; text-align: center; gap: 6px; }
+.tx-od { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid #f0f1f4; }
+.tx-od > div { display: flex; align-items: center; gap: 8px; font-size: 14.5px; }
+.tx-od .o { color: #2f7cf6; font-size: 19px; }
+.tx-od .d { color: #e8453c; font-size: 20px; }
+.tx-od b { font-size: 16px; }
+.tx-od .tx-dest small { display: block; }
+.tx-cars { display: flex; flex-direction: column; border-radius: 14px; transition: box-shadow .25s; }
+.tx-cars.hl { box-shadow: 0 0 0 3px #ffc72c; }
+.tx-car { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; }
+.tx-car.on { background: #fff7dc; box-shadow: inset 0 0 0 1.5px #ffc72c; }
+.tx-car-ic { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: #f2f3f6; flex: none; }
+.tx-car-ic.normal { color: #d99a00; }
+.tx-car-ic.deluxe { color: #1c1d21; }
+.tx-car-ic.large { color: #5f6368; }
+.tx-car-main { flex: 1; min-width: 0; }
+.tx-car-main b { display: block; font-size: 15.5px; }
+.tx-car-main small { display: block; color: #7a7f89; font-size: 12.5px; }
+.tx-price { font-size: 15px; }
+.tx-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-top: 1px solid #f0f1f4; font-size: 14.5px; }
+.tx-row > span { color: #6b6f7a; flex: none; }
+.tx-row b { display: flex; align-items: center; gap: 4px; font-weight: 600; text-align: right; }
+.tx-row b small { color: #7a7f89; font-weight: 400; }
+.tx-row b .ms { color: #9aa0ab; font-size: 20px; }
+.tx-coupon b.on { color: #e8453c; }
+.tx-call { margin-top: auto; background: #ffc72c; color: #1c1d21; border-radius: 14px; text-align: center; padding: 14px; font-size: 17px; font-weight: 800; flex: none; }
+.tx-radar { position: relative; width: 90px; height: 90px; display: grid; place-items: center; margin-bottom: 6px; }
+.tx-radar i { position: absolute; inset: 0; border-radius: 50%; background: rgba(255,199,44,.35); animation: radar 1.8s ease-out infinite; }
+.tx-radar i + i { animation-delay: .9s; }
+.tx-radar .ms { position: relative; font-size: 40px; color: #1c1d21; }
+@keyframes radar { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.3); opacity: 0; } }
+.tx-done-head { display: flex; align-items: center; gap: 12px; }
+.tx-done-head .done-check { width: 44px; height: 44px; margin: 0; font-size: 26px; background: #ffc72c; color: #1c1d21; }
+.tx-done-head .done-check .ms { font-size: 28px; color: #1c1d21; }
+.tx-done-head b { display: block; font-size: 18px; }
+.tx-done-head small { display: block; color: #6b6f7a; font-size: 13px; }
+.taxi .done-box { margin-bottom: 4px; }
+
+/* 시트: 결제 방식 · 쿠폰 · 호출 확인 */
+.tx-pay-opt { display: flex; align-items: center; gap: 12px; padding: 14px 6px; border-top: 1px solid #f0f1f4; }
+.tx-pay-opt > .ms:first-child { font-size: 24px; color: #5f6368; }
+.tx-pay-opt span:not(.ms) { flex: 1; }
+.tx-pay-opt b { display: block; font-size: 16px; }
+.tx-pay-opt small { display: block; color: #7a7f89; font-size: 13px; }
+.tx-pay-opt .radio { color: #c3c7cf; font-size: 22px; }
+.tx-pay-opt.on .radio { color: #d99a00; }
+.tx-cpn-item { display: flex; align-items: center; gap: 12px; border: 1.5px dashed #ffc72c; border-radius: 14px; padding: 14px; background: #fffbea; }
+.tx-cpn-item.on { background: #fff1bf; }
+.tx-cpn-item .cpn-amt { font-size: 19px; font-weight: 800; color: #e8453c; flex: none; }
+.tx-cpn-item b { display: block; font-size: 15px; }
+.tx-cpn-item small { display: block; color: #7a7f89; font-size: 12.5px; }
+.tx-cpn-none { text-align: center; color: #6b6f7a; padding: 14px 0 2px; font-size: 14.5px; }
+.taxi .sheet h3 em { color: #d99a00; }
+.taxi .bk-btn2 span { background: #f2f3f6; color: #1c1d21; }
+.taxi .bk-btn2 .primary { background: #ffc72c; color: #1c1d21; }
+
+/* 진행 카드 재구성 UI: 목적지 */
+.pv-place .pv-pin { width: 40px; height: 40px; border-radius: 50%; background: #fdecea; color: #e8453c; display: grid; place-items: center; flex: none; }
+/* 실행화면 아래 선택 목록: 택시 종류처럼 선택지가 3개여도 고정 높이 안에 들어가게 */
+.pv-panel { overflow-y: auto; }
+.pv-chips .choice { padding: 9px 14px; font-size: 15px; }
+.pv-chips .choice .c-main small { font-size: 12.5px; }

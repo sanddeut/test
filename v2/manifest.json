@@ -1,6 +1,6 @@
 {
-  "name": "송금 에이전트 프로토타입 v2",
-  "short_name": "AI 송금 v2",
+  "name": "택시 호출 에이전트 프로토타입",
+  "short_name": "AI 택시",
   "start_url": "./index.html",
   "scope": "./",
   "display": "fullscreen",

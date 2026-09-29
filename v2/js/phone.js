@@ -1,49 +1,39 @@
-// 폰 앱 화면 렌더링 (홈 · 문자 · 마음은행)
-// 은행 앱은 실제 모바일 뱅킹 앱의 레이아웃(홈 계좌 카드 → 이체 대상 → 금액 키패드 → 통장표기)을 따르되,
-// 브랜드·로고는 가상의 "마음은행"으로 둡니다.
+// 폰 앱 화면 렌더링 (홈 · 마음택시)
+// 택시 앱은 실제 택시 호출 앱의 흐름(지도 홈 → 목적지 검색 → 택시 종류·결제·쿠폰 → 호출 → 배차)을 따르되,
+// 브랜드·로고는 가상의 "마음택시"로 둡니다.
 "use strict";
 
-const BANK_NAME = "마음은행";
 // 진행 속도 배율 (설정 화면의 「진행 속도」, 클수록 느림)
 let PACE = 1; // 전체 배율 (각 동작 시간은 아래에서 따로 정함)
 // 구글 Material Symbols 아이콘
 const mi = (name, cls = "") => `<span class="ms ${cls}">${name}</span>`;
-const won0 = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
 
 // 화면이 바뀔 때 실제 앱처럼 로딩을 잠깐 보여줌
 // - 앱 실행: 스플래시 화면
-// - 은행 앱 안 화면 이동: 로딩 스피너 (가끔 조금 더 길게 버퍼링)
+// - 택시 앱 안 화면 이동: 로딩 스피너 (가끔 조금 더 길게 버퍼링)
 function screenKey(p) {
-  return [p.app, p.app === "bank" ? p.bankView : "", p.sheet || ""].join("|");
+  return [p.app, p.app === "taxi" ? p.taxiView : "", p.sheet || ""].join("|");
 }
 
 function startLoading(p) {
   const key = screenKey(p);
   const prev = p.lastKey;
   p.lastKey = key;
-  if (!prev || prev === key || p.sheet === "pin" || p.sheet === "sending") return;
-  let [prevApp] = prev.split("|");
-  const family = (a) => (a.startsWith("sms") ? "sms" : a);
-  if (family(prevApp) === family(p.app) && prevApp !== p.app) prevApp = "__same";
+  if (!prev || prev === key) return;
+  const [prevApp, prevView] = prev.split("|");
   let type = null;
   let ms = 0;
-  if (prevApp === "__same") {
-    type = "spinner"; // 같은 앱 안에서 화면 이동 (문자 목록 → 문자 보기)
-    ms = 900;
-  } else if (p.app !== prevApp && p.app !== "home") {
-    type = p.app === "bank" ? "splash-bank" : "splash-app";
-    ms = p.app === "bank" ? 2200 : 1400; // 앱 스플래시
-  } else if (!p.sheet && p.app === "bank") {
+  if (p.app !== prevApp && p.app !== "home") {
+    type = "splash-taxi";
+    ms = 2200; // 앱 스플래시
+  } else if (p.app === "taxi" && !p.sheet && prevView !== p.taxiView && ["ride", "calling"].includes(p.taxiView)) {
     type = "spinner";
     ms = Math.random() < 0.35 ? 2000 + Math.random() * 600 : 900 + Math.random() * 400; // 화면 이동 로딩, 때때로 더 길게 버퍼링
-  } else if (p.app !== prevApp || p.app === "sms_detail") {
-    type = "spinner";
-    ms = 900;
   }
   ms *= PACE;
   if (!type) return;
   // 앱 실행 중에는 진행 문구를 "…을 실행 중입니다..."로 바꿈
-  const launching = type === "splash-bank" ? "은행 앱을 실행 중입니다..." : type === "splash-app" && p.app.startsWith("sms") ? "문자 앱을 실행 중입니다..." : null;
+  const launching = type === "splash-taxi" ? "택시 앱을 실행 중입니다..." : null;
   if (launching) setStatus?.(launching);
   p.loading = type;
   p.loadingUntil = Date.now() + ms;
@@ -59,8 +49,8 @@ function startLoading(p) {
 
 function loadingOverlay(p) {
   if (!p.loading || Date.now() >= p.loadingUntil) return "";
-  if (p.loading === "splash-bank") {
-    return `<div class="ld splash-bank"><span class="bk-logo big"><i></i></span><b>${BANK_NAME}</b><div class="ld-bar"><i></i></div></div>`;
+  if (p.loading === "splash-taxi") {
+    return `<div class="ld splash-taxi"><span class="tx-logo big">${mi("local_taxi", "fill")}</span><b>${TAXI_APP}</b><div class="ld-bar"><i></i></div></div>`;
   }
   if (p.loading === "splash-app") return `<div class="ld splash-app"><div class="spinner"></div></div>`;
   return `<div class="ld veil"><div class="ld-top"><i></i></div><div class="spinner"></div></div>`;
@@ -72,9 +62,7 @@ function renderPhone() {
   startLoading(p);
   let body = "";
   if (p.app === "home") body = homeScreen();
-  else if (p.app === "sms_list") body = smsListScreen();
-  else if (p.app === "sms_detail") body = smsDetailScreen();
-  else if (p.app === "bank") body = bankScreen();
+  else if (p.app === "taxi") body = taxiScreen();
   if (p.toast && p.toastShown !== p.toast) {
     // 알림(토스트)은 2초 뒤 사라짐
     p.toastShown = p.toast;
@@ -88,312 +76,244 @@ function renderPhone() {
 
 function bindPhone() {
   const sc = $("#screen");
-  sc.querySelectorAll("[data-pin]").forEach((b) => (b.onclick = () => pinPress(b.dataset.pin)));
-  sc.querySelectorAll("[data-popup-close]").forEach((b) => (b.onclick = () => (S.popupResolve ? S.popupResolve() : manualClosePopup())));
-  sc.querySelectorAll("[data-man-app]").forEach((b) => (b.onclick = () => manualOpenApp(b.dataset.manApp)));
-  sc.querySelectorAll("[data-man-send]").forEach((b) => (b.onclick = () => manualSend(b.dataset.manSend)));
-  sc.querySelectorAll("[data-man-pick]").forEach((b) => (b.onclick = () => manualPick()));
-  if (S.manual) sc.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { if (b.dataset.tab !== "mine") { S.phone.toTab = b.dataset.tab; renderPhone(); } }));
-  sc.querySelectorAll("[data-done-confirm]").forEach((b) => (b.onclick = () => confirmDone()));
-  sc.querySelectorAll("[data-key]").forEach((b) => (b.onclick = () => manualKey(b.dataset.key)));
-  sc.querySelectorAll("[data-src-toggle]").forEach((b) => (b.onclick = () => manualToggleSource()));
-  const memo = sc.querySelector("#m-memo");
-  if (memo) memo.oninput = () => (S.manualMemo = memo.value);
+  const on = (attr, fn) => sc.querySelectorAll(`[${attr}]`).forEach((b) => (b.onclick = () => fn(b.getAttribute(attr))));
+  on("data-man-app", () => manualOpenApp());
+  on("data-man-search", () => manualSearch());
+  on("data-man-place", (k) => manualPlace(k));
+  on("data-man-car", (k) => manualCar(k));
+  on("data-man-pay", () => manualPaySheet());
+  on("data-man-payopt", (k) => manualPay(k));
+  on("data-man-coupon", () => manualCoupon());
+  on("data-man-close", () => manualCloseSheet());
+  on("data-done-confirm", () => confirmDone());
 }
 
 // ---------------- 홈 화면 ----------------
 function homeScreen() {
   const apps = [
-    ["메시지", "chat", "#1a73e8"], [BANK_NAME, "account_balance", "#2f7cf6"], ["전화", "call", "#34a853"], ["카메라", "photo_camera", "#5f6368"],
+    ["메시지", "chat", "#1a73e8"], [TAXI_APP, "local_taxi", "#f5b400"], ["전화", "call", "#34a853"], ["카메라", "photo_camera", "#5f6368"],
     ["캘린더", "calendar_month", "#f29900"], ["갤러리", "photo_library", "#a142f4"], ["설정", "settings", "#5f6368"], ["지도", "map", "#0f9d58"],
   ];
-  return `<div class="home"><div class="home-clock">9:41<small>9월 24일 목요일</small></div><div class="home-grid">${apps
+  return `<div class="home"><div class="home-clock">6:12<small>9월 29일 화요일</small></div><div class="home-grid">${apps
     .map(([n, i, c]) => {
-      // 직접 조작 중에는 메시지·은행 앱만 눌러서 열 수 있음
-      const open = S.manual && n === "메시지" ? 'data-man-app="sms"' : S.manual && n === BANK_NAME ? 'data-man-app="bank"' : "";
+      // 직접 조작 중에는 택시 앱만 눌러서 열 수 있음
+      const open = S.manual && n === TAXI_APP ? 'data-man-app="taxi"' : "";
       return `<div class="app-icon ${open ? "live" : ""}" ${open}><div class="ai" style="background:${c}">${mi(i)}</div><span>${n}</span></div>`;
     })
     .join("")}</div></div>`;
 }
 
-// ---------------- 문자 ----------------
-function smsListScreen() {
-  const rows = [
-    ["김영숙", "안녕하세요, 30기 총무 김영숙이에요. 올해 동창회 회비…", "오전 9:12", true],
-    ["우리딸", "엄마 주말에 갈게요~", "어제"],
-    ["택배알림", "[배송완료] 고객님의 상품이 문 앞에 배송되었습니다.", "어제"],
-    [BANK_NAME, `[${BANK_NAME}] 9월 카드 결제 예정 금액 안내`, "9월 20일"],
-    ["건강보험공단", "건강검진 대상자 안내", "9월 18일"],
-  ];
-  return `<div class="sms"><div class="sms-title">메시지</div><div class="sms-list">${rows
-    .map(([n, t, d, unread]) => `<div class="sms-row ${unread ? "unread" : ""}"><div class="avatar">${esc(n[0])}</div><div class="sms-main"><b>${esc(n)}</b><p>${esc(t)}</p></div><time>${d}</time></div>`)
-    .join("")}</div></div>`;
-}
+// ---------------- 마음택시 ----------------
+// 지금 화면에 보일 목적지 (직접 조작 중 고른 곳 > 정해진 곳 > 승인 대기 중인 곳)
+const shownDest = () => S.manualDest ?? S.form.dest ?? S.phone.pendingDest;
 
-function smsDetailScreen() {
-  const text = esc(SMS_TEXT()).replace(
-    "농협 302-1234-5678",
-    `<mark class="${S.phone.smsHighlight ? "on" : ""}">농협 302-1234-5678</mark>`,
-  );
-  return `<div class="sms"><div class="sms-bar">${mi("arrow_back", "back")}<b>김영숙</b></div>
-    <div class="sms-thread"><div class="sms-date">오늘 오전 9:12</div><div class="sms-bubble">${text.replace(/\n/g, "<br>")}</div></div></div>`;
-}
-
-// ---------------- 마음은행 ----------------
-const bankLogo = (cls = "") => `<span class="bk-logo ${cls}"><i></i></span>`;
-const nhLogo = () => `<span class="bk-logo nh"><i></i></span>`;
-
-function bankScreen() {
+function taxiScreen() {
   const p = S.phone;
   let view = "";
-  const v = S.manual && ["amount", "detail"].includes(p.bankView) ? "amount" : p.bankView;
-  if (v === "home") view = bankHome();
-  else if (v === "to") view = bankTo();
-  else if (v === "acct_input") view = bankAcctInput();
-  else if (v === "amount") view = bankAmount();
-  else if (v === "detail") view = bankDetail();
-  else if (v === "complete") view = bankComplete();
-  return `<div class="bank">${view}${bankOverlay()}</div>`;
+  if (p.taxiView === "home") view = taxiHome();
+  else if (p.taxiView === "search") view = taxiSearch();
+  else if (p.taxiView === "ride") view = taxiRide();
+  else if (p.taxiView === "calling") view = taxiCalling();
+  else if (p.taxiView === "complete") view = taxiComplete();
+  return `<div class="taxi">${view}${taxiOverlay()}</div>`;
 }
 
-function bankHome() {
-  const p = S.phone;
-  const cards = Object.entries(ACCOUNTS).map(([k, a], i) => {
-    const hl = p.focus === "source" ? "hl" : p.tapped === k ? "tapped" : "";
-    return `<div class="bk-card ${hl}" data-acct="${k}">
-      ${bankLogo()}<div class="bk-card-main"><b>${a.label}</b><small>마음 ${a.number} ${mi("content_copy", "copy")}</small><strong>${won0(a.balance)}</strong></div>
-      ${mi("more_vert", "kebab")}<span class="bk-send ${p.tapped === k ? "on" : ""}" ${S.manual ? `data-man-send="${k}"` : ""}>이체</span>
-    </div>`;
-  }).join("");
-  return `<div class="bk-home">
-    <div class="bk-top"><div class="seg-toggle"><span class="on">일반홈</span><span>쉬운</span></div>
-      <div class="bk-icons"><span class="ai-badge">AI</span>${mi("notifications")}${mi("menu")}</div></div>
-    <div class="bk-hero">
-      <div class="moon"></div>
-      <div class="bk-hero-row"><span class="pill">${mi("settings")} 홈계좌설정</span><span class="pill">잔액숨김 <i class="tgl"></i></span></div>
+// 간단한 지도 (도로 격자 + 강 + 현재 위치 / 도착 핀)
+function mapArt({ route = false } = {}) {
+  return `<div class="tx-map ${route ? "route" : ""}">
+    <i class="river"></i><i class="road r1"></i><i class="road r2"></i><i class="road r3"></i><i class="road r4"></i>
+    ${route ? '<svg class="tx-route" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M24 78 L24 52 L62 52 L62 24 L76 24" /></svg><span class="pin end">' + mi("location_on", "fill") + "</span>" : ""}
+    <span class="me"><i></i></span>
+  </div>`;
+}
+
+function taxiHome() {
+  const live = S.manual ? "data-man-search" : "";
+  return `<div class="tx-page">
+    ${mapArt()}
+    <div class="tx-top"><span class="tx-logo sm">${mi("local_taxi", "fill")}</span><b>${TAXI_APP}</b>${mi("menu", "tx-menu")}</div>
+    <div class="tx-home-card">
+      <div class="tx-from">${mi("my_location")}<span>우리집 <small>(현재 위치)</small></span></div>
+      <div class="tx-search ${S.phone.focus === "search" ? "hl" : ""}" ${live}>${mi("search")}<span class="ph">어디로 갈까요?</span></div>
+      <div class="tx-quick"><span>${mi("home")}집</span><span>${mi("work")}회사</span><span>${mi("add")}추가</span></div>
+      <div class="tx-banner">${mi("confirmation_number")}<span>쿠폰함에 쓸 수 있는 쿠폰이 있어요</span></div>
     </div>
-    <div class="bk-cards">${cards}</div>
-    <div class="bk-tabbar"><span>${mi("shopping_bag")}상품</span><span>${mi("donut_small")}자산·소비</span><span class="on">${mi("home", "fill")}홈</span><span>${mi("sync_alt")}이체</span><span>${mi("redeem")}혜택</span></div>
   </div>`;
 }
 
-// 이체 대상: 추천(최근입금계좌) / 자주 / 내계좌 탭
-const TO_ROWS = {
-  recent: [
-    { name: "김철수", date: "2026.09.20", bank: "마음 120-555-102938", logo: "bank", star: false },
-    { name: "관리사무소", date: "2026.09.01", bank: "농협 301-0045-1128", logo: "nh", star: false },
-    { name: "우리딸 이지은", date: "2026.08.28", bank: "마음 110-234-567890", logo: "bank", star: true },
-    { name: "건강보험공단", date: "2026.08.25", bank: "기업 048-000-112233", logo: "bank", star: false },
-  ],
-  fav: [
-    { name: "동창회 총무 김영숙", date: "2025.09.26", bank: "농협 302-1234-5678", logo: "nh", star: true, target: true },
-    { name: "우리딸 이지은", date: "2026.08.28", bank: "마음 110-234-567890", logo: "bank", star: true },
-  ],
-};
-
-function bankTo() {
+function taxiSearch() {
   const p = S.phone;
-  const tab = p.toTab || "recent";
-  const list = TO_ROWS[tab]
-    .map((r) => `<div ${S.manual && r.target && S.complexity === "A" ? "data-man-pick" : ""} class="to-row ${r.target ? "target" : ""} ${r.target && p.focus === "recipient" ? "hl" : ""} ${r.target && S.form.recipient ? "tapped" : ""}">${r.logo === "nh" ? nhLogo() : bankLogo()}
-      <div class="to-main"><b>${r.name}</b><span class="sep">|</span><small>${r.date}</small><p>${r.bank}</p></div>${mi("star", `star ${r.star ? "on fill" : ""}`)}</div>`)
-    .join("");
-  return `<div class="bk-page">
-    <div class="bk-nav">${mi("arrow_back_ios", "back")}</div>
-    <h2 class="bk-h">어디로 이체하시겠어요?</h2>
-    <div class="acct-field"><span class="ph">계좌번호 입력</span>${mi("photo_camera")}</div>
-    <div class="seg3"><span data-tab="recent" class="${tab === "recent" ? "on" : ""}">추천</span><span data-tab="fav" class="${tab === "fav" ? "on" : ""}">자주</span><span data-tab="mine">내계좌</span></div>
-    <div class="to-head"><b>${tab === "fav" ? "자주 쓰는 계좌" : "최근입금계좌"}</b><small>편집</small></div>
-    ${list}
-    <div class="to-more">더보기 ${mi("expand_more")}</div>
-    <div class="to-contact"><span class="plus">${mi("add")}</span>연락처로 이체하기</div>
-  </div>`;
-}
-
-function bankAcctInput() {
-  const p = S.phone;
-  const typed = p.acctTyped || "";
-  return `<div class="bk-page">
-    <div class="bk-nav right">${mi("close", "close")}</div>
-    <h2 class="bk-h sm">계좌번호를 입력해 주세요</h2>
-    <div class="line-input ${typed ? "filled" : "focus"}">${typed ? esc(typed) : '<span class="ph">입력</span>'}<i class="caret"></i>${p.pasteTip ? '<span class="paste-tip">붙여넣기</span>' : ""}</div>
-    <div class="line-select">${p.bankPicked ? esc(p.bankPicked) : '<span class="ph">은행/증권사 선택</span>'}${mi("expand_more")}</div>
-    <div class="spacer"></div>
-    <div class="bk-btn ${typed && p.bankPicked ? "" : "off"}">확인</div>
-  </div>`;
-}
-
-function transferHead() {
-  const f = S.form;
-  const a = ACCOUNTS[f.source];
-  const custom = f.recipientCustom;
-  return `<div class="bk-nav between">${mi("arrow_back_ios", "back")}<span class="cancel">취소</span></div>
-    <div class="tr-line" ${S.manual ? "data-src-toggle" : ""}>${bankLogo("sm")}<b>${BANK_NAME} 계좌에서</b>${mi("expand_more", "chev")}</div>
-    <small class="tr-sub">${a.label} ${a.number}</small>
-    <div class="tr-line">${custom ? bankLogo("sm") : nhLogo()}<b>${custom ? "입력하신" : "김영숙"} 님 계좌로</b>${mi("expand_more", "chev")}</div>
-    <small class="tr-sub">${custom ? esc(custom) : "농협 302-1234-5678"}</small>`;
-}
-
-function amountLine(amt) {
-  const a = ACCOUNTS[S.form.source];
-  if (!amt) {
-    return `<div class="amt-q">얼마를 이체하시겠어요?</div><small class="tr-sub">출금가능금액 ${a.balance.toLocaleString("ko-KR")} 원</small>`;
-  }
-  return `<div class="amt-big">${Number(amt).toLocaleString("ko-KR")}<span>원</span></div>
-    <small class="tr-sub"><b>${won(amt)}</b> <span class="sep">|</span> 출금가능금액 ${a.balance.toLocaleString("ko-KR")} 원</small>`;
-}
-
-function bankAmount() {
-  const p = S.phone;
-  // 에이전트가 키패드로 입력 중인 금액(typedAmount) 또는 직접 조작 중인 금액
-  const amt = S.manual ? Number(S.manualAmount || 0) : Number(p.typedAmount || 0);
-  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0", "back"];
-  const live = S.manual ? "live" : "";
-  const memoRow = S.manual && S.complexity === "B"
-    ? `<div class="memo-edit"><label>받는 분 통장표기</label><input id="m-memo" value="${esc(S.manualMemo ?? S.form.memo ?? "")}" placeholder="${esc(S.cfg.name)}"></div>`
+  const typed = S.manual ? SEARCH_QUERY : p.searchTyped || "";
+  const showResults = S.manual || p.results;
+  const pick = p.tappedPlace ?? null;
+  const pending = p.pendingDest;
+  const rows = showResults
+    ? SEARCH_ORDER.map((k) => {
+        const pl = PLACES[k];
+        const cls = [k === pick ? "tapped" : "", !S.manual && k === pending && pick == null ? "hl" : ""].join(" ");
+        return `<div class="tx-res ${cls}" data-place="${k}" ${S.manual ? `data-man-place="${k}"` : ""}>${mi("location_on", "fill tx-res-ic")}
+          <div class="tx-res-main"><b>${esc(pl.name)}</b><small>${esc(pl.addr)}</small></div><span class="tx-dist">${pl.dist}</span></div>`;
+      }).join("")
     : "";
-  return `<div class="bk-page tr">
-    ${transferHead()}
-    <div class="amt-area">${amountLine(amt)}</div>
-    ${memoRow}
-    <div class="quick ${live}">${["+1만", "+5만", "+10만", "+100만", "전액"].map((q) => `<span ${S.manual ? `data-key="${q}"` : ""}>${q}</span>`).join("")}</div>
-    <div class="keypad-bk ${live}">${keys.map((k) => `<span data-k="${k}" ${S.manual ? `data-key="${k}"` : ""}>${k === "back" ? mi("backspace") : k}</span>`).join("")}</div>
-    <div class="bk-btn ${amt ? "" : "off"}">확인</div>
+  return `<div class="tx-page white">
+    <div class="tx-sbar">${mi("arrow_back_ios", "back")}<div class="tx-sinput">${typed ? esc(typed) : '<span class="ph">장소, 주소 검색</span>'}<i class="caret"></i></div></div>
+    <div class="tx-sfrom">${mi("my_location")} 출발 · 우리집 (현재 위치)</div>
+    ${showResults ? `<div class="tx-res-head">검색 결과 ${SEARCH_ORDER.length}</div>${rows}` : '<div class="tx-res-empty">최근 검색 기록이 없어요</div>'}
   </div>`;
 }
 
-function bankDetail() {
-  const f = S.form;
+function taxiRide() {
   const p = S.phone;
-  const memoShown = p.memoTyping != null ? `${esc(p.memoTyping)}<i class="caret"></i>` : `${esc(f.memo || S.cfg.name)} ${mi("chevron_right")}`;
-  return `<div class="bk-page tr">
-    ${transferHead()}
-    <div class="amt-area">${amountLine(f.amount)}</div>
-    <div class="spacer"></div>
-    <div class="dt-row memo ${p.focus === "memo" ? "hl" : ""} ${p.memoTyping != null ? "editing" : ""}"><span>받는 분 통장표기</span><b>${memoShown}</b></div>
-    <div class="dt-row"><span>내 통장표기</span><b>${f.recipientCustom ? "입력하신 계좌" : "김영숙"} ${mi("chevron_right")}</b></div>
-    <div class="dt-more">더보기 ${mi("expand_more")}</div>
-    <div class="dt-note">이체 유의사항 및 안내</div>
-    <div class="bk-btn2"><span>추가이체</span><span class="primary">다음</span></div>
-  </div>`;
-}
-
-function bankComplete() {
   const f = S.form;
-  return `<div class="bk-page done">
-    <div class="done-check">${mi("check")}</div>
-    <h2 class="bk-h center">${f.recipientCustom ? "입력하신 계좌로" : "김영숙님께"}<br>${won0(f.amount)}을 이체했어요</h2>
-    <div class="done-box">
-      <div><span>출금 계좌</span><b>${ACCOUNTS[f.source].label}</b></div>
-      <div><span>받는 분</span><b>${f.recipientCustom ? esc(f.recipientCustom) : "농협 302-1234-5678"}</b></div>
-      ${S.complexity === "B" ? `<div><span>받는 분 통장표기</span><b>${esc(f.memo || S.cfg.name)}</b></div>` : ""}
+  const dest = PLACES[shownDest() || TARGET_PLACE];
+  const man = S.manual;
+  const cars = Object.entries(CAR_TYPES).map(([k, c]) =>
+    `<div class="tx-car ${f.car === k ? "on" : ""}" data-car="${k}" ${man ? `data-man-car="${k}"` : ""}>
+      <span class="tx-car-ic ${k}">${mi(k === "large" ? "airport_shuttle" : "local_taxi", "fill")}</span>
+      <span class="tx-car-main"><b>${c.label}</b><small>${c.desc}</small></span><b class="tx-price">${won0(fareOf({ ...f, car: k }, shownDest()))}</b></div>`).join("");
+  return `<div class="tx-page">
+    ${mapArt({ route: true })}
+    <div class="tx-sheet-fixed">
+      <div class="tx-od">
+        <div>${mi("my_location", "o")}<span>우리집 <small>(현재 위치)</small></span></div>
+        <div class="tx-dest" ${man ? "data-man-search" : ""}>${mi("location_on", "fill d")}<span><b>${esc(dest.name)}</b><small>${esc(dest.addr)}</small></span></div>
+      </div>
+      <div class="tx-cars ${p.focus === "car" ? "hl" : ""}">${cars}</div>
+      <div class="tx-row tx-pay" ${man ? "data-man-pay" : ""}><span>결제</span><b>${PAY[f.pay].label} <small>${PAY[f.pay].desc}</small> ${mi("chevron_right")}</b></div>
+      <div class="tx-row tx-coupon" ${man ? "data-man-coupon" : ""}><span>쿠폰</span><b class="${f.coupon ? "on" : ""}">${f.coupon ? `−${won0(COUPON.amount)} 적용` : "1장 사용 가능"} ${mi("chevron_right")}</b></div>
+      <div class="tx-call">${CAR_TYPES[f.car].label} 호출하기</div>
     </div>
-    <div class="bk-btn" data-done-confirm>확인</div>
   </div>`;
 }
 
-function bankOverlay() {
+function taxiCalling() {
+  return `<div class="tx-page">
+    ${mapArt({ route: true })}
+    <div class="tx-sheet-fixed center"><div class="tx-radar"><i></i><i></i>${mi("local_taxi", "fill")}</div>
+      <b>주변 ${esc(CAR_TYPES[S.form.car].label)}를 찾고 있어요</b><small class="muted">잠시만 기다려 주세요</small></div>
+  </div>`;
+}
+
+function rideRows() {
+  const f = S.form;
+  return [
+    ["출발", "우리집 (현재 위치)"],
+    ["도착", PLACES[f.dest || TARGET_PLACE].name],
+    ["택시 종류", CAR_TYPES[f.car].label],
+    ["결제", `${PAY[f.pay].label} · ${PAY[f.pay].desc}`],
+    ...(S.complexity === "B" || f.coupon ? [["쿠폰", f.coupon ? `${COUPON.name}` : "적용 안 함"]] : []),
+    ["예상 요금", won0(fareOf(f))],
+  ];
+}
+
+function taxiComplete() {
+  const f = S.form;
+  return `<div class="tx-page">
+    ${mapArt({ route: true })}
+    <div class="tx-sheet-fixed">
+      <div class="tx-done-head"><span class="done-check">${mi("check")}</span><span><b>기사님이 오고 있어요</b><small>3분 뒤 도착 · 서울 32바 1234 · 흰색 쏘나타</small></span></div>
+      <div class="done-box">${rideRows().map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join("")}</div>
+      <div class="tx-call" data-done-confirm>확인</div>
+    </div>
+  </div>`;
+}
+
+function taxiOverlay() {
   const p = S.phone;
   const f = S.form;
-  // 시트·팝업이 처음 나타날 때만 등장 애니메이션 (키패드 입력 등 다시 그릴 때는 그대로)
-  const cur = `${p.popup ? "popup" : ""}|${p.sheet || ""}`;
+  // 시트가 처음 나타날 때만 등장 애니메이션
+  const cur = p.sheet || "";
   const enter = cur !== p.overlayShown ? "enter" : "";
   p.overlayShown = cur;
-  if (p.popup) {
-    const live = p.popupClosable || S.manual;
-    return `<div class="dim center ${enter}"><div class="evt">
-      <div class="evt-art">${mi("redeem", "fill")}</div><b>가을맞이 정기적금 이벤트</b><p>지금 가입하면 최대 연 4.5% 우대금리!</p>
-      <div class="evt-btns ${live ? "live" : ""}"><span ${live ? "data-popup-close" : ""}>오늘 하루 보지 않기</span><span class="evt-close" ${live ? "data-popup-close" : ""}>닫기</span></div></div></div>`;
+  const man = S.manual;
+  const closer = man ? "data-man-close" : "";
+  if (p.sheet === "pay") {
+    return `<div class="dim ${enter}" ${closer}><div class="sheet ${enter}" onclick="event.stopPropagation()"><h3>결제 방식</h3>
+      ${Object.entries(PAY).map(([k, o]) => `<div class="tx-pay-opt ${f.pay === k ? "on" : ""}" data-pay="${k}" ${man ? `data-man-payopt="${k}"` : ""}>
+        ${mi(k === "auto" ? "credit_card" : "payments")}<span><b>${o.label}</b><small>${o.desc}</small></span>${mi(f.pay === k ? "radio_button_checked" : "radio_button_unchecked", "radio")}</div>`).join("")}
+    </div></div>`;
+  }
+  if (p.sheet === "coupon") {
+    return `<div class="dim ${enter}" ${closer}><div class="sheet ${enter}" onclick="event.stopPropagation()"><h3>쿠폰</h3>
+      <div class="tx-cpn-item ${f.coupon ? "on" : ""}"><span class="cpn-amt">${won0(COUPON.amount)}</span><span><b>${COUPON.name}</b><small>모든 택시 · 10월 31일까지</small></span></div>
+      <div class="tx-cpn-none">적용 안 함</div>
+    </div></div>`;
   }
   if (p.sheet === "confirm") {
     return `<div class="dim ${enter}"><div class="sheet ${enter}">
-      <h3>${f.recipientCustom ? "입력하신 계좌로" : "김영숙님께"}<br><em>${won0(f.amount)}</em>을 이체할까요?</h3>
-      <div class="kv"><span>출금 계좌</span><b>${ACCOUNTS[f.source].label}</b></div>
-      <div class="kv"><span>받는 계좌</span><b>${f.recipientCustom ? esc(f.recipientCustom) : "농협 302-1234-5678"}</b></div>
-      ${S.complexity === "B" ? `<div class="kv"><span>받는 분 통장표기</span><b>${esc(f.memo || S.cfg.name)}</b></div>` : ""}
-      <div class="bk-btn2"><span>취소</span><span class="primary">이체</span></div></div></div>`;
-  }
-  if (p.sheet === "pin") {
-    const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
-    return `<div class="dim ${enter}"><div class="sheet pin ${enter}"><h3>계좌 비밀번호</h3><p class="muted">비밀번호 4자리를 입력해주세요</p>
-      <div class="dots">${[0, 1, 2, 3].map((i) => `<i class="${i < p.pin.length ? "on" : ""}"></i>`).join("")}</div>
-      <div class="keypad">${keys.map((k) => (k ? `<button type="button" data-pin="${k}">${k === "del" ? mi("backspace") : k}</button>` : "<span></span>")).join("")}</div></div></div>`;
-  }
-  if (p.sheet === "sending") {
-    return `<div class="dim"><div class="sheet"><div class="spinner"></div><p style="text-align:center">이체 중이에요…</p></div></div>`;
+      <h3>${esc(PLACES[f.dest || TARGET_PLACE].name)}으로<br><em>${CAR_TYPES[f.car].label}</em>를 호출할까요?</h3>
+      ${rideRows().slice(2).map(([k, v]) => `<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`).join("")}
+      <div class="bk-btn2"><span>취소</span><span class="primary">호출</span></div></div></div>`;
   }
   return "";
 }
 
-// ---------------- 직접 작업(직접조작) 입력 ----------------
-function manualKey(k) {
-  if (!S?.manual) return;
-  let v = S.manualAmount || "";
-  const bal = ACCOUNTS[S.form.source].balance;
-  const add = { "+1만": 10000, "+5만": 50000, "+10만": 100000, "+100만": 1000000 };
-  if (k === "back") v = v.slice(0, -1);
-  else if (k === "전액") v = String(bal);
-  else if (add[k]) v = String(Number(v || 0) + add[k]);
-  else if (v.length < 9) v = (v + k).replace(/^0+/, "");
-  S.manualAmount = v;
-  renderPhone();
-}
-
+// ---------------- 직접 조작 입력 ----------------
 // 직접 조작으로 단계를 끝낸 경우 기록 → 에이전트는 그 단계를 다시 하지 않고 넘어감
 function manualMark(stepId, choice = true) {
   S.manualDone = S.manualDone || {};
   S.manualDone[stepId] = choice;
   logEvent("manual_action", { step: stepId, choice });
 }
+const curStepId = () => S.steps[S.stepIdx]?.id;
 
-function manualOpenApp(a) {
+function manualOpenApp() {
   if (!S?.manual) return;
-  const p = S.phone;
-  if (a === "sms") {
-    p.app = "sms_list";
-    manualMark("sms_open");
-  } else {
-    p.app = "bank";
-    p.bankView = "home";
-    p.toast = null;
-    p.focus = null;
-    if (S.complexity === "B") p.popup = true; // 은행 앱을 열면 광고 팝업 (높은 복잡도)
-    manualMark("bank_open");
-  }
-  renderPhone();
-}
-
-function manualClosePopup() {
-  if (!S?.manual) return;
-  S.phone.popup = false;
-  manualMark("popup");
-  renderPhone();
-}
-
-function manualSend(k) {
-  if (!S?.manual || S.phone.popup) return;
-  const p = S.phone;
-  S.form.source = k;
-  p.tapped = k;
-  p.toTab = "recent";
-  p.bankView = "to";
-  p.focus = null;
-  manualMark("source", k);
-  renderPhone();
-}
-
-function manualPick() {
-  if (!S?.manual) return;
-  S.form.recipient = true;
-  S.phone.bankView = "amount";
+  S.phone.app = "taxi";
+  S.phone.taxiView = "home";
   S.phone.focus = null;
-  manualMark("recipient");
+  manualMark("taxi_open");
   renderPhone();
 }
 
-function manualToggleSource() {
+function manualSearch() {
   if (!S?.manual) return;
-  S.form.source = S.form.source === "main" ? "savings" : "main";
+  S.phone.taxiView = "search";
+  renderPhone();
+}
+
+function manualPlace(k) {
+  if (!S?.manual) return;
+  S.manualDest = k;
+  S.phone.tappedPlace = k;
+  S.phone.taxiView = "ride";
+  renderPhone();
+}
+
+function manualCar(k) {
+  if (!S?.manual) return;
+  S.form.car = k;
+  (S.userSet ||= {}).car = true;
+  if (curStepId() === "car") manualMark("car", k);
+  renderPhone();
+}
+
+function manualPaySheet() {
+  if (!S?.manual) return;
+  S.phone.sheet = "pay";
+  renderPhone();
+}
+
+function manualPay(k) {
+  if (!S?.manual) return;
+  S.form.pay = k;
+  (S.userSet ||= {}).pay = true;
+  S.phone.sheet = null;
+  if (curStepId() === "pay") manualMark("pay", k);
+  renderPhone();
+}
+
+function manualCoupon() {
+  if (!S?.manual) return;
+  S.form.coupon = !S.form.coupon;
+  (S.userSet ||= {}).coupon = true;
+  if (curStepId() === "coupon") manualMark("coupon", S.form.coupon ? "approve" : "reject");
+  renderPhone();
+}
+
+function manualCloseSheet() {
+  if (!S?.manual) return;
+  S.phone.sheet = null;
   renderPhone();
 }
 
@@ -409,13 +329,12 @@ function setActing(on) {
   if (ph) ph.classList.toggle("acting", on);
 }
 
-// 화면 속 요소를 누르는 표시 (터치 원)
 async function waitLoading() {
   while (S.phone.loading && Date.now() < S.phone.loadingUntil) await sleep(80);
   await sleep(250 * PACE);
 }
 
-// 누르기 한 번 ≈ 1.2초 (누를 곳 찾기 → 누름 → 반응). 키패드처럼 연달아 누를 때는 quick
+// 화면 속 요소를 누르는 표시 (터치 원). 누르기 한 번 ≈ 1.2초 (누를 곳 찾기 → 누름 → 반응)
 async function tap(sel, { pre = 450, hold = 350, after = 450, quick = false } = {}) {
   if (!quick) await waitLoading(); // 화면 로딩이 끝난 뒤에 누름
   if (pre) await actSleep(pre);
@@ -437,18 +356,6 @@ async function tap(sel, { pre = 450, hold = 350, after = 450, quick = false } = 
   await actSleep(after);
 }
 
-// 금액 입력: 금액 칸을 한 번 누르고 금액이 한 번에 입력됨 (수정할 때도 한 번에 바뀜)
-async function typeAmount(amount) {
-  const p = S.phone;
-  await waitLoading();
-  await actSleep(400);
-  await tap(".amt-area", { pre: 300 });
-  if (S.form.amount != null && S.form.amount !== Number(amount)) return; // 도중에 참가자가 금액을 바꾼 경우
-  p.typedAmount = String(amount);
-  renderPhone();
-  await actSleep(150);
-}
-
 // 글자 하나씩 입력
 async function typeText(set, text, ms = 170) {
   await waitLoading();
@@ -459,22 +366,27 @@ async function typeText(set, text, ms = 170) {
   }
 }
 
-// 이미 금액 입력을 지난 뒤 금액이 바뀌면 금액 화면으로 돌아가 다시 입력
-async function retypeAmount(amount) {
+// 이미 목적지를 정한 뒤 목적지가 바뀌면 검색 화면으로 돌아가 다시 고름
+async function redoDest(k) {
   const p = S.phone;
-  if (p.app !== "bank" || !["amount", "detail"].includes(p.bankView) || p.typedAmount == null) return;
+  if (p.app !== "taxi" || p.taxiView !== "ride") return;
   const sheet = p.sheet;
   actNoGate++;
   setActing(true);
   if (sheet) { p.sheet = null; renderPhone(); await actSleep(400); }
-  if (p.bankView === "detail") { await tap(".tr-sub b"); p.bankView = "amount"; renderPhone(); await actSleep(500); }
-  await typeAmount(amount);
-  await actSleep(700);
-  await tap(".bk-btn");
-  p.bankView = "detail";
+  await tap(".tx-dest");
+  p.taxiView = "search";
+  p.searchTyped = SEARCH_QUERY;
+  p.results = true;
+  p.tappedPlace = null;
+  renderPhone();
+  await actSleep(600);
+  await tap(`.tx-res[data-place="${k}"]`);
+  p.tappedPlace = k;
+  p.taxiView = "ride";
   renderPhone();
   await actSleep(500);
-  if (sheet) { await tap(".bk-btn2 .primary"); p.sheet = sheet; renderPhone(); await actSleep(400); }
+  if (sheet === "confirm") { await tap(".tx-call"); p.sheet = sheet; renderPhone(); await actSleep(400); }
   setActing(false);
   actNoGate--;
 }
