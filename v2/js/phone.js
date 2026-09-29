@@ -70,6 +70,7 @@ function renderPhone() {
     p.toastTimer = setTimeout(() => { p.toast = null; p.toastShown = null; renderPhone(); }, 2000);
   }
   $("#screen").innerHTML = `${body}${p.toast ? `<div class="toast">${esc(p.toast)}</div>` : ""}${loadingOverlay(p)}`;
+  mountMap();
   bindPhone();
   if (typeof syncView === "function") syncView();
 }
@@ -79,6 +80,8 @@ function bindPhone() {
   const on = (attr, fn) => sc.querySelectorAll(`[${attr}]`).forEach((b) => (b.onclick = () => fn(b.getAttribute(attr))));
   on("data-man-app", () => manualOpenApp());
   on("data-man-search", () => manualSearch());
+  on("data-man-from", () => manualOriginSearch());
+  on("data-man-origin", (k) => manualOrigin(k));
   on("data-man-place", (k) => manualPlace(k));
   on("data-man-car", (k) => manualCar(k));
   on("data-man-pay", () => manualPaySheet());
@@ -111,6 +114,7 @@ function taxiScreen() {
   const p = S.phone;
   let view = "";
   if (p.taxiView === "home") view = taxiHome();
+  else if (p.taxiView === "origin") view = taxiOrigin();
   else if (p.taxiView === "search") view = taxiSearch();
   else if (p.taxiView === "ride") view = taxiRide();
   else if (p.taxiView === "calling") view = taxiCalling();
@@ -118,8 +122,9 @@ function taxiScreen() {
   return `<div class="taxi">${view}${taxiOverlay()}</div>`;
 }
 
-// 간단한 지도 (도로 격자 + 강 + 현재 위치 / 도착 핀)
+// 지도: 실제 지도(Leaflet + 오픈스트리트맵 기반 타일)를 이 자리에 붙임. 지도 라이브러리를 못 불러오면 그림 지도로 대체
 function mapArt({ route = false } = {}) {
+  if (window.L) return `<div class="tx-map-slot ${route ? "route" : ""}"></div>`;
   return `<div class="tx-map ${route ? "route" : ""}">
     <i class="river"></i><i class="road r1"></i><i class="road r2"></i><i class="road r3"></i><i class="road r4"></i>
     ${route ? '<svg class="tx-route" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M24 78 L24 52 L62 52 L62 24 L76 24" /></svg><span class="pin end">' + mi("location_on", "fill") + "</span>" : ""}
@@ -133,11 +138,38 @@ function taxiHome() {
     ${mapArt()}
     <div class="tx-top"><span class="tx-logo sm">${mi("local_taxi", "fill")}</span><b>${TAXI_APP}</b>${mi("menu", "tx-menu")}</div>
     <div class="tx-home-card">
-      <div class="tx-from">${mi("my_location")}<span>우리집 <small>(현재 위치)</small></span></div>
+      <div class="tx-from ${S.phone.focus === "origin" ? "hl" : ""}" ${S.manual ? "data-man-from" : ""}>${mi(S.form.origin === "current" ? "my_location" : "trip_origin")}<span><small>출발</small> ${originHtml()}</span>${mi("chevron_right", "tx-from-go")}</div>
       <div class="tx-search ${S.phone.focus === "search" ? "hl" : ""}" ${live}>${mi("search")}<span class="ph">어디로 갈까요?</span></div>
       <div class="tx-quick"><span>${mi("home")}집</span><span>${mi("work")}회사</span><span>${mi("add")}추가</span></div>
       <div class="tx-banner">${mi("confirmation_number")}<span>쿠폰함에 쓸 수 있는 쿠폰이 있어요</span></div>
     </div>
+  </div>`;
+}
+
+// 출발지 표시: 현재 위치는 동네 이름을 작게
+function originHtml() {
+  const k = S.form.origin;
+  if (k !== "current") return `<b>${esc(ORIGINS[k].name)}</b>`;
+  const g = S.geo || GEO_FALLBACK;
+  return `<b>현재 위치</b>${g.label ? ` <small>${esc(g.label)}</small>` : ""}`;
+}
+
+// 출발지 검색
+function taxiOrigin() {
+  const p = S.phone;
+  const typed = S.manual ? ORIGIN_QUERY : p.originTyped || "";
+  const show = S.manual || p.originResults;
+  const rows = show
+    ? ORIGIN_RESULTS.map((r) => {
+        const live = S.manual && r.key ? `data-man-origin="${r.key}"` : "";
+        return `<div class="tx-res tx-ores ${!S.manual && r.key === TARGET_ORIGIN ? "hl" : ""}" ${r.key ? `data-origin="${r.key}"` : ""} ${live}>${mi(r.key ? "subway" : "location_on", "fill tx-res-ic o")}
+          <div class="tx-res-main"><b>${esc(r.name)}</b><small>${esc(r.addr)}</small></div></div>`;
+      }).join("")
+    : "";
+  return `<div class="tx-page white">
+    <div class="tx-sbar">${mi("arrow_back_ios", "back")}<div class="tx-sinput">${typed ? esc(typed) : '<span class="ph">출발지 검색</span>'}<i class="caret"></i></div></div>
+    <div class="tx-sfrom">${mi("my_location")} 지금 출발지 · ${esc(originLabel(S.form.origin, S.geo))}</div>
+    ${show ? `<div class="tx-res-head">검색 결과 ${ORIGIN_RESULTS.length}</div>${rows}` : '<div class="tx-res-empty">출발지를 검색해 주세요</div>'}
   </div>`;
 }
 
@@ -152,12 +184,12 @@ function taxiSearch() {
         const pl = PLACES[k];
         const cls = [k === pick ? "tapped" : "", !S.manual && k === pending && pick == null ? "hl" : ""].join(" ");
         return `<div class="tx-res ${cls}" data-place="${k}" ${S.manual ? `data-man-place="${k}"` : ""}>${mi("location_on", "fill tx-res-ic")}
-          <div class="tx-res-main"><b>${esc(pl.name)}</b><small>${esc(pl.addr)}</small></div><span class="tx-dist">${pl.dist}</span></div>`;
+          <div class="tx-res-main"><b>${esc(pl.name)}</b><small>${esc(pl.addr)}</small></div><span class="tx-dist">${distText(S.form.origin, k, S.geo)}</span></div>`;
       }).join("")
     : "";
   return `<div class="tx-page white">
     <div class="tx-sbar">${mi("arrow_back_ios", "back")}<div class="tx-sinput">${typed ? esc(typed) : '<span class="ph">장소, 주소 검색</span>'}<i class="caret"></i></div></div>
-    <div class="tx-sfrom">${mi("my_location")} 출발 · 우리집 (현재 위치)</div>
+    <div class="tx-sfrom">${mi("my_location")} 출발 · ${esc(originLabel(S.form.origin, S.geo))}</div>
     ${showResults ? `<div class="tx-res-head">검색 결과 ${SEARCH_ORDER.length}</div>${rows}` : '<div class="tx-res-empty">최근 검색 기록이 없어요</div>'}
   </div>`;
 }
@@ -175,7 +207,7 @@ function taxiRide() {
     ${mapArt({ route: true })}
     <div class="tx-sheet-fixed">
       <div class="tx-od">
-        <div>${mi("my_location", "o")}<span>우리집 <small>(현재 위치)</small></span></div>
+        <div>${mi("trip_origin", "o")}<span>${originHtml()}</span></div>
         <div class="tx-dest" ${man ? "data-man-search" : ""}>${mi("location_on", "fill d")}<span><b>${esc(dest.name)}</b><small>${esc(dest.addr)}</small></span></div>
       </div>
       <div class="tx-cars ${p.focus === "car" ? "hl" : ""}">${cars}</div>
@@ -197,7 +229,7 @@ function taxiCalling() {
 function rideRows() {
   const f = S.form;
   return [
-    ["출발", "우리집 (현재 위치)"],
+    ["출발", originLabel(f.origin, S.geo)],
     ["도착", PLACES[f.dest || TARGET_PLACE].name],
     ["택시 종류", CAR_TYPES[f.car].label],
     ["결제", `${PAY[f.pay].label} · ${PAY[f.pay].desc}`],
@@ -269,6 +301,21 @@ function manualOpenApp() {
 function manualSearch() {
   if (!S?.manual) return;
   S.phone.taxiView = "search";
+  renderPhone();
+}
+
+function manualOriginSearch() {
+  if (!S?.manual) return;
+  S.phone.taxiView = "origin";
+  renderPhone();
+}
+
+function manualOrigin(k) {
+  if (!S?.manual) return;
+  S.form.origin = k;
+  S.userSet.origin = true;
+  S.phone.taxiView = "home";
+  if (curStepId() === "origin") manualMark("origin", "approve");
   renderPhone();
 }
 
@@ -389,4 +436,103 @@ async function redoDest(k) {
   if (sheet === "confirm") { await tap(".tx-call"); p.sheet = sheet; renderPhone(); await actSleep(400); }
   setActing(false);
   actNoGate--;
+}
+
+// =====================================================================
+// 실제 지도 (Leaflet). 화면을 다시 그려도 지도는 하나만 만들어 두고 자리(.tx-map-slot)에 옮겨 붙임
+// =====================================================================
+const LiveMap = { map: null, el: null, layer: null, key: "", routes: {} };
+
+function ensureMap() {
+  if (LiveMap.map || !window.L) return LiveMap.map;
+  const el = document.createElement("div");
+  el.className = "tx-live-map";
+  LiveMap.el = el;
+  const map = L.map(el, {
+    zoomControl: false, attributionControl: true, dragging: false, touchZoom: false, scrollWheelZoom: false,
+    doubleClickZoom: false, boxZoom: false, keyboard: false, tap: false, fadeAnimation: false, zoomAnimation: false,
+  });
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    subdomains: "abcd", maxZoom: 19, attribution: "© OpenStreetMap © CARTO",
+  }).addTo(map);
+  map.attributionControl.setPrefix(false);
+  LiveMap.layer = L.layerGroup().addTo(map);
+  LiveMap.map = map;
+  return map;
+}
+
+const pinIcon = (cls, html = "") => L.divIcon({ className: `lm-pin ${cls}`, html, iconSize: null });
+
+function mountMap() {
+  const slot = $("#screen").querySelector(".tx-map-slot");
+  if (!slot || !ensureMap()) return;
+  if (LiveMap.el.parentNode !== slot) slot.appendChild(LiveMap.el);
+  requestAnimationFrame(refreshMap);
+}
+
+// 지도 내용 갱신 (화면·출발지·목적지가 바뀐 경우에만 다시 맞춤)
+function refreshMap() {
+  const map = LiveMap.map;
+  if (!map || !S || !LiveMap.el.isConnected || !LiveMap.el.clientWidth) return;
+  map.invalidateSize(false);
+  const p = S.phone;
+  const route = ["ride", "calling", "complete"].includes(p.taxiView);
+  const o = originPoint(S.form.origin, S.geo);
+  const destKey = route ? shownDest() || TARGET_PLACE : null;
+  const key = [p.taxiView, S.form.origin, o.lat, o.lng, destKey, LiveMap.el.clientWidth, LiveMap.el.clientHeight, LiveMap.routes[`${o.lat},${o.lng}>${destKey}`] ? 1 : 0].join("|");
+  if (key === LiveMap.key) return;
+  LiveMap.key = key;
+  LiveMap.layer.clearLayers();
+  const current = S.form.origin === "current";
+  L.marker([o.lat, o.lng], { icon: pinIcon(current ? "me" : "origin", current ? "<i></i>" : "<span>출발</span>") }).addTo(LiveMap.layer);
+  if (!destKey) { map.setView([o.lat, o.lng], 15); return; }
+  const d = PLACES[destKey];
+  L.marker([d.lat, d.lng], { icon: pinIcon("dest", "<span>도착</span>") }).addTo(LiveMap.layer);
+  const rk = `${o.lat},${o.lng}>${destKey}`;
+  const line = LiveMap.routes[rk];
+  if (line) L.polyline(line, { color: "#1c1d21", weight: 5, opacity: 0.85 }).addTo(LiveMap.layer);
+  else {
+    L.polyline([[o.lat, o.lng], [d.lat, d.lng]], { color: "#1c1d21", weight: 4, opacity: 0.5, dashArray: "6 8" }).addTo(LiveMap.layer);
+    fetchRoute(rk, o, d);
+  }
+  // 아래쪽은 호출 시트에 조금 가려지므로 여백을 더 둠
+  map.fitBounds(L.latLngBounds([[o.lat, o.lng], [d.lat, d.lng]]), { paddingTopLeft: [40, 44], paddingBottomRight: [40, 80] });
+}
+
+// 실제 도로 경로 (OSRM 공개 서버). 실패하면 점선 직선을 그대로 둠
+async function fetchRoute(rk, o, d) {
+  if (LiveMap.routes[rk] !== undefined) return;
+  LiveMap.routes[rk] = null;
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${o.lng},${o.lat};${d.lng},${d.lat}?overview=simplified&geometries=geojson`;
+    const res = await fetch(url);
+    const j = await res.json();
+    const coords = j.routes?.[0]?.geometry?.coordinates;
+    if (coords?.length) { LiveMap.routes[rk] = coords.map(([lng, lat]) => [lat, lng]); LiveMap.key = ""; refreshMap(); }
+  } catch { /* 직선으로 둠 */ }
+}
+
+// 휴대폰 위치 받기 (세션 시작 때). 못 받으면 GEO_FALLBACK. 정확한 좌표는 기록에 남기지 않고 동네 이름만 남김
+function locate() {
+  S.geo = { ...GEO_FALLBACK, ok: false };
+  const sess = S;
+  if (!navigator.geolocation) { logEvent("geo", { ok: false, reason: "unsupported" }); return; }
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      if (S !== sess) return;
+      S.geo = { lat: pos.coords.latitude, lng: pos.coords.longitude, label: "", ok: true };
+      renderPhone();
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${S.geo.lat}&lon=${S.geo.lng}&zoom=16&accept-language=ko`);
+        const a = (await r.json()).address || {};
+        const parts = [a.city || a.county || a.state, a.borough || a.city_district || a.district, a.quarter || a.suburb || a.neighbourhood].filter(Boolean);
+        if (S === sess) S.geo.label = [...new Set(parts)].join(" ");
+      } catch { /* 동네 이름 없이 "현재 위치"만 */ }
+      if (S !== sess) return;
+      logEvent("geo", { ok: true, label: S.geo.label || null });
+      renderPhone();
+    },
+    (err) => { if (S === sess) logEvent("geo", { ok: false, reason: err.message || String(err.code) }); },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+  );
 }

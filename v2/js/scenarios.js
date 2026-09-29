@@ -4,12 +4,59 @@
 
 const TAXI_APP = "마음택시";
 
-// 목적지 검색 결과 (같은 이름의 여러 지점)
+// 목적지 검색 결과 (같은 이름의 여러 지점). road: 신분당선 동천역에서의 도로 거리(km, 고정값)
 const PLACES = {
-  gangnam: { name: "담소한정식 강남점", addr: "서울 강남구 테헤란로 152", dist: "8.4km", fare: 15800 },
-  gucheong: { name: "담소한정식 강남구청점", addr: "서울 강남구 학동로 426", dist: "7.1km", fare: 13900 },
-  yeoksam: { name: "담소한정식 역삼점", addr: "서울 강남구 논현로 508", dist: "9.2km", fare: 16700 },
+  gangnam: { name: "담소한정식 강남점", addr: "서울 강남구 테헤란로 152", lat: 37.50007, lng: 127.03651, road: 21.2 },
+  gucheong: { name: "담소한정식 강남구청점", addr: "서울 강남구 학동로 426", lat: 37.51729, lng: 127.04736, road: 23.5 },
+  yeoksam: { name: "담소한정식 역삼점", addr: "서울 강남구 논현로 508", lat: 37.50375, lng: 127.03983, road: 21.9 },
 };
+
+// 출발지: 기본은 휴대폰 GPS의 현재 위치, 과업에서 ‘신분당선 동천역’으로 바꿈
+// (현재 위치 좌표는 세션 시작 때 받아서 S.geo에 둠. 위치를 못 받으면 GEO_FALLBACK)
+const TARGET_ORIGIN = "dongcheon";
+const ORIGINS = {
+  current: { name: "현재 위치" },
+  dongcheon: { name: "신분당선 동천역", addr: "경기 용인시 수지구 동천동", lat: 37.33797, lng: 127.10278 },
+};
+const GEO_FALLBACK = { lat: 37.39475, lng: 127.11118, label: "경기 성남시 분당구 삼평동" }; // 판교역 부근
+const ORIGIN_QUERY = "동천역";
+// 출발지 검색 결과 (신분당선 동천역만 고를 수 있음)
+const ORIGIN_RESULTS = [
+  { key: "dongcheon", name: "신분당선 동천역", addr: "경기 용인시 수지구 동천동 · 지하철역" },
+  { key: null, name: "동천역 버스정류장", addr: "경기 용인시 수지구 동천로" },
+  { key: null, name: "동천역 환승주차장", addr: "경기 용인시 수지구 동천동 876" },
+];
+
+// 받침이 있으면 "으로", 없으면 "로" (ㄹ 받침은 "로")
+function euro(word) {
+  const c = String(word).trim().slice(-1).charCodeAt(0);
+  if (c < 0xac00 || c > 0xd7a3) return `${word}으로`;
+  const jong = (c - 0xac00) % 28;
+  return `${word}${jong === 0 || jong === 8 ? "로" : "으로"}`;
+}
+
+// 출발지 좌표
+function originPoint(key, geo) {
+  if (key === "current") return geo || GEO_FALLBACK;
+  return ORIGINS[key];
+}
+// 출발지 이름 (현재 위치는 동네 이름을 함께)
+function originLabel(key, geo) {
+  if (key !== "current") return ORIGINS[key].name;
+  const g = geo || GEO_FALLBACK;
+  return g.label ? `현재 위치 · ${g.label}` : "현재 위치";
+}
+
+// 거리(km): 동천역에서는 고정값, 현재 위치에서는 직선거리 × 1.35 (도로 거리 근사)
+function distKm(originKey, destKey, geo) {
+  const d = PLACES[destKey];
+  if (originKey !== "current") return d.road;
+  const o = originPoint("current", geo);
+  const R = 6371, rad = Math.PI / 180;
+  const a = Math.sin(((d.lat - o.lat) * rad) / 2) ** 2 + Math.cos(o.lat * rad) * Math.cos(d.lat * rad) * Math.sin(((d.lng - o.lng) * rad) / 2) ** 2;
+  return Math.max(0.5, Math.round(2 * R * Math.asin(Math.sqrt(a)) * 1.35 * 10) / 10);
+}
+const distText = (originKey, destKey, geo) => `${distKm(originKey, destKey, geo).toFixed(1)}km`;
 const SEARCH_ORDER = ["gucheong", "gangnam", "yeoksam"]; // 검색 결과 순서 (에이전트는 맨 위 강남구청점을 고름)
 const SEARCH_QUERY = "담소한정식";
 const TARGET_PLACE = "gangnam"; // 참가자가 요청하는 목적지
@@ -40,19 +87,21 @@ const SITUATION = {
     situation: [
       "오늘 저녁 7시에 동창회 모임이 있습니다.",
       "모임 장소는 ‘담소한정식 강남점’입니다.",
-      "지금 집에서 택시를 타고 가려고 합니다.",
+      "지금 동천역으로 걸어가는 중이라, 택시는 ‘신분당선 동천역’에서 타려고 합니다.",
     ],
-    task: ["지금 ‘담소한정식 강남점’으로 가는 택시 호출"],
+    task: ["출발지를 ‘신분당선 동천역’으로 바꾸기", "‘담소한정식 강남점’으로 가는 택시 호출"],
   },
   B: {
     situation: [
       "오늘 저녁 7시에 동창회 모임이 있습니다.",
       "모임 장소는 ‘담소한정식 강남점’입니다.",
+      "지금 동천역으로 걸어가는 중이라, 택시는 ‘신분당선 동천역’에서 타려고 합니다.",
       "오늘은 정장을 입어서 편하게 모범택시를 타려고 합니다.",
       "요금은 내릴 때 기사님께 직접 내고, 택시 앱에 있는 할인 쿠폰도 쓰려고 합니다.",
     ],
     task: [
-      "지금 ‘담소한정식 강남점’으로 가는 택시 호출",
+      "출발지를 ‘신분당선 동천역’으로 바꾸기",
+      "‘담소한정식 강남점’으로 가는 택시 호출",
       "택시 종류를 모범택시로 바꾸기",
       "결제 방식을 직접결제로 바꾸기",
       "할인 쿠폰 적용하기",
@@ -62,9 +111,10 @@ const SITUATION = {
 
 const won0 = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
 
-// 예상 요금: 목적지 기본요금 × 택시 종류 배율 − 쿠폰
+// 예상 요금: 거리 요금(기본 4,800원 + 1.6km 이후 km당 약 760원) × 택시 종류 배율 − 쿠폰
 function fareOf(f, destKey = f.dest) {
-  const base = PLACES[destKey || TARGET_PLACE].fare;
+  const km = distKm(f.origin || "current", destKey || TARGET_PLACE, typeof S !== "undefined" ? S?.geo : null);
+  const base = 4800 + Math.max(0, km - 1.6) * 760;
   const fare = Math.round((base * CAR_TYPES[f.car].rate) / 100) * 100;
   return Math.max(0, fare - (f.coupon ? COUPON.amount : 0));
 }
@@ -78,9 +128,9 @@ const APPROVE = [
 // =====================================================================
 // 시나리오 문구 (설정 화면에서 조건별로 수정 가능)
 // - 한 줄 = 말풍선 하나
-// - 자리표시자: {목적지} {택시종류} {결제} {쿠폰} {요금} {이름}
+// - 자리표시자: {출발지} {목적지} {택시종류} {결제} {쿠폰} {요금} {이름}
 // =====================================================================
-const SCRIPT_VARS = ["목적지", "택시종류", "결제", "쿠폰", "요금", "이름"];
+const SCRIPT_VARS = ["출발지", "목적지", "택시종류", "결제", "쿠폰", "요금", "이름"];
 
 // 조건별 기본 문구 목록 (화면에 보이는 순서대로)
 function scriptDefaults(cond) {
@@ -98,6 +148,11 @@ function scriptDefaults(cond) {
     add("taxi_open.launched", "택시 앱 실행", "거부 후 택시 앱을 말했을 때", "택시 앱을 실행할게요.");
   } else add("taxi_open", "택시 앱 실행", "안내", "택시 앱을 실행할게요.");
   add("taxi_open.opening", "택시 앱 실행", "진행 문구 (앱을 여는 동안)", "택시 앱을 열고 있어요 …");
+
+  if (low) {
+    add("origin", "출발지 변경", "승인 요청", "출발지가 현재 위치로 되어 있어요. 출발지를 ‘신분당선 동천역’으로 바꿀까요?");
+    add("origin.skip", "출발지 변경", "거부 시", "출발지는 현재 위치로 둘게요.");
+  } else add("origin", "출발지 변경", "안내", "말씀하신 ‘신분당선 동천역’으로 출발지를 바꿨어요.");
 
   add("dest.busy", "[오류] 목적지 설정", "진행 문구 (검색 중)", "목적지를 검색하고 있어요 …");
   if (low) {
@@ -132,6 +187,7 @@ function scriptDefaults(cond) {
   add("done", "완료 안내", "안내", "{택시종류}를 호출했어요. 기사님이 3분 뒤 도착해요.");
 
   add("stop.ask", "중지·직접 조작", "중지를 눌렀을 때", "진행을 멈췄어요. 어떻게 바꿀까요?");
+  add("change.origin", "중지·직접 조작", "중지 중 출발지를 바꿨을 때", low ? "출발지를 ‘{출발지}’(으)로 바꿀게요." : "출발지를 ‘{출발지}’(으)로 바꿨어요.");
   add("change.dest", "중지·직접 조작", "중지 중 목적지를 바꿨을 때", low ? "목적지를 ‘{목적지}’으로 바꿀게요." : "목적지를 ‘{목적지}’으로 바꿨어요.");
   if (B) add("change.car", "중지·직접 조작", "중지 중 택시 종류를 바꿨을 때", "택시 종류를 {택시종류}로 바꿨어요.");
   add("change.pay", "중지·직접 조작", "중지 중 결제 방식을 바꿨을 때", "결제 방식을 {결제}로 바꿨어요.");
@@ -160,7 +216,9 @@ function lines(key, s, vars = {}) {
   const dest = vars.dest ?? f.dest ?? s.phone?.pendingDest ?? TARGET_PLACE;
   const car = vars.car ?? f.car ?? "normal";
   const pay = vars.pay ?? f.pay ?? "auto";
+  const originKey = vars.origin ?? f.origin ?? "current";
   const map = {
+    출발지: ORIGINS[originKey].name,
     목적지: PLACES[dest].name,
     택시종류: CAR_TYPES[car].label,
     결제: PAY[pay].label,
@@ -172,7 +230,8 @@ function lines(key, s, vars = {}) {
     .split("\n")
     .map((t) => t.trim())
     .filter(Boolean)
-    .map((t) => t.replace(/\{(목적지|택시종류|결제|쿠폰|요금|이름)\}/g, (_, k) => map[k]));
+    .map((t) => t.replace(/\{(출발지|목적지|택시종류|결제|쿠폰|요금|이름)\}/g, (_, k) => map[k]))
+    .map((t) => t.replace(/([가-힣\w]+)’?\(으\)로/g, (m, w) => (m.includes("’") ? `${euro(w).slice(0, w.length)}’${euro(w).slice(w.length)}` : euro(w))));
 }
 const line = (key, s, vars) => lines(key, s, vars).join("\n");
 
@@ -205,6 +264,44 @@ function buildSteps(complexity) {
     },
     high: { messages: msg("taxi_open"), opening: "taxi_open.opening" },
     apply: (s) => { s.phone.app = "taxi"; s.phone.taxiView = "home"; s.phone.sheet = null; },
+  });
+
+  steps.push({
+    id: "origin",
+    label: "출발지 변경",
+    guide: "출발지를 휴대폰의 현재 위치에서 ‘신분당선 동천역’으로 바꾸는 단계. 출발지 검색 결과는 신분당선 동천역, 동천역 버스정류장, 동천역 환승주차장이고 택시를 탈 곳은 신분당선 동천역",
+    low: { messages: msg("origin"), options: APPROVE, reject: "origin" },
+    high: { messages: msg("origin"), applyFirst: true },
+    // 출발지 칸을 누르고 "동천역"을 입력 → 검색 결과
+    pre: async (s) => {
+      const p = s.phone;
+      if (p.taxiView === "origin" && p.originTyped === ORIGIN_QUERY) return;
+      await tap(".tx-from");
+      p.taxiView = "origin";
+      p.originTyped = "";
+      p.originResults = false;
+      renderPhone();
+      await actSleep(400);
+      await typeText((v) => (p.originTyped = v), ORIGIN_QUERY, 190);
+      await actSleep(500);
+      p.originResults = true;
+      renderPhone();
+      await actSleep(600);
+    },
+    act: async (s, choice) => {
+      const p = s.phone;
+      if (choice === "reject") {
+        // 출발지를 바꾸지 않고 홈으로 돌아감
+        if (p.taxiView === "origin") await tap(".tx-sbar .back");
+      } else if (p.taxiView === "origin") {
+        await tap(`.tx-ores[data-origin="${TARGET_ORIGIN}"]`);
+        s.form.origin = TARGET_ORIGIN;
+      }
+      p.taxiView = "home";
+      renderPhone();
+      await actSleep(300);
+    },
+    apply: (s, choice) => { if (choice !== "reject") s.form.origin = TARGET_ORIGIN; s.phone.taxiView = "home"; s.phone.focus = null; },
   });
 
   steps.push({
