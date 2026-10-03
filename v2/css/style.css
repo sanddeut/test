@@ -777,3 +777,6 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .tx-call.ghost { background: #fff; color: #e5484d; border: 1px solid #f3c1c3; cursor: pointer; }
 .taxi .hist-row > b { white-space: nowrap; flex: none; margin-left: 10px; }
 .tx-resv .tx-call + .tx-call { margin-top: 8px; }
+.pill-row { display: flex; justify-content: center; gap: 8px; width: 100%; margin-top: 10px; }
+.tx-req-ok { margin-top: 12px; cursor: default; }
+.pv-req div { padding: 9px 14px; }

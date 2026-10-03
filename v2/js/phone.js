@@ -91,6 +91,7 @@ function bindPhone() {
   on("data-done-confirm", () => confirmDone());
   on("data-man-req", () => manualRequestSheet());
   on("data-man-reqopt", (k) => manualRequest(k));
+  on("data-man-reqok", () => { if (S?.manual) { S.phone.sheet = "confirm"; renderPhone(); } });
   on("data-man-reserve-cancel", () => manualCancelReserve());
 }
 
@@ -313,6 +314,7 @@ function taxiOverlay() {
     return `<div class="dim" ${closer}><div class="sheet" onclick="event.stopPropagation()"><h3>기사님 요청사항</h3>
       ${Object.entries(REQUESTS).map(([k, v]) => `<div class="tx-pay-opt tx-reqopt ${(f.request || "none") === k ? "on" : ""}" data-req="${k}" ${man ? `data-man-reqopt="${k}"` : ""}>
         <span><b>${esc(v)}</b></span>${mi((f.request || "none") === k ? "radio_button_checked" : "radio_button_unchecked", "radio")}</div>`).join("")}
+      <div class="tx-call tx-req-ok" ${man ? "data-man-reqok" : ""}>확인</div>
     </div></div>`;
   }
   return "";
@@ -368,7 +370,6 @@ function manualRequest(k) {
   S.form.request = k;
   S.userSet.request = true;
   S.requestByUser = true;
-  S.phone.sheet = "confirm";
   logEvent("request_changed", { request: k, via: "manual" });
   renderPhone();
 }
@@ -610,21 +611,32 @@ async function callTaxi(s) {
 }
 
 // 호출 확인 시트의 [기사님 요청사항] → 목록에서 고름 → 확인 시트로 돌아옴
-async function pickRequest(s, k) {
+// stay=true: 고른 뒤에도 요청사항 목록(바텀시트)을 열어 둬서 무엇을 골랐는지 화면에서 보이게 함
+async function pickRequest(s, k, { stay = false } = {}) {
   const p = s.phone;
-  if (p.sheet !== "confirm") { p.sheet = "confirm"; renderPhone(); await actSleep(400); }
-  p.focus = "request";
-  renderPhone();
-  await tap(".tx-req");
-  p.focus = null;
-  p.sheet = "request";
-  renderPhone();
-  await actSleep(500);
+  if (p.sheet !== "request") {
+    if (p.sheet !== "confirm") { p.sheet = "confirm"; renderPhone(); await actSleep(400); }
+    p.focus = "request";
+    renderPhone();
+    await tap(".tx-req");
+    p.focus = null;
+    p.sheet = "request";
+    renderPhone();
+    await actSleep(500);
+  }
   await tap(`.tx-reqopt[data-req="${k}"]`);
   s.form.request = k;
   renderPhone();
   await actSleep(300);
-  p.sheet = "confirm";
+  if (stay) return;
+  await closeRequestSheet(s);
+}
+
+// 요청사항 목록의 [확인] → 호출 확인 시트로
+async function closeRequestSheet(s) {
+  if (s.phone.sheet !== "request") return;
+  await tap(".tx-req-ok");
+  s.phone.sheet = "confirm";
   renderPhone();
   await actSleep(400);
 }
@@ -636,7 +648,7 @@ async function redoRequest(k) {
   if (!S.showRun && typeof showRun === "function") showRun(true);
   setActing(true);
   await actSleep(700);
-  await pickRequest(S, k);
+  await pickRequest(S, k, { stay: true });
   setActing(false);
   S.reticking = false;
   if (typeof syncControls === "function") syncControls();

@@ -492,11 +492,12 @@ function buildSteps(complexity, session = 1) {
       low: { messages: msg("request"), options: APPROVE, reject: "request" },
       high: { messages: msg("request") },
       // 호출 확인 시트의 [기사님 요청사항]을 누르고 '기사님과 이야기 나누며 가고 싶어요'를 고른 뒤 알리거나 승인을 물음
+      // 목록은 열어 둔 채로 묻고(고른 항목이 보이게), 승인하면 [확인] → [호출]
       pre: async (s) => {
         if (s.userSet?.request) return;
-        await pickRequest(s, AGENT_REQUEST);
+        await pickRequest(s, AGENT_REQUEST, { stay: true });
       },
-      act: async (s) => { await callTaxi(s); },
+      act: async (s) => { await closeRequestSheet(s); await callTaxi(s); },
       apply: (s) => { s.phone.sheet = null; s.phone.taxiView = "calling"; },
     }] : []),
     {
