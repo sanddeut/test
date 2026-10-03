@@ -1461,7 +1461,7 @@ function renderSummary() {
   if (!el || !S) return;
   const s = summary();
   const label = S.session === 1
-    ? { accepted: "수용 (조용히 가주세요 그대로)", corrected: "거부·수정", cancelled: "취소" }
+    ? { accepted: "수용 (에이전트가 고른 요청사항 그대로)", corrected: "거부·수정", cancelled: "취소" }
     : { accepted: "수용 (예약됨)", corrected: "거부·취소", cancelled: "호출 취소" };
   const items = [
     ["조건", `${S.cond} · 세션${S.session}`],
