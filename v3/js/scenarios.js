@@ -19,6 +19,11 @@ const FRAUD_QUESTIONS = [
   "모르는 사람이 앱 설치나 원격조정을 요청했나요?",
 ];
 
+// 예방질문 답을 문장으로: "1번 ‘아니오’, 2번 ‘예’, 3번 ‘아니오’"
+function fraudText(ans) {
+  return (ans || []).map((a, i) => `${i + 1}번 ‘${a === "yes" ? "예" : "아니오"}’`).join(", ");
+}
+
 // 세션2: 에이전트가 열람하는 최근 3개월 거래내역
 const HISTORY = [
   { date: "2026.09.26", name: "김영숙", amount: -300000 },
@@ -168,9 +173,10 @@ function scriptDefaults(cond) {
   // [세션1 오류] 금융사기 예방질문
   if (low) {
     add("fraud", "[세션1 오류] 금융사기 예방질문", "승인 요청", "금융사기 예방질문 3가지에 모두 ‘아니오’를 선택했어요. 이대로 진행할까요?");
-    add("fraud.ask", "[세션1 오류] 금융사기 예방질문", "거부 시", "예방질문 화면을 열어드릴게요. 질문에 직접 답해주세요.");
+    add("fraud.ask", "[세션1 오류] 금융사기 예방질문", "거부 시", "어떤 질문의 답을 바꿀까요?");
+    add("fraud.confirm", "[세션1 오류] 금융사기 예방질문", "답을 바꾼 뒤 다시 확인", "{예방답}로 선택했어요. 이대로 진행할까요?");
   } else add("fraud", "[세션1 오류] 금융사기 예방질문", "안내", "금융사기 예방질문 3가지에 모두 ‘아니오’를 선택했어요.");
-  add("fraud.done", "[세션1 오류] 금융사기 예방질문", "참가자가 직접 답한 뒤", "예방질문에 답하신 내용으로 진행할게요.");
+  add("change.fraud", "[세션1 오류] 금융사기 예방질문", "중지 중 답을 바꿨을 때", "{예방답}로 바꿨어요.");
 
   add("password", "비밀번호 입력", "안내", "이체를 위해 계좌비밀번호 입력이 필요해요. 아래에 직접 입력해주세요.");
   add("done", "완료 안내", "안내", B ? "{받는분}으로 {금액}을 보냈어요." : "송금을 완료했어요.");
@@ -218,12 +224,13 @@ function lines(key, s, vars = {}) {
     출금계좌: ACCOUNTS[s.form?.source || "main"].label,
     받는분: rcpt(s),
     계좌번호: vars.account ?? s.form?.recipientCustom ?? "",
+    예방답: fraudText(s.form?.fraud || s.phone?.fraudTicks),
   };
   return scriptText(s.cond, key)
     .split("\n")
     .map((t) => t.trim())
     .filter(Boolean)
-    .map((t) => t.replace(/\{(금액|이름|메모|출금계좌|받는분|계좌번호)\}/g, (_, k) => map[k]));
+    .map((t) => t.replace(/\{(금액|이름|메모|출금계좌|받는분|계좌번호|예방답)\}/g, (_, k) => map[k]));
 }
 const line = (key, s, vars) => lines(key, s, vars).join("\n");
 
@@ -510,18 +517,22 @@ function buildSteps(complexity, participantName, session = 1) {
       guide: `이체 직전 은행 앱이 묻는 금융사기 예방질문 3가지(${FRAUD_QUESTIONS.join(" / ")})에 에이전트가 사용자에게 묻지 않고 모두 ‘아니오’를 선택한 단계`,
       low: { messages: msg("fraud"), options: APPROVE, reject: "fraud" },
       high: { messages: msg("fraud"), applyFirst: true },
-      pre: async (s) => { s.phone.sheet = "fraud"; s.phone.fraudTicks = [null, null, null]; renderPhone(); await actSleep(700); },
-      act: async (s) => {
-        if (s.phone.sheet !== "fraud") { s.phone.sheet = "fraud"; renderPhone(); await actSleep(500); }
+      // 예방질문 시트가 뜨면 에이전트가 3가지 모두 '아니오'를 누른 뒤에 알리거나(높은 자동화) 승인을 물음(낮은 자동화)
+      pre: async (s) => {
+        s.phone.sheet = "fraud";
+        s.phone.fraudTicks = [null, null, null];
+        renderPhone();
+        await actSleep(700);
         for (let i = 0; i < 3; i++) {
-          if (s.fraudByUser) break;
+          if (s.fraudByUser) break; // 도중에 참가자가 직접 답한 경우
           await tap(`.fq[data-q="${i}"] .no`, { pre: 250, after: 250 });
           s.phone.fraudTicks[i] = "no";
           renderPhone();
         }
         if (!s.fraudByUser) s.form.fraud = ["no", "no", "no"];
+        await actSleep(400);
       },
-      apply: (s) => { if (!s.fraudByUser) s.form.fraud = ["no", "no", "no"]; s.phone.fraudTicks = [...s.form.fraud]; },
+      apply: (s) => { s.form.fraud = s.form.fraud || ["no", "no", "no"]; s.phone.fraudTicks = [...s.form.fraud]; },
     }] : []),
     {
       id: "password",
