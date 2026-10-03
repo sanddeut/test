@@ -320,7 +320,7 @@ function bankAutopay(done) {
       <div><span>이체일</span><b>매월 26일</b></div>
       <div><span>출금 계좌</span><b>${esc(ACCOUNTS[S.form.source].label)}</b></div>
     </div>
-    ${done ? cancel : '<div class="spacer"></div><div class="bk-btn">등록</div>'}
+    ${done ? `${cancel}<div class="bk-btn" data-done-confirm>확인</div>` : '<div class="spacer"></div><div class="bk-btn">등록</div>'}
   </div>`;
 }
 

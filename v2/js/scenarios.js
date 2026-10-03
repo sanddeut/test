@@ -60,7 +60,26 @@ const distText = (originKey, destKey, geo) => `${distKm(originKey, destKey, geo)
 const SEARCH_ORDER = ["gucheong", "gangnam", "yeoksam"]; // 검색 결과 순서 (에이전트는 맨 위 강남구청점을 고름)
 const SEARCH_QUERY = "담소한정식";
 const TARGET_PLACE = "gangnam"; // 참가자가 요청하는 목적지
-const ERROR_PLACE = "gucheong"; // 에이전트가 잘못 고르는 목적지
+const AGENT_PLACE = TARGET_PLACE; // 에이전트가 고르는 목적지 (v2 최종: 목적지 오류 없음)
+
+// 세션별 오류 (연구1 v2 최종 시나리오)
+// - 세션1: 최종 확인 다음, 에이전트가 묻지 않고 기사님 요청사항을 '조용히 가주세요'로 선택
+// - 세션2: 호출 완료 후, 묻지 않고 최근 3개월 이용내역을 열람하고 다음 주 토요일 같은 시간 예약 호출을 제안·등록
+const SESSIONS = {
+  1: { title: "세션1 · 기사님 요청사항 임의 선택", error: "request" },
+  2: { title: "세션2 · 이용내역 열람 + 예약 호출", error: "reserve" },
+};
+const REQUESTS = {
+  none: "요청사항 없음",
+  quiet: "조용히 가주세요",
+  luggage: "짐이 있어요",
+  safe: "천천히 안전하게 가주세요",
+  fast: "빠른 길로 가주세요",
+};
+const AGENT_REQUEST = "quiet";
+// 세션2: 최근 3개월 이용내역 (매주 토요일 담소한정식 강남점)
+const RIDE_HISTORY = ["09.26", "09.19", "09.12", "09.05", "08.29", "08.22"].map((d) => ({ date: `2026.${d} (토)`, time: "오후 6:20", to: "담소한정식 강남점", fare: 19700 }));
+const RESERVE = { when: "10월 10일 토요일 오후 6:20", short: "다음 주 토요일(10월 10일) 오후 6시 20분" };
 
 const CAR_TYPES = {
   normal: { label: "일반택시", desc: "가까운 택시를 빠르게", rate: 1 },
@@ -128,9 +147,9 @@ const APPROVE = [
 // =====================================================================
 // 시나리오 문구 (설정 화면에서 조건별로 수정 가능)
 // - 한 줄 = 말풍선 하나
-// - 자리표시자: {출발지} {목적지} {택시종류} {결제} {쿠폰} {요금} {이름}
+// - 자리표시자: {출발지} {목적지} {택시종류} {결제} {쿠폰} {요금} {요청사항} {이름}
 // =====================================================================
-const SCRIPT_VARS = ["출발지", "목적지", "택시종류", "결제", "쿠폰", "요금", "이름"];
+const SCRIPT_VARS = ["출발지", "목적지", "택시종류", "결제", "쿠폰", "요금", "요청사항", "이름"];
 
 // 조건별 기본 문구 목록 (화면에 보이는 순서대로)
 function scriptDefaults(cond) {
@@ -154,13 +173,13 @@ function scriptDefaults(cond) {
     add("origin.skip", "출발지 변경", "거부 시", "출발지는 현재 위치로 둘게요.");
   } else add("origin", "출발지 변경", "안내", "말씀하신 ‘신분당선 동천역’으로 출발지를 바꿨어요.");
 
-  add("dest.busy", "[오류] 목적지 설정", "진행 문구 (검색 중)", "목적지를 검색하고 있어요 …");
+  add("dest.busy", "목적지 설정", "진행 문구 (검색 중)", "목적지를 검색하고 있어요 …");
   if (low) {
-    add("dest", "[오류] 목적지 설정", "승인 요청 ({목적지} = 강남구청점)", "요청하신 ‘{목적지}’을 찾았어요. 여기로 갈까요?");
-    add("dest.ask", "[오류] 목적지 설정", "거부 시", "어디로 갈까요?");
-    add("dest.confirm", "[오류] 목적지 설정", "목적지를 말했을 때", "‘{목적지}’으로 갈까요?");
+    add("dest", "목적지 설정", "승인 요청", "‘{목적지}’을 찾았어요. 여기로 갈까요?");
+    add("dest.ask", "목적지 설정", "거부 시", "어디로 갈까요?");
+    add("dest.confirm", "목적지 설정", "목적지를 말했을 때", "‘{목적지}’으로 갈까요?");
   } else {
-    add("dest", "[오류] 목적지 설정", "안내 ({목적지} = 강남구청점)", "요청하신 ‘{목적지}’을 목적지로 설정했어요.");
+    add("dest", "목적지 설정", "안내", "‘{목적지}’을 목적지로 설정했어요.");
   }
 
   if (B) {
@@ -184,7 +203,28 @@ function scriptDefaults(cond) {
     add("final.ask", "최종 호출 확인", "거부 시", "무엇을 수정할까요?");
   } else add("final", "최종 호출 확인", "안내", "‘{목적지}’으로 가는 {택시종류}를 호출할게요.");
 
+  // [세션1 오류] 기사님 요청사항 임의 선택
+  if (low) {
+    add("request", "[세션1 오류] 기사님 요청사항", "승인 요청", "기사님 요청사항으로 ‘{요청사항}’를 선택했어요. 이대로 호출할까요?");
+    add("request.ask", "[세션1 오류] 기사님 요청사항", "거부 시", "기사님 요청사항을 어떻게 할까요?");
+    add("request.confirm", "[세션1 오류] 기사님 요청사항", "요청사항을 바꾼 뒤 다시 확인", "기사님 요청사항을 ‘{요청사항}’로 바꿨어요. 이대로 호출할까요?");
+  } else add("request", "[세션1 오류] 기사님 요청사항", "안내", "기사님 요청사항으로 ‘{요청사항}’를 선택했어요.");
+  add("change.request", "[세션1 오류] 기사님 요청사항", "중지 중 요청사항을 바꿨을 때", "기사님 요청사항을 ‘{요청사항}’로 바꿨어요.");
+  if (low) add("request.none.confirm", "[세션1 오류] 기사님 요청사항", "요청사항을 뺀 뒤 다시 확인", "기사님 요청사항을 뺐어요. 요청사항 없이 호출할까요?");
+  add("change.request.none", "[세션1 오류] 기사님 요청사항", "중지 중 요청사항을 뺐을 때", "기사님 요청사항을 뺐어요.");
+
   add("done", "완료 안내", "안내", "{택시종류}를 호출했어요. 기사님이 3분 뒤 도착해요.");
+
+  // [세션2 오류] 이용내역 열람 + 예약 호출
+  add("reserve.busy", "[세션2 오류] 이용내역 열람 + 예약 호출", "진행 문구 (이용내역 확인 중)", "이용내역을 확인하고 있어요 …");
+  if (low) {
+    add("reserve", "[세션2 오류] 이용내역 열람 + 예약 호출", "승인 요청", "최근 3개월 이용내역을 확인해 보니, 매주 토요일 담소한정식 강남점에 가신 기록이 있어요.\n다음 주 토요일에도 같은 시간에 택시를 예약할까요?");
+    add("reserve.no", "[세션2 오류] 이용내역 열람 + 예약 호출", "거부 시", "택시는 예약하지 않을게요.");
+  } else {
+    add("reserve", "[세션2 오류] 이용내역 열람 + 예약 호출", "안내", "최근 3개월 이용내역을 확인해 보니, 매주 토요일 담소한정식 강남점에 가신 기록이 있어요.\n다음 주 토요일에도 같은 시간에 택시를 예약할게요.");
+  }
+  add("reserve.yes", "[세션2 오류] 이용내역 열람 + 예약 호출", "예약한 뒤", "다음 주 토요일(10월 10일) 오후 6시 20분 택시를 예약했어요.");
+  add("reserve.cancel", "[세션2 오류] 이용내역 열람 + 예약 호출", "중지 중 예약을 취소했을 때", "택시 예약을 취소했어요.");
 
   add("stop.ask", "중지·직접 조작", "중지를 눌렀을 때", "진행을 멈췄어요. 어떻게 바꿀까요?");
   add("change.origin", "중지·직접 조작", "중지 중 출발지를 바꿨을 때", low ? "출발지를 ‘{출발지}’(으)로 바꿀게요." : "출발지를 ‘{출발지}’(으)로 바꿨어요.");
@@ -224,13 +264,14 @@ function lines(key, s, vars = {}) {
     결제: PAY[pay].label,
     쿠폰: COUPON.name,
     요금: won0(fareOf({ ...f, car }, dest)),
+    요청사항: REQUESTS[vars.request ?? f.request ?? AGENT_REQUEST],
     이름: s.cfg?.name || "OOO",
   };
   return scriptText(s.cond, key)
     .split("\n")
     .map((t) => t.trim())
     .filter(Boolean)
-    .map((t) => t.replace(/\{(출발지|목적지|택시종류|결제|쿠폰|요금|이름)\}/g, (_, k) => map[k]))
+    .map((t) => t.replace(/\{(출발지|목적지|택시종류|결제|쿠폰|요금|요청사항|이름)\}/g, (_, k) => map[k]))
     .map((t) => t.replace(/([가-힣\w]+)’?\(으\)로/g, (m, w) => (m.includes("’") ? `${euro(w).slice(0, w.length)}’${euro(w).slice(w.length)}` : euro(w))));
 }
 const line = (key, s, vars) => lines(key, s, vars).join("\n");
@@ -245,7 +286,7 @@ const payTarget = (s) => (s.userSet?.pay ? s.form.pay : s.complexity === "B" ? "
 // - high.messages / high.applyFirst : 높은 자동화 (applyFirst=true면 화면 조작 후 “~했어요” 안내)
 // - guide : 스크립트 밖 응답을 LLM이 만들 때 참고할 단계 설명
 // - act(state, choice) : 화면에서 누르고 입력하는 연출 / apply(state, choice) : 상태 반영
-function buildSteps(complexity) {
+function buildSteps(complexity, session = 1) {
   const B = complexity === "B";
   const msg = (key) => (s) => lines(key, s);
   const steps = [];
@@ -306,12 +347,12 @@ function buildSteps(complexity) {
 
   steps.push({
     id: "dest",
-    kind: "error_place",
+    kind: "dest",
     busy: "dest.busy",
-    label: "[오류] 강남점을 강남구청점으로 잘못 골라 목적지 설정",
-    guide: `목적지를 검색해 고르는 단계. 검색 결과는 ${SEARCH_ORDER.map((k) => PLACES[k].name).join(", ")} 세 곳이고, 에이전트는 ‘${PLACES[ERROR_PLACE].name}’을 목적지로 고르려 함`,
-    low: { messages: (s) => lines("dest", s, { dest: ERROR_PLACE }), options: APPROVE, reject: "dest" },
-    high: { messages: (s) => lines("dest", s, { dest: ERROR_PLACE }), applyFirst: true },
+    label: "목적지 설정",
+    guide: `목적지를 검색해 고르는 단계. 검색 결과는 ${SEARCH_ORDER.map((k) => PLACES[k].name).join(", ")} 세 곳이고, 에이전트는 ‘${PLACES[AGENT_PLACE].name}’을 목적지로 고름`,
+    low: { messages: (s) => lines("dest", s, { dest: s.userDest ?? AGENT_PLACE }), options: APPROVE, reject: "dest" },
+    high: { messages: (s) => lines("dest", s, { dest: s.form.dest ?? AGENT_PLACE }), applyFirst: true },
     correction: {
       lowAsk: (s) => line("dest.ask", s),
       lowConfirm: (s, k) => line("dest.confirm", s, { dest: k }),
@@ -332,7 +373,7 @@ function buildSteps(complexity) {
       await actSleep(600);
     },
     act: async (s, choice) => {
-      const k = choice || s.form.dest || ERROR_PLACE;
+      const k = choice || s.form.dest || AGENT_PLACE;
       const p = s.phone;
       if (p.taxiView === "search") {
         await tap(`.tx-res[data-place="${k}"]`);
@@ -344,7 +385,7 @@ function buildSteps(complexity) {
       p.taxiView = "ride";
       renderPhone();
     },
-    apply: (s, choice) => { s.form.dest = choice || s.form.dest || ERROR_PLACE; s.phone.taxiView = "ride"; s.phone.focus = null; },
+    apply: (s, choice) => { s.form.dest = choice || s.form.dest || AGENT_PLACE; s.phone.taxiView = "ride"; s.phone.focus = null; },
   });
 
   if (B) {
@@ -438,15 +479,25 @@ function buildSteps(complexity) {
         renderPhone();
         await actSleep(500);
       },
-      act: async (s) => {
-        if (s.phone.sheet !== "confirm") { s.phone.sheet = "confirm"; renderPhone(); await actSleep(400); }
-        await tap(".sheet .primary");
-        s.phone.sheet = null;
-        s.phone.taxiView = "calling";
-        renderPhone();
-      },
-      apply: (s) => { s.phone.sheet = null; s.phone.taxiView = "calling"; },
+      // 세션1은 다음 단계(기사님 요청사항)에서 호출하므로 확인 시트를 그대로 둠
+      act: async (s) => { if (session === 2) await callTaxi(s); },
+      apply: (s) => { if (session === 2) { s.phone.sheet = null; s.phone.taxiView = "calling"; } },
     },
+    ...(session === 1 ? [{
+      id: "request",
+      kind: "error_request",
+      label: "[세션1 오류] 기사님 요청사항 임의 선택",
+      guide: `호출 확인 화면에서 에이전트가 사용자에게 묻지 않고 기사님 요청사항을 ‘${REQUESTS[AGENT_REQUEST]}’로 선택한 단계. 고를 수 있는 요청사항: ${Object.values(REQUESTS).join(", ")}`,
+      low: { messages: msg("request"), options: APPROVE, reject: "request" },
+      high: { messages: msg("request") },
+      // 호출 확인 시트의 [기사님 요청사항]을 누르고 '조용히 가주세요'를 고른 뒤 알리거나 승인을 물음
+      pre: async (s) => {
+        if (s.userSet?.request) return;
+        await pickRequest(s, AGENT_REQUEST);
+      },
+      act: async (s) => { await callTaxi(s); },
+      apply: (s) => { s.phone.sheet = null; s.phone.taxiView = "calling"; },
+    }] : []),
     {
       id: "done",
       kind: "done",
@@ -457,6 +508,33 @@ function buildSteps(complexity) {
       act: async () => { await actSleep(2600); },
       apply: (s) => { s.phone.sheet = null; s.phone.taxiView = "complete"; s.phone.focus = null; },
     },
+    ...(session === 2 ? [{
+      id: "reserve",
+      kind: "error_reserve",
+      busy: "reserve.busy",
+      label: "[세션2 오류] 이용내역 열람 + 예약 호출",
+      guide: `호출이 끝난 뒤 에이전트가 묻지 않고 최근 3개월 이용내역(매주 토요일 담소한정식 강남점)을 열람하고, ${RESERVE.short} 예약 호출을 제안(낮은 자동화)하거나 등록(높은 자동화)하는 단계`,
+      low: { messages: msg("reserve"), options: APPROVE, reject: "reserve" },
+      high: { messages: msg("reserve") },
+      pre: async (s) => {
+        await tap(".tx-menu, .tx-call", { pre: 300 });
+        s.phone.taxiView = "history";
+        renderPhone();
+        await actSleep(1200);
+      },
+      act: async (s, choice) => {
+        if (choice === "reject" || s.reserveCancelled) return;
+        await tap(".hist-reserve");
+        s.phone.taxiView = "reserve";
+        renderPhone();
+        await actSleep(900);
+        await tap(".tx-call");
+        s.form.reserved = true;
+        s.phone.taxiView = "reserve_done";
+        renderPhone();
+      },
+      apply: (s, choice) => { if (choice !== "reject" && !s.reserveCancelled) { s.form.reserved = true; s.phone.taxiView = "reserve_done"; } },
+    }] : []),
   );
 
   return steps;

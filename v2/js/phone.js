@@ -89,6 +89,9 @@ function bindPhone() {
   on("data-man-coupon", () => manualCoupon());
   on("data-man-close", () => manualCloseSheet());
   on("data-done-confirm", () => confirmDone());
+  on("data-man-req", () => manualRequestSheet());
+  on("data-man-reqopt", (k) => manualRequest(k));
+  on("data-man-reserve-cancel", () => manualCancelReserve());
 }
 
 // ---------------- 홈 화면 ----------------
@@ -119,6 +122,9 @@ function taxiScreen() {
   else if (p.taxiView === "ride") view = taxiRide();
   else if (p.taxiView === "calling") view = taxiCalling();
   else if (p.taxiView === "complete") view = taxiComplete();
+  else if (p.taxiView === "history") view = taxiHistory();
+  else if (p.taxiView === "reserve") view = taxiReserve(false);
+  else if (p.taxiView === "reserve_done") view = taxiReserve(true);
   return `<div class="taxi">${view}${taxiOverlay()}</div>`;
 }
 
@@ -226,6 +232,30 @@ function taxiCalling() {
   </div>`;
 }
 
+// 세션2: 이용내역 (최근 3개월)
+function taxiHistory() {
+  const rows = RIDE_HISTORY.map((h) => `<div class="hist-row"><span><b>${esc(h.to)}</b><small>${h.date} ${h.time} · 신분당선 동천역 출발</small></span><b>${won0(h.fare)}</b></div>`).join("");
+  return `<div class="tx-page white"><div class="tx-sbar">${mi("arrow_back_ios", "back")}<b class="tx-htitle">이용내역</b></div>
+    <div class="hist-filter"><span class="on">3개월</span><span>1개월</span><span>전체</span></div>
+    <div class="hist-list">${rows}</div>
+    <div class="hist-reserve">${mi("event_repeat")} 같은 경로로 예약하기</div></div>`;
+}
+
+// 세션2: 예약 호출 / 예약 완료
+function taxiReserve(done) {
+  const cancel = S.manual && done && S.form.reserved ? `<div class="tx-call ghost" data-man-reserve-cancel>예약 취소</div>` : "";
+  return `<div class="tx-page white tx-resv">
+    ${done ? `<div class="tx-done-head"><span class="done-check">${mi("check")}</span><span><b>택시를 예약했어요</b><small>출발 30분 전에 배차를 시작해요</small></span></div>` : `<div class="tx-sbar">${mi("arrow_back_ios", "back")}<b class="tx-htitle">예약 호출</b></div>`}
+    <div class="done-box">
+      <div><span>출발</span><b>신분당선 동천역</b></div>
+      <div><span>도착</span><b>담소한정식 강남점</b></div>
+      <div><span>예약 시간</span><b>${RESERVE.when}</b></div>
+      <div><span>택시 종류</span><b>${CAR_TYPES[S.form.car].label}</b></div>
+    </div>
+    ${done ? `${cancel}<div class="tx-call" data-done-confirm>확인</div>` : '<div class="tx-call">예약하기</div>'}
+  </div>`;
+}
+
 function rideRows() {
   const f = S.form;
   return [
@@ -234,6 +264,7 @@ function rideRows() {
     ["택시 종류", CAR_TYPES[f.car].label],
     ["결제", `${PAY[f.pay].label} · ${PAY[f.pay].desc}`],
     ...(S.complexity === "B" || f.coupon ? [["쿠폰", f.coupon ? `${COUPON.name}` : "적용 안 함"]] : []),
+    ...(f.request && f.request !== "none" ? [["기사님 요청사항", REQUESTS[f.request]]] : []),
     ["예상 요금", won0(fareOf(f))],
   ];
 }
@@ -274,8 +305,15 @@ function taxiOverlay() {
   if (p.sheet === "confirm") {
     return `<div class="dim ${enter}"><div class="sheet ${enter}">
       <h3>${esc(PLACES[f.dest || TARGET_PLACE].name)}으로<br><em>${CAR_TYPES[f.car].label}</em>를 호출할까요?</h3>
-      ${rideRows().slice(2).map(([k, v]) => `<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`).join("")}
+      ${rideRows().slice(2).filter(([k]) => k !== "기사님 요청사항").map(([k, v]) => `<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`).join("")}
+      <div class="kv tx-req ${p.focus === "request" ? "hl" : ""}" ${man ? "data-man-req" : ""}><span>기사님 요청사항</span><b>${esc(REQUESTS[f.request || "none"])} ${mi("chevron_right")}</b></div>
       <div class="bk-btn2"><span>취소</span><span class="primary">호출</span></div></div></div>`;
+  }
+  if (p.sheet === "request") {
+    return `<div class="dim" ${closer}><div class="sheet" onclick="event.stopPropagation()"><h3>기사님 요청사항</h3>
+      ${Object.entries(REQUESTS).map(([k, v]) => `<div class="tx-pay-opt tx-reqopt ${(f.request || "none") === k ? "on" : ""}" data-req="${k}" ${man ? `data-man-reqopt="${k}"` : ""}>
+        <span><b>${esc(v)}</b></span>${mi((f.request || "none") === k ? "radio_button_checked" : "radio_button_unchecked", "radio")}</div>`).join("")}
+    </div></div>`;
   }
   return "";
 }
@@ -316,6 +354,31 @@ function manualOrigin(k) {
   S.userSet.origin = true;
   S.phone.taxiView = "home";
   if (curStepId() === "origin") manualMark("origin", "approve");
+  renderPhone();
+}
+
+function manualRequestSheet() {
+  if (!S?.manual) return;
+  S.phone.sheet = "request";
+  renderPhone();
+}
+
+function manualRequest(k) {
+  if (!S?.manual) return;
+  S.form.request = k;
+  S.userSet.request = true;
+  S.requestByUser = true;
+  S.phone.sheet = "confirm";
+  logEvent("request_changed", { request: k, via: "manual" });
+  renderPhone();
+}
+
+function manualCancelReserve() {
+  if (!S?.manual) return;
+  S.form.reserved = false;
+  S.reserveCancelled = true;
+  S.phone.taxiView = "history";
+  logEvent("reserve_cancelled", { via: "manual" });
   renderPhone();
 }
 
@@ -535,4 +598,47 @@ function locate() {
     (err) => { if (S === sess) logEvent("geo", { ok: false, reason: err.message || String(err.code) }); },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
   );
+}
+
+// 호출 확인 시트에서 [호출] → 주변 택시 찾기
+async function callTaxi(s) {
+  if (s.phone.sheet !== "confirm") { s.phone.sheet = "confirm"; renderPhone(); await actSleep(400); }
+  await tap(".sheet .primary");
+  s.phone.sheet = null;
+  s.phone.taxiView = "calling";
+  renderPhone();
+}
+
+// 호출 확인 시트의 [기사님 요청사항] → 목록에서 고름 → 확인 시트로 돌아옴
+async function pickRequest(s, k) {
+  const p = s.phone;
+  if (p.sheet !== "confirm") { p.sheet = "confirm"; renderPhone(); await actSleep(400); }
+  p.focus = "request";
+  renderPhone();
+  await tap(".tx-req");
+  p.focus = null;
+  p.sheet = "request";
+  renderPhone();
+  await actSleep(500);
+  await tap(`.tx-reqopt[data-req="${k}"]`);
+  s.form.request = k;
+  renderPhone();
+  await actSleep(300);
+  p.sheet = "confirm";
+  renderPhone();
+  await actSleep(400);
+}
+
+// 참가자가 말한 대로 요청사항을 바꿈 (실행화면을 열어 누르는 과정을 보여줌)
+async function redoRequest(k) {
+  actNoGate++;
+  S.reticking = true;
+  if (!S.showRun && typeof showRun === "function") showRun(true);
+  setActing(true);
+  await actSleep(700);
+  await pickRequest(S, k);
+  setActing(false);
+  S.reticking = false;
+  if (typeof syncControls === "function") syncControls();
+  actNoGate--;
 }

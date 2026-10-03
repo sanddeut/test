@@ -26,7 +26,8 @@ const DEFAULT_PROMPT = `# 역할
 - 높은 자동화: 승인을 묻지 마. 진행 상황을 알리는 형태로 끝내고, 사용자는 '중지'·'직접조작' 버튼으로만 개입해.
 - 높은 자동화에서 사용자가 '중지'를 누른 경우: 사용자의 발화에 응답한 뒤, 사용자가 '계속하기'를 누를 때까지 진행하지 말고 기다려. 재개 여부를 말로 묻지 말고 '계속하기' 버튼을 안내해. 재개 후에는 다시 높은 자동화 방식으로 진행해.
 - 시나리오의 단계 순서를 바꾸거나 단계를 건너뛰거나 새 단계를 추가하지 마.
-- 목적지 오류(강남구청점) 단계에서는 네가 먼저 오류를 알아채거나 강남점으로 고치거나 오류를 암시하지 마. 사용자가 직접 수정을 요청할 때만 목적지를 바꿔.
+- 기사님 요청사항 단계에서는 네가 묻지 않고 ‘조용히 가주세요’를 고른 것을 먼저 문제로 언급하거나 바꾸라고 권하지 마. 사용자가 바꾸거나 빼라고 할 때만 따라.
+- 이용내역 열람·예약 호출 단계에서는 네가 먼저 이용내역을 본 것이나 예약을 문제로 언급하거나 취소를 권하지 마. 사용자가 원하지 않는다고 할 때만 예약하지 않거나 취소해.
 
 # 말투와 정보량
 - 해요체를 사용해.
@@ -62,10 +63,10 @@ const DEFAULT_PROMPT = `# 역할
 
 ## 예시 4 — 오류 단계에서 되물음
 - 자동화수준: 낮은 자동화
-- 현재 단계: [오류] 목적지 설정
-- 사용자: "응? 어디라고?"
-- 좋은 응답: "목적지를 담소한정식 강남구청점으로 설정하려고 해요. 여기로 갈까요?"
-- 나쁜 응답: "혹시 강남점을 말씀하신 건가요? 목적지를 다시 확인해주세요." (에이전트가 먼저 오류를 암시함)
+- 현재 단계: [세션1 오류] 기사님 요청사항
+- 사용자: "응? 무슨 요청사항?"
+- 좋은 응답: "기사님께 전하는 요청사항이에요. ‘조용히 가주세요’를 선택했는데 이대로 호출할까요?"
+- 나쁜 응답: "제가 마음대로 골라서 죄송해요. 다른 걸로 바꿀까요?" (에이전트가 먼저 오류를 암시함)
 
 ## 예시 5 — 잡담
 - 자동화수준: 높은 자동화
@@ -85,6 +86,7 @@ const DEFAULT_PROMPT = `# 역할
 const OUTPUT_FORMAT = `# 출력 형식
 항상 지정된 JSON 스키마로만 답해.
 - intent: 사용자 발화가 "분류할 의도" 목록 중 무엇에 해당하는지 id로 골라. 어느 것에도 맞지 않으면 other.
+- request: 사용자가 말한 기사님 요청사항. 요청사항 없이·빼줘 → none, 조용히 가주세요 → quiet, 짐이 있어요 → luggage, 천천히 안전하게 → safe, 빠른 길로 → fast. 그 외는 null.
 - origin: 사용자가 말한 출발지. 동천역 → dongcheon, 현재 위치(여기, 지금 있는 곳) → current. 그 외는 null.
 - place: 사용자가 말한 목적지 지점. 강남점 → gangnam, 강남구청점 → gucheong, 역삼점 → yeoksam. 구어체, 맞춤법 오류, 음성인식 오류(예: "강남 구청점", "강남쩜")는 너그럽게 해석해. 세 곳이 아니면 null.
 - car_type: 일반택시 → normal, 모범택시 → deluxe, 대형택시 → large.
@@ -117,6 +119,7 @@ function turnSchema(intentIds) {
   return sch("OBJECT", {
     properties: {
       intent: sch("STRING", { enum: intentIds }),
+      request: sch("STRING", { nullable: true, enum: ["none", "quiet", "luggage", "safe", "fast"] }),
       origin: sch("STRING", { nullable: true, enum: ["current", "dongcheon"] }),
       place: sch("STRING", { nullable: true, enum: PLACE_ENUM }),
       car_type: sch("STRING", { nullable: true, enum: ["normal", "deluxe", "large"] }),
@@ -124,7 +127,7 @@ function turnSchema(intentIds) {
       coupon: sch("BOOLEAN", { nullable: true }),
       reply: sch("STRING"),
     },
-    required: ["intent", "origin", "place", "car_type", "pay_method", "coupon", "reply"],
+    required: ["intent", "request", "origin", "place", "car_type", "pay_method", "coupon", "reply"],
   });
 }
 
@@ -138,6 +141,7 @@ const INTENT_MEANINGS = {
   auto: "자동결제(등록된 카드)를 고름",
   direct: "직접결제(내릴 때 기사님께)를 고름",
   set_origin: "출발지를 바꾸라고 함 (origin 채움)",
+  set_request: "기사님 요청사항을 바꾸거나 빼라고 함 (request 채움: 없음 → none, 조용히 → quiet, 짐 → luggage, 천천히·안전 → safe, 빠른 길 → fast)",
   set_dest: "목적지를 특정 지점으로 바꾸라고 함 (place 채움)",
   set_car: "택시 종류를 바꾸라고 함 (car_type 채움)",
   set_pay: "결제 방식을 바꾸라고 함 (pay_method 채움)",
@@ -314,6 +318,17 @@ async function geminiRequest(key, model, prompt, schema, thinking) {
 // ---------------- 규칙 기반 해석 (키 없음 / 실패 시) ----------------
 // 예상 밖 답변을 몇 가지 유형으로 나누고, 유형별로 정해진 답변을 돌려줍니다.
 
+// 기사님 요청사항: "빼줘"·"없이" → none, "조용히" → quiet, "짐" → luggage, "천천히"·"안전" → safe, "빠른" → fast
+function extractRequest(t) {
+  if (/조용/.test(t)) return /(빼|말고|없이|취소|싫)/.test(t) ? "none" : "quiet";
+  if (/짐/.test(t)) return "luggage";
+  if (/천천|안전/.test(t)) return "safe";
+  if (/빠른|빨리/.test(t)) return "fast";
+  if (/(요청|요청사항)/.test(t) && /(빼|없이|없애|취소|안\s?해)/.test(t)) return "none";
+  if (/^(없어|없이|빼줘|빼|없음)/.test(t.trim())) return "none";
+  return null;
+}
+
 // 출발지: "동천" → dongcheon, "현재 위치"·"여기" → current
 const extractOrigin = (t) => (/동천/.test(t) ? "dongcheon" : /현재\s?위치|지금\s?있는|여기서/.test(t) ? "current" : null);
 
@@ -351,7 +366,7 @@ const Rules = {
   turn(text, ctx) {
     const allowed = new Set(ctx.intents);
     const out = (intent, extra = {}) => ({
-      intent, origin: null, place: null, car_type: null, pay_method: null, coupon: null,
+      intent, request: null, origin: null, place: null, car_type: null, pay_method: null, coupon: null,
       reply: ctx.fallback_reply || (QUESTION.test(text)
         ? "궁금하신 점은 호출을 마친 뒤에 도와드릴게요. 지금 단계부터 이어서 진행할게요."
         : "제가 잘 이해하지 못했어요. 화면의 버튼을 누르시거나 다시 말씀해주세요."),
@@ -367,6 +382,10 @@ const Rules = {
     }
     if (allowed.has("unsuitable_app") && !QUESTION.test(t) && !NO.test(t)) return byIntent("unsuitable_app");
 
+    if (allowed.has("set_request")) {
+      const r = extractRequest(t);
+      if (r) return out("set_request", { request: r });
+    }
     const origin = extractOrigin(t);
     const place = extractPlace(t);
     const car = extractCar(t);

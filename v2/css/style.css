@@ -755,3 +755,25 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .tx-from.hl { box-shadow: 0 0 0 3px #ffc72c; }
 .tx-res .tx-res-ic.o { color: #1c1d21; }
 .pv-origin small { display: block; color: #6b6f7a; font-size: 12.5px; }
+
+/* v2 세션별 오류: 기사님 요청사항 · 이용내역 · 예약 */
+.kv.tx-req { cursor: default; border-radius: 10px; }
+.kv.tx-req b { display: flex; align-items: center; gap: 2px; }
+.kv.tx-req .ms { font-size: 18px; color: #9aa0ab; }
+.kv.tx-req.hl { box-shadow: 0 0 0 3px #ffc72c; }
+.tx-reqopt b { font-weight: 600; }
+.tx-htitle { font-size: 18px; }
+.hist-filter { display: flex; gap: 8px; padding: 0 18px 8px; }
+.hist-filter span { border: 1px solid #d9dce2; border-radius: 999px; padding: 5px 12px; font-size: 13px; }
+.hist-filter .on { background: #1c1d21; color: #fff; border-color: #1c1d21; }
+.taxi .hist-list { flex: 1; overflow: auto; padding: 0 18px; }
+.taxi .hist-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 2px; border-bottom: 1px solid #f0f1f4; }
+.taxi .hist-row small { display: block; color: #7a7f89; font-size: 12.5px; }
+.hist-reserve { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 10px 18px 16px; padding: 13px; border-radius: 14px; background: #fff7dc; font-weight: 700; }
+.tx-resv { padding: 0 0 16px; gap: 12px; }
+.tx-resv .done-box { margin: 0 18px; }
+.tx-resv .tx-done-head { padding: 24px 18px 4px; }
+.tx-resv .tx-call { margin: auto 18px 0; }
+.tx-call.ghost { background: #fff; color: #e5484d; border: 1px solid #f3c1c3; cursor: pointer; }
+.taxi .hist-row > b { white-space: nowrap; flex: none; margin-left: 10px; }
+.tx-resv .tx-call + .tx-call { margin-top: 8px; }

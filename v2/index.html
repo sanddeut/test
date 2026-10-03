@@ -54,6 +54,13 @@
         </div>
       </fieldset>
 
+      <fieldset>
+        <legend>세션 (오류 종류)</legend>
+        <div class="cond-grid">
+          <label class="cond"><input type="radio" name="session" value="1" checked><b>세션1</b><span>기사님 요청사항 임의 선택</span></label>
+          <label class="cond"><input type="radio" name="session" value="2"><b>세션2</b><span>이용내역 열람 + 예약 호출</span></label>
+        </div>
+      </fieldset>
       <div id="paste-key" class="paste-key" hidden>
         <p class="hint">받으신 공유 링크를 붙여넣으면 API 키가 저장돼요.</p>
         <div class="paste-row"><input id="paste-link" placeholder="받은 링크 붙여넣기" autocomplete="off" spellcheck="false"><button id="btn-paste-key" type="button" class="btn-ghost">적용</button></div>
@@ -62,7 +69,7 @@
 
       <details class="acc">
         <summary>시나리오 문구</summary>
-        <p class="hint">에이전트가 정해진 순서대로 말하는 문구예요. 조건을 골라 고치면 이 브라우저에 바로 저장돼요. 한 줄이 말풍선 하나예요. 자리표시자 <code>{목적지}</code> <code>{택시종류}</code> <code>{결제}</code> <code>{쿠폰}</code> <code>{요금}</code> <code>{이름}</code>는 진행 중 실제 값으로 바뀌어요.</p>
+        <p class="hint">에이전트가 정해진 순서대로 말하는 문구예요. 조건을 골라 고치면 이 브라우저에 바로 저장돼요. 한 줄이 말풍선 하나예요. 자리표시자 <code>{목적지}</code> <code>{택시종류}</code> <code>{결제}</code> <code>{쿠폰}</code> <code>{요금}</code> <code>{요청사항}</code> <code>{이름}</code>는 진행 중 실제 값으로 바뀌어요.</p>
         <div class="seg-tabs" id="script-tabs">
           <button type="button" data-cond="A1" class="on">A1</button><button type="button" data-cond="A2">A2</button><button type="button" data-cond="B1">B1</button><button type="button" data-cond="B2">B2</button>
         </div>

@@ -21,7 +21,7 @@ let S = null; // 현재 세션 상태
 // =====================================================================
 function newSession(cfg) {
   const cond = CONDITIONS[cfg.condition];
-  const steps = buildSteps(cond.complexity);
+  const steps = buildSteps(cond.complexity, cfg.session);
   return {
     sessionId: `${cfg.pid || "P"}_${cfg.condition}_${new Date().toISOString().replace(/[:.]/g, "-")}`,
     cfg,
@@ -29,9 +29,14 @@ function newSession(cfg) {
     complexity: cond.complexity,
     automation: cond.automation,
     steps,
-    errorIdx: steps.findIndex((s) => s.kind === "error_place"),
+    session: cfg.session,
+    errorIdx: steps.findIndex((s) => String(s.kind).startsWith("error_")),
+    destIdx: steps.findIndex((s) => s.kind === "dest"),
+    requestByUser: false, // 참가자가 요청사항을 바꾸거나 거부함
+    reserveCancelled: false, // 참가자가 예약을 막거나 취소함
+    rideDone: false,
     stepIdx: -1,
-    form: { origin: "current", dest: null, car: "normal", pay: "auto", coupon: false },
+    form: { origin: "current", dest: null, car: "normal", pay: "auto", coupon: false, request: "none", reserved: false },
     geo: null, // 휴대폰 현재 위치 (locate)
     userSet: {}, // 참가자가 직접 바꾼 항목 (높은 자동화에서 과업 값으로 덮어쓰지 않게)
     phone: { app: "home", taxiView: "home", focus: null, sheet: null, toast: null, pendingDest: null, searchTyped: "", results: false, tappedPlace: null, originTyped: "", originResults: false },
@@ -174,7 +179,7 @@ function stepPreview() {
       return el("pv-accts pv-origin", `<div><span><small>지금 출발지</small><b>${esc(originLabel("current", S.geo))}</b></span></div>
         <div class="on"><span><small>바꿀 출발지</small><b>${esc(ORIGINS[TARGET_ORIGIN].name)}</b><small>${esc(ORIGINS[TARGET_ORIGIN].addr)}</small></span><span class="ms">subway</span></div>`);
     case "dest": {
-      const k = S.phone.pendingDest ?? S.form.dest ?? ERROR_PLACE;
+      const k = S.phone.pendingDest ?? S.form.dest ?? AGENT_PLACE;
       return el("pv-acct pv-place", `<span class="pv-pin"><span class="ms fill">location_on</span></span><span><b>${esc(PLACES[k].name)}</b><small>${esc(PLACES[k].addr)} · ${esc(distText(S.form.origin, k, S.geo))}</small></span>`);
     }
     case "car": return picked(CAR_TYPES, S.form.car);
@@ -182,6 +187,12 @@ function stepPreview() {
     case "coupon":
       return el("pv-evt", `<span class="ms fill">confirmation_number</span><span><b>${esc(COUPON.name)}</b><small>${esc(won0(COUPON.amount))} 할인 · 모든 택시</small></span>`);
     case "final": return rideSummary();
+    case "request":
+      return el("pv-accts", Object.entries(REQUESTS).filter(([k]) => k !== "none").map(([k, v]) =>
+        `<div class="${S.form.request === k ? "on" : ""}"><span><b>${esc(v)}</b></span>${S.form.request === k ? '<span class="ms">check_circle</span>' : ""}</div>`).join(""));
+    case "reserve":
+      return el("rc-summary", [["출발", "신분당선 동천역"], ["도착", "담소한정식 강남점"], ["예약 시간", RESERVE.when], ["택시 종류", CAR_TYPES[S.form.car].label]]
+        .map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join(""));
     default: return null;
   }
 }
@@ -593,6 +604,7 @@ function syncControls() {
 function wantedView() {
   if (!S) return "chat";
   if (S.manual || S.pinOpen || S.phone.popupClosable || S.awaitDoneConfirm) return "direct";
+  if (S.reticking) return "progress"; // 요청사항을 바꾸는 동안은 중지 중이어도 실행화면으로 보여줌
   if (S.pwWait) return "chat";
   if (S.ivWaiter || S.stopped) return "chat";
   if (S.waiter && !S.waiter.options) return "chat";
@@ -703,13 +715,10 @@ function markIntervention(via) {
   }
 }
 
-function errorPassed() {
-  return S.stepIdx >= S.errorIdx && S.m.errorShownAt != null;
-}
 
 // 목적지 바꾸기 (오류 단계 전이면 미리 정정한 값으로 기억, 낮은 자동화면 다시 물음)
 function setDest(k) {
-  if (S.automation === "low" && S.stepIdx === S.errorIdx && S.form.dest == null) {
+  if (S.automation === "low" && S.stepIdx === S.destIdx && S.form.dest == null) {
     // 낮은 자동화 목적지 질문 중에 바꾼 경우: 바뀐 목적지로 다시 확인
     S.lowPendingOverride = k;
     S.needReask = true;
@@ -717,9 +726,8 @@ function setDest(k) {
     return;
   }
   if (S.automation === "low") S.needReask = true;
-  if (S.stepIdx >= S.errorIdx) {
+  if (S.stepIdx >= S.destIdx) {
     S.form.dest = k;
-    if (errorPassed() && S.m.errorOutcome == null && k !== ERROR_PLACE) S.m.errorOutcome = "corrected";
   } else {
     S.userDest = k;
   }
@@ -738,8 +746,10 @@ function setOption(field, value, via) {
 }
 
 // 대화로 바꿀 수 있는 항목 (조건별)
+const stepIdNow = () => S.steps[S.stepIdx]?.id;
+
 function changeIntents() {
-  return ["set_origin", "set_dest", ...(S.complexity === "B" ? ["set_car"] : []), "set_pay", ...(S.complexity === "B" ? ["set_coupon"] : [])];
+  return [...(stepIdNow() === "request" ? ["set_request"] : []), "set_origin", "set_dest", ...(S.complexity === "B" ? ["set_car"] : []), "set_pay", ...(S.complexity === "B" ? ["set_coupon"] : [])];
 }
 
 // 높은 자동화에서 말한 내용 해석. 수정 요청은 반영하고, 그 외에는 짧게 응답한 뒤 진행 상황을 알리고 계속 진행
@@ -751,6 +761,14 @@ const HIGH_HINT =
   "사용자가 무언가 잘못됐다고 지적하거나 멈추라고 하면(예: '잘못했잖아', '이상해', '틀렸어') 값이 없어도 pause로 분류해.";
 
 async function applyHighChange(o, via) {
+  if (o.intent === "set_request" && REQUESTS[o.request]) {
+    S.requestByUser = true;
+    S.userSet.request = true;
+    logEvent("request_changed", { request: o.request, via });
+    await redoRequest(o.request);
+    await sayKey(o.request === "none" ? "change.request.none" : "change.request");
+    return true;
+  }
   if (o.intent === "set_origin" && ORIGINS[o.origin]) {
     setOption("origin", o.origin, via);
     await sayKey("change.origin");
@@ -880,6 +898,15 @@ async function finishIntervention(saved) {
 }
 
 async function cancelRide() {
+  if (S.rideDone) {
+    // 호출이 끝난 뒤의 "취소"는 예약 취소
+    S.reserveCancelled = true;
+    S.form.reserved = false;
+    logEvent("reserve_cancelled");
+    if (["reserve", "reserve_done"].includes(S.phone.taxiView)) { S.phone.taxiView = "history"; renderPhone(); }
+    await sayKey("reserve.cancel");
+    return finish("completed");
+  }
   await sayKey("cancel");
   return finish("cancelled");
 }
@@ -1052,7 +1079,7 @@ const REJECT_EXTRA = {
 };
 
 async function runLowStep(step) {
-  if (step.kind === "error_place") return runLowDest(step);
+  if (step.kind === "dest") return runLowDest(step);
 
   if (manualDone(step) && step.low.options) { logEvent("step_done_manually"); return true; } // 이미 직접 한 단계는 묻지 않고 넘어감
   await sayBusy(step);
@@ -1064,28 +1091,37 @@ async function runLowStep(step) {
     for (const m of msgs.slice(0, split)) await agentSay(m);
     await doApply(step, undefined, { announced: split > 0 });
     for (const m of msgs.slice(split)) await agentSay(m);
-    if (step.kind === "done") return finish("completed");
+    if (step.kind === "done") S.rideDone = true;
+    if (isLastStep(step)) return finish("completed");
     await dwell();
     return true;
   }
+  const isError = String(step.kind).startsWith("error_");
   let repeat = true;
   for (;;) {
     const msgs = resolveMsgs(step.low.messages);
     if (repeat) for (const m of msgs) await agentSay(m);
+    if (isError && S.m.errorShownAt == null) S.m.errorShownAt = now();
     repeat = true;
 
-    let extra = REJECT_EXTRA[step.low.reject] || [];
+    let extra = step.low.reject === "request" ? ["set_request"] : REJECT_EXTRA[step.low.reject] || [];
     if (step.low.reject === "final") extra = extra.filter((x) => x === "cancel" || changeIntents().includes(x));
     const c = await askChoice(step.low.options, msgs.join(" "), extra);
     if (c.id === "__reask") continue; // 중지·직접 조작으로 바뀐 내용으로 다시 물음
     S.m.approvals++;
     logEvent("decision", { choice: c.id, via: c.via });
     if (c.id !== "reject" && step.low.options.some((o) => o.id === c.id)) {
+      if (isError && S.m.errorResponseMs == null && S.m.errorShownAt != null) S.m.errorResponseMs = now() - S.m.errorShownAt;
       const opening = step.low.opening && !manualDone(step) ? lines(step.low.opening, S) : [];
       for (const t of opening) await agentSay(t);
       await doApply(step, c.id, { announced: opening.length > 0 });
+      if (step.kind === "error_reserve" && S.form.reserved) await sayKey("reserve.yes");
       if (step.act) await dwell(1000);
       break;
+    }
+    if (isError && S.m.correctionVia == null) {
+      if (S.m.errorShownAt != null) S.m.errorResponseMs = now() - S.m.errorShownAt;
+      S.m.correctionVia = `reject_${c.via}`;
     }
     const r = await handleReject(step, c, msgs.join(" "));
     if (r === "cancel") return false;
@@ -1093,9 +1129,11 @@ async function runLowStep(step) {
     if (r === "reask") repeat = false; // 같은 질문의 선택지로 돌아감 (문구 반복 없이)
     // "retry": 바뀐 내용으로 같은 단계 문구를 다시 보여줌
   }
-  if (step.kind === "done") return finish("completed");
+  if (isLastStep(step)) return finish("completed");
   return true;
 }
+
+const isLastStep = (step) => S.steps.at(-1) === step;
 
 // 거부 후 처리. 반환: "done" | "retry" | "reask" | "cancel"
 async function handleReject(step, c, said) {
@@ -1147,6 +1185,42 @@ async function handleReject(step, c, said) {
     return "done";
   }
 
+  if (type === "request") {
+    // 참가자가 말한 요청사항으로 바꿈 → 실행화면에서 고르는 과정을 보여주고 → 다시 승인을 물음
+    S.requestByUser = true;
+    const hint = `고를 수 있는 기사님 요청사항은 ${Object.entries(REQUESTS).map(([k, v]) => `${v}(${k})`).join(", ")}이고, 지금은 ‘${REQUESTS[S.form.request]}’야. 사용자가 다른 요청사항이나 '없음'을 말하면 set_request야. 말하지 않으면 reply로 어떤 요청사항으로 할지 되물어.`;
+    let o = c.id === "set_request" ? c.out : null;
+    if (!o) await sayKey("request.ask");
+    for (;;) {
+      if (!o) o = await turn(await waitText(), { said: line("request.ask", S), intents: ["set_request", "continue", "cancel", "other"], hint, fallback: "기사님 요청사항을 어떻게 할까요? 예를 들어 ‘요청사항 없이’처럼 말씀해주세요." });
+      if (o.intent === "set_request" && REQUESTS[o.request]) {
+        logEvent("request_changed", { request: o.request, via: "reject_text" });
+        S.userSet.request = true;
+        await redoRequest(o.request);
+        const q = line(S.form.request === "none" ? "request.none.confirm" : "request.confirm", S);
+        await agentSay(q);
+        const c2 = await askChoice(APPROVE, q, ["set_request"], hint);
+        S.m.approvals++;
+        logEvent("decision", { choice: c2.id, via: c2.via, request: S.form.request });
+        if (c2.id === "approve") { await doApply(step, "approve", { announced: true }); return "done"; }
+        o = c2.id === "set_request" ? c2.out : null;
+        if (!o) await sayKey("request.ask");
+        continue;
+      }
+      if (o.intent === "continue") { await doApply(step, "approve", { announced: true }); return "done"; }
+      if (o.intent === "cancel") { await cancelRide(); return "cancel"; }
+      await agentSay(o.reply, { talk: true });
+      o = null;
+    }
+  }
+
+  if (type === "reserve") {
+    S.reserveCancelled = true;
+    logEvent("reserve_rejected");
+    await sayKey("reserve.no");
+    return "done";
+  }
+
   if (type === "coupon") {
     // 쿠폰을 거부하면 적용하지 않고 다음 단계로
     await sayKey("coupon.skip");
@@ -1165,7 +1239,6 @@ async function handleReject(step, c, said) {
       });
     }
     if (o.intent === "set_dest" && PLACES[o.place]) {
-      if (S.m.correctionVia == null && S.form.dest === ERROR_PLACE && o.place !== ERROR_PLACE) S.m.correctionVia = "final_text";
       setDest(o.place);
       logEvent("dest_changed", { dest: o.place, via: "final" });
       await redoDest(o.place);
@@ -1187,7 +1260,7 @@ async function runLowDest(step) {
   await sayBusy(step);
   await doPre(step);
   const corr = step.correction;
-  let pending = S.userDest ?? ERROR_PLACE;
+  let pending = S.userDest ?? AGENT_PLACE;
   const preempted = S.userDest != null;
   S.phone.pendingDest = pending;
   renderPhone();
@@ -1195,8 +1268,7 @@ async function runLowDest(step) {
   const qLines = preempted ? [corr.lowConfirm(S, pending)] : resolveMsgs(step.low.messages);
   for (const t of qLines) await agentSay(t);
   let question = qLines.join(" ");
-  if (!preempted) S.m.errorShownAt = now();
-  else logEvent("error_preempted", { dest: pending });
+  if (preempted) logEvent("dest_preset", { dest: pending });
 
   for (;;) {
     const c = await askChoice(step.low.options, question, ["set_dest"]);
@@ -1208,14 +1280,7 @@ async function runLowDest(step) {
     }
     S.m.approvals++;
     logEvent("decision", { choice: c.id, via: c.via, pending_dest: pending });
-    if (c.id === "approve") {
-      if (S.m.errorShownAt != null && S.m.errorResponseMs == null) S.m.errorResponseMs = now() - S.m.errorShownAt;
-      break;
-    }
-    if (S.m.errorShownAt != null && S.m.correctionVia == null) {
-      S.m.errorResponseMs = now() - S.m.errorShownAt;
-      S.m.correctionVia = c.id === "set_dest" ? "reject_text" : `reject_${c.via}`;
-    }
+    if (c.id === "approve") break;
     let o = c.id === "set_dest" ? c.out : null;
     if (!o || !PLACES[o.place]) {
       await agentSay(corr.lowAsk(S));
@@ -1240,7 +1305,7 @@ async function runLowDest(step) {
   }
   S.form.dest = pending;
   S.phone.pendingDest = null;
-  S.m.destStepDecision = pending === ERROR_PLACE ? "accepted" : "corrected";
+  S.m.destStepDecision = pending === AGENT_PLACE ? "agent" : "changed";
   await doApply(step, pending); // 승인 후 검색 결과에서 목적지를 누름
   await dwell(1000);
   return true;
@@ -1248,33 +1313,27 @@ async function runLowDest(step) {
 
 // ---------- 높은 자동화 ----------
 async function runHighStep(step) {
-  if (manualDone(step) && step.kind !== "error_place") { logEvent("step_done_manually"); return true; }
+  if (manualDone(step) && step.kind !== "dest") { logEvent("step_done_manually"); return true; }
 
   let msgs = resolveMsgs(step.high.messages);
   let applyFirst = step.high.applyFirst;
-  const isError = step.kind === "error_place";
+  const isError = String(step.kind).startsWith("error_");
 
-  if (isError) {
+  if (step.kind === "dest") {
     await gate();
-    if (S.userDest != null) {
-      S.form.dest = S.userDest;
-      msgs = lines("change.dest", S, { dest: S.userDest });
-      logEvent("error_preempted", { dest: S.userDest });
-    } else {
-      S.form.dest = ERROR_PLACE;
-    }
-    applyFirst = true;
+    S.form.dest = S.userDest ?? AGENT_PLACE;
+    msgs = resolveMsgs(step.high.messages);
   }
 
   await gate();
   await sayBusy(step);
   await doPre(step);
   // 준비 동작 중 문구가 바뀌었을 수 있으므로(참가자가 값을 바꾼 경우) 오류 단계가 아니면 다시 계산
-  if (!isError) msgs = resolveMsgs(step.high.messages);
+  if (step.kind !== "dest") msgs = resolveMsgs(step.high.messages);
   const say = async (list) => {
     for (const m of list) {
       await agentSay(m, { gated: true });
-      if (isError && S.userDest == null && S.m.errorShownAt == null) S.m.errorShownAt = now();
+      if (isError && S.m.errorShownAt == null) S.m.errorShownAt = now();
     }
   };
   // 단계 간격(S.cfg.delay)은 "문구를 읽는 시간"으로 씀: 문구가 나온 뒤 기다렸다가 다음 조작으로
@@ -1289,19 +1348,23 @@ async function runHighStep(step) {
   } else if (applyFirst) {
     // 조작 → "~했어요" → 읽는 시간
     await gate();
-    await doApply(step, isError ? S.form.dest : undefined);
+    await doApply(step, step.kind === "dest" ? S.form.dest : undefined);
     await say(msgs);
-    if (step.kind !== "done") await read();
+    if (!isLastStep(step)) await read();
   } else {
     // "~할게요" → 읽는 시간 → 조작 → 바뀐 화면 잠시 보여주고 다음 단계로
     await say(msgs);
     await read();
     await gate();
     if (step.high.opening && !manualDone(step)) await say(lines(step.high.opening, S)); // 예: "택시 앱을 열고 있어요 …"
-    await doApply(step, undefined, { announced: true });
+    if (!(step.kind === "error_reserve" && S.reserveCancelled)) {
+      await doApply(step, undefined, { announced: true });
+      if (step.kind === "error_reserve" && S.form.reserved && !S.finished) await say(lines("reserve.yes", S));
+    }
     await dwell(900);
   }
-  if (step.kind === "done") return finish("completed");
+  if (step.kind === "done") S.rideDone = true;
+  if (isLastStep(step)) return finish("completed");
   return true;
 }
 
@@ -1310,8 +1373,11 @@ function finish(status) {
   S.finished = true;
   S.running = false;
   S.m.finalDest = S.form.dest;
-  // 오류 결과 확정: 호출을 마쳤으면 최종 목적지로 판단
-  if (status === "completed") S.m.errorOutcome = S.form.dest === ERROR_PLACE ? "accepted" : "corrected";
+  // 오류 결과 확정: 세션1은 에이전트가 고른 요청사항이 그대로 남았는지, 세션2는 예약이 등록된 채 끝났는지
+  if (status === "completed" && S.m.errorOutcome == null) {
+    if (S.session === 1) S.m.errorOutcome = S.form.request === AGENT_REQUEST && !S.requestByUser ? "accepted" : "corrected";
+    else if (S.errorIdx >= 0 && S.stepIdx >= S.errorIdx) S.m.errorOutcome = S.form.reserved ? "accepted" : "corrected";
+  }
   if (status === "cancelled") S.m.errorOutcome = S.m.errorOutcome ?? "cancelled";
   S.m.finishedAt = now();
   logEvent("session_end", { status, summary: summary() });
@@ -1356,6 +1422,8 @@ function summary() {
     participant_id: S.cfg.pid,
     participant_name: S.cfg.name,
     condition: S.cond,
+    session: S.session,
+    error_type: SESSIONS[S.session].error,
     complexity: S.complexity,
     automation: S.automation,
     llm: LLM.enabled ? LLM.model : "rules",
@@ -1375,6 +1443,9 @@ function summary() {
     final_car: S.form.car,
     final_pay: S.form.pay,
     final_coupon: S.form.coupon,
+    driver_request: S.form.request,
+    request_changed_by_user: S.requestByUser,
+    reserved: S.form.reserved,
     approvals: m.approvals,
     stops: m.stops,
     interjections: m.interjections || 0,
@@ -1389,9 +1460,11 @@ function renderSummary() {
   const el = $("#summary");
   if (!el || !S) return;
   const s = summary();
-  const label = { accepted: "수용 (강남구청점 그대로)", corrected: "거부·수정", cancelled: "취소" };
+  const label = S.session === 1
+    ? { accepted: "수용 (조용히 가주세요 그대로)", corrected: "거부·수정", cancelled: "취소" }
+    : { accepted: "수용 (예약됨)", corrected: "거부·취소", cancelled: "호출 취소" };
   const items = [
-    ["조건", S.cond],
+    ["조건", `${S.cond} · 세션${S.session}`],
     ["해석", s.llm],
     ["오류 결과 (최종)", label[s.error_outcome] || "-"],
     ["개입 방식", s.correction_via || "-"],
@@ -1462,6 +1535,7 @@ function readSetup() {
     pid: $("#pid").value.trim() || "P00",
     name: $("#pname").value.trim() || "OOO",
     condition: document.querySelector('input[name="cond"]:checked').value,
+    session: Number(document.querySelector('input[name="session"]:checked')?.value || 1),
     delay: 5000, // 높은 자동화 단계 간격 (고정)
     pace: PACE,
     showTask: true,
@@ -1501,7 +1575,7 @@ function start() {
   enterFullscreen();
   applyLLMSettings();
   const cfg = readSetup();
-  store.set("setup", { pid: cfg.pid, name: cfg.name, condition: cfg.condition, delay: cfg.delay, showTask: cfg.showTask, pace: cfg.pace });
+  store.set("setup", { pid: cfg.pid, name: cfg.name, condition: cfg.condition, session: cfg.session, delay: cfg.delay, showTask: cfg.showTask, pace: cfg.pace });
   S = newSession(cfg);
 
   const sit = SITUATION[S.complexity];
@@ -1525,7 +1599,7 @@ function start() {
   S.promptVersion = LLM.promptVersion;
   S.scriptVersion = scriptVersion(S.cond);
   $("#prompt-live").value = LLM.prompt;
-  logEvent("session_start", { condition: S.cond, participant: cfg.pid, llm: LLM.enabled ? LLM.model : "rules", delay_ms: cfg.delay, pace: cfg.pace, prompt_version: LLM.promptVersion, prompt: LLM.prompt, script_version: S.scriptVersion, script_overrides: SCRIPT_OVERRIDES[S.cond] || null });
+  logEvent("session_start", { session: S.session, condition: S.cond, participant: cfg.pid, llm: LLM.enabled ? LLM.model : "rules", delay_ms: cfg.delay, pace: cfg.pace, prompt_version: LLM.promptVersion, prompt: LLM.prompt, script_version: S.scriptVersion, script_overrides: SCRIPT_OVERRIDES[S.cond] || null });
   locate(); // 휴대폰 현재 위치 (출발지 기본값)
   run().catch((e) => { console.error(e); logEvent("error", { message: String(e) }); });
 }
@@ -1767,7 +1841,7 @@ function setupInstall() {
 
 // 코드의 기본 문구(시나리오 문구·프롬프트)를 새로 정리하면 이 값을 바꿈
 // → 브라우저에 저장된 예전 수정본을 지우고 최신 기본값을 쓰게 함 (이후 새로 고친 내용은 다시 저장됨)
-const CONTENT_VERSION = "v2-taxi-2026-09-29";
+const CONTENT_VERSION = "v2-taxi-2026-10-03";
 function resetOldContent() {
   if (store.get("content_version", null) === CONTENT_VERSION) return;
   store.del("script_overrides");
@@ -1783,6 +1857,7 @@ function init() {
   if (saved.pid) $("#pid").value = saved.pid;
   if (saved.name) $("#pname").value = saved.name;
   if (saved.condition) { const r = document.querySelector(`input[name="cond"][value="${saved.condition}"]`); if (r) r.checked = true; }
+  if (saved.session) { const r = document.querySelector(`input[name="session"][value="${saved.session}"]`); if (r) r.checked = true; }
   applyLLMSettings();
   setupPasteKey();
 

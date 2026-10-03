@@ -632,3 +632,5 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .evt.block .evt-close { color: #2f7cf6; }
 .sheet.fraud { position: relative; }
 .block-dim { position: fixed; inset: 0; z-index: 5; animation: fadein .25s ease both; }
+.bk-btn.ghost + .bk-btn { margin-top: 8px; }
+.bk-page.done .bk-btn[data-done-confirm] { cursor: pointer; }
