@@ -1022,7 +1022,8 @@ async function run() {
     const step = S.steps[i];
     logEvent("step_start", { label: step.label });
     renderStepper();
-    const ok = S.automation === "low" ? await runLowStep(step) : await runHighStep(step);
+    let ok = S.automation === "low" ? await runLowStep(step) : await runHighStep(step);
+    if (ok && !S.finished && step.kind === "error_fraud") ok = await submitFraud(step);
     if (!ok || S.finished) return;
     if (S.automation === "low") await sleep(1000 * PACE); // 높은 자동화는 단계 안에서 읽는 시간을 둠
   }
@@ -1422,6 +1423,42 @@ async function runLowAmount(step) {
   return true;
 }
 
+// 예방질문 답을 제출 → 답이 맞지 않으면 이체 제한 → 에이전트가 1번을 '예'로 고쳐 다시 시도
+// (낮은 자동화는 고친 답으로 승인을 다시 묻고, 높은 자동화는 알리고 진행)
+async function submitFraud(step) {
+  for (;;) {
+    if (fraudPasses(S.form.fraud)) { S.phone.sheet = null; renderPhone(); return true; }
+    S.m.fraudBlocked = (S.m.fraudBlocked || 0) + 1;
+    logEvent("fraud_blocked", { answers: S.form.fraud });
+    resetStatus();
+    setStatus("", true); // 안내 창이 떠 있는 동안 이전 질문 문구는 지움
+    await showFraudBlock();
+    await sayKey("fraud.blocked", undefined, { gated: S.automation === "high" });
+    const fix = FRAUD_OK.map((a, i) => (S.form.fraud?.[i] === a ? null : a));
+    logEvent("fraud_retry", { changes: fix });
+    await retickFraud(fix);
+    if (S.automation === "high") {
+      await sayKey("fraud.retry", undefined, { gated: true });
+      await sleep(S.cfg.delay);
+      await gate();
+      continue;
+    }
+    // 낮은 자동화: 고친 답으로 다시 승인 (거부하면 말한 질문만 바꾸는 흐름)
+    for (;;) {
+      const q = line("fraud.retry", S);
+      await agentSay(q);
+      const c = await askChoice(APPROVE, q, ["set_fraud"]);
+      if (c.id === "__reask") continue;
+      S.m.approvals++;
+      logEvent("decision", { choice: c.id, via: c.via, fraud: S.form.fraud, retry: true });
+      if (c.id === "approve") break;
+      const r = await handleReject(step, c, q);
+      if (r === "cancel") return false;
+      break;
+    }
+  }
+}
+
 // ---------- 높은 자동화 ----------
 async function runHighStep(step) {
   if (step.kind === "password") return runPassword(step, step.high);
@@ -1652,6 +1689,7 @@ function summary() {
     final_amount: m.finalAmount,
     fraud_answers: S.form.fraud ? S.form.fraud.join("/") : null,
     fraud_answered_by_user: S.fraudByUser,
+    fraud_blocked: m.fraudBlocked || 0,
     autopay_registered: S.form.autopay,
     approvals: m.approvals,
     stops: m.stops,
