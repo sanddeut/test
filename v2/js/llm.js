@@ -18,7 +18,8 @@ const DEFAULT_PROMPT = `# 역할
 2. 흐름으로 되돌릴 때 강압적으로 하지 마. 거절하거나 같은 요청을 반복해서 재촉하지 말고, 사용자가 이어서 진행할 수 있도록 부드럽게 안내해.
 3. 과업과 무관한 말(잡담, 다른 질문)에도 짧게 반응한 뒤 현재 단계로 돌아와.
 4. 사용자가 지정된 택시 앱(마음택시)이 아닌 다른 앱을 말하면 택시 앱으로 안내해. 그 앱으로는 택시를 호출할 수 없다는 사실을 알려줘.
-5. 목적지 검색 결과는 담소한정식 강남구청점(서울 강남구 학동로 426), 담소한정식 강남점(서울 강남구 테헤란로 152), 담소한정식 역삼점(서울 강남구 논현로 508) 세 곳뿐이야. 다른 곳을 찾아달라고 하면 이 세 곳을 알려줘.
+5. 출발지는 처음에 휴대폰의 현재 위치로 되어 있고, 과업에서는 ‘신분당선 동천역’으로 바꿔. 출발지 검색 결과는 신분당선 동천역, 동천역 버스정류장, 동천역 환승주차장이야.
+6. 목적지 검색 결과는 담소한정식 강남구청점(서울 강남구 학동로 426), 담소한정식 강남점(서울 강남구 테헤란로 152), 담소한정식 역삼점(서울 강남구 논현로 508) 세 곳뿐이야. 다른 곳을 찾아달라고 하면 이 세 곳을 알려줘.
 
 # 조건 유지 규칙
 - 낮은 자동화: 현재 단계로 돌아올 때 사용자에게 승인을 묻는 형태로 끝내.
@@ -84,6 +85,7 @@ const DEFAULT_PROMPT = `# 역할
 const OUTPUT_FORMAT = `# 출력 형식
 항상 지정된 JSON 스키마로만 답해.
 - intent: 사용자 발화가 "분류할 의도" 목록 중 무엇에 해당하는지 id로 골라. 어느 것에도 맞지 않으면 other.
+- origin: 사용자가 말한 출발지. 동천역 → dongcheon, 현재 위치(여기, 지금 있는 곳) → current. 그 외는 null.
 - place: 사용자가 말한 목적지 지점. 강남점 → gangnam, 강남구청점 → gucheong, 역삼점 → yeoksam. 구어체, 맞춤법 오류, 음성인식 오류(예: "강남 구청점", "강남쩜")는 너그럽게 해석해. 세 곳이 아니면 null.
 - car_type: 일반택시 → normal, 모범택시 → deluxe, 대형택시 → large.
 - pay_method: 자동결제(카드) → auto, 직접결제(현금·기사님께) → direct.
@@ -115,13 +117,14 @@ function turnSchema(intentIds) {
   return sch("OBJECT", {
     properties: {
       intent: sch("STRING", { enum: intentIds }),
+      origin: sch("STRING", { nullable: true, enum: ["current", "dongcheon"] }),
       place: sch("STRING", { nullable: true, enum: PLACE_ENUM }),
       car_type: sch("STRING", { nullable: true, enum: ["normal", "deluxe", "large"] }),
       pay_method: sch("STRING", { nullable: true, enum: ["auto", "direct"] }),
       coupon: sch("BOOLEAN", { nullable: true }),
       reply: sch("STRING"),
     },
-    required: ["intent", "place", "car_type", "pay_method", "coupon", "reply"],
+    required: ["intent", "origin", "place", "car_type", "pay_method", "coupon", "reply"],
   });
 }
 
@@ -134,6 +137,7 @@ const INTENT_MEANINGS = {
   large: "대형택시를 고름",
   auto: "자동결제(등록된 카드)를 고름",
   direct: "직접결제(내릴 때 기사님께)를 고름",
+  set_origin: "출발지를 바꾸라고 함 (origin 채움)",
   set_dest: "목적지를 특정 지점으로 바꾸라고 함 (place 채움)",
   set_car: "택시 종류를 바꾸라고 함 (car_type 채움)",
   set_pay: "결제 방식을 바꾸라고 함 (pay_method 채움)",
@@ -310,6 +314,9 @@ async function geminiRequest(key, model, prompt, schema, thinking) {
 // ---------------- 규칙 기반 해석 (키 없음 / 실패 시) ----------------
 // 예상 밖 답변을 몇 가지 유형으로 나누고, 유형별로 정해진 답변을 돌려줍니다.
 
+// 출발지: "동천" → dongcheon, "현재 위치"·"여기" → current
+const extractOrigin = (t) => (/동천/.test(t) ? "dongcheon" : /현재\s?위치|지금\s?있는|여기서/.test(t) ? "current" : null);
+
 // 목적지 지점: "강남구청" → gucheong, "역삼" → yeoksam, "강남(점)" → gangnam
 function extractPlace(text) {
   const t = text.replace(/\s+/g, "");
@@ -344,7 +351,7 @@ const Rules = {
   turn(text, ctx) {
     const allowed = new Set(ctx.intents);
     const out = (intent, extra = {}) => ({
-      intent, place: null, car_type: null, pay_method: null, coupon: null,
+      intent, origin: null, place: null, car_type: null, pay_method: null, coupon: null,
       reply: ctx.fallback_reply || (QUESTION.test(text)
         ? "궁금하신 점은 호출을 마친 뒤에 도와드릴게요. 지금 단계부터 이어서 진행할게요."
         : "제가 잘 이해하지 못했어요. 화면의 버튼을 누르시거나 다시 말씀해주세요."),
@@ -360,11 +367,14 @@ const Rules = {
     }
     if (allowed.has("unsuitable_app") && !QUESTION.test(t) && !NO.test(t)) return byIntent("unsuitable_app");
 
+    const origin = extractOrigin(t);
     const place = extractPlace(t);
     const car = extractCar(t);
     const pay = extractPay(t);
     const couponWord = /쿠폰|할인/.test(t);
-    if (allowed.has("pause") && (/(멈춰|멈춰봐|기다려|스톱|stop|잠깐만|이상해|잘못)/i.test(t) || NO.test(t)) && !place && !car && !pay && !couponWord) return byIntent("pause");
+    if (allowed.has("pause") && (/(멈춰|멈춰봐|기다려|스톱|stop|잠깐만|이상해|잘못)/i.test(t) || NO.test(t)) && !origin && !place && !car && !pay && !couponWord) return byIntent("pause");
+
+    if (origin && allowed.has("set_origin") && (!place || /출발/.test(t))) return out("set_origin", { origin });
 
     if (place && allowed.has("set_dest")) return out("set_dest", { place });
     // 값 없이 "목적지가 잘못됐어" → 어디로 바꿀지 되물음

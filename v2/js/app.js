@@ -31,9 +31,10 @@ function newSession(cfg) {
     steps,
     errorIdx: steps.findIndex((s) => s.kind === "error_place"),
     stepIdx: -1,
-    form: { dest: null, car: "normal", pay: "auto", coupon: false },
+    form: { origin: "current", dest: null, car: "normal", pay: "auto", coupon: false },
+    geo: null, // 휴대폰 현재 위치 (locate)
     userSet: {}, // 참가자가 직접 바꾼 항목 (높은 자동화에서 과업 값으로 덮어쓰지 않게)
-    phone: { app: "home", taxiView: "home", focus: null, sheet: null, toast: null, pendingDest: null, searchTyped: "", results: false, tappedPlace: null },
+    phone: { app: "home", taxiView: "home", focus: null, sheet: null, toast: null, pendingDest: null, searchTyped: "", results: false, tappedPlace: null, originTyped: "", originResults: false },
     running: false,
     paused: false,
     manual: false,
@@ -169,9 +170,12 @@ function stepPreview() {
     `<div class="${cur === k ? "on" : ""}"><span><b>${esc(o.label)}</b><small>${esc(o.desc)}</small></span>${cur === k ? '<span class="ms">check_circle</span>' : ""}</div>`).join(""));
   switch (id) {
     case "taxi_open": return appTile(TAXI_APP, "local_taxi", "#f5b400", "택시 앱");
+    case "origin":
+      return el("pv-accts pv-origin", `<div><span><small>지금 출발지</small><b>${esc(originLabel("current", S.geo))}</b></span></div>
+        <div class="on"><span><small>바꿀 출발지</small><b>${esc(ORIGINS[TARGET_ORIGIN].name)}</b><small>${esc(ORIGINS[TARGET_ORIGIN].addr)}</small></span><span class="ms">subway</span></div>`);
     case "dest": {
       const k = S.phone.pendingDest ?? S.form.dest ?? ERROR_PLACE;
-      return el("pv-acct pv-place", `<span class="pv-pin"><span class="ms fill">location_on</span></span><span><b>${esc(PLACES[k].name)}</b><small>${esc(PLACES[k].addr)} · ${esc(PLACES[k].dist)}</small></span>`);
+      return el("pv-acct pv-place", `<span class="pv-pin"><span class="ms fill">location_on</span></span><span><b>${esc(PLACES[k].name)}</b><small>${esc(PLACES[k].addr)} · ${esc(distText(S.form.origin, k, S.geo))}</small></span>`);
     }
     case "car": return picked(CAR_TYPES, S.form.car);
     case "pay": return picked(PAY, S.form.pay);
@@ -452,6 +456,7 @@ function formSnapshot() {
   const f = S.form;
   const dest = f.dest ?? S.phone.pendingDest ?? S.userDest ?? null;
   return {
+    origin: originLabel(f.origin, S.geo),
     destination: dest ? PLACES[dest].name : null,
     car_type: CAR_TYPES[f.car].label,
     payment: PAY[f.pay].label,
@@ -619,7 +624,7 @@ function syncView() {
       animateZoom(clip, before);
     }
   }
-  requestAnimationFrame(fitScreen);
+  requestAnimationFrame(() => { fitScreen(); if (typeof refreshMap === "function") refreshMap(); });
   if (S) {
     // 직접 조작·비밀번호 직접 입력 중에는 왼쪽 위 뒤로(<) 버튼만 → 누르면 대화로 돌아감 (팝업 직접 닫기·완료 화면은 버튼 없이 앱 화면만)
     $(".direct-bar").classList.toggle("off", !(S.manual || S.pinOpen));
@@ -734,7 +739,7 @@ function setOption(field, value, via) {
 
 // 대화로 바꿀 수 있는 항목 (조건별)
 function changeIntents() {
-  return ["set_dest", ...(S.complexity === "B" ? ["set_car"] : []), "set_pay", ...(S.complexity === "B" ? ["set_coupon"] : [])];
+  return ["set_origin", "set_dest", ...(S.complexity === "B" ? ["set_car"] : []), "set_pay", ...(S.complexity === "B" ? ["set_coupon"] : [])];
 }
 
 // 높은 자동화에서 말한 내용 해석. 수정 요청은 반영하고, 그 외에는 짧게 응답한 뒤 진행 상황을 알리고 계속 진행
@@ -746,6 +751,11 @@ const HIGH_HINT =
   "사용자가 무언가 잘못됐다고 지적하거나 멈추라고 하면(예: '잘못했잖아', '이상해', '틀렸어') 값이 없어도 pause로 분류해.";
 
 async function applyHighChange(o, via) {
+  if (o.intent === "set_origin" && ORIGINS[o.origin]) {
+    setOption("origin", o.origin, via);
+    await sayKey("change.origin");
+    return true;
+  }
   if (o.intent === "set_dest" && PLACES[o.place]) {
     setDest(o.place);
     logEvent("dest_changed", { dest: o.place, via });
@@ -902,7 +912,7 @@ async function endManual() {
   const cur = S.form.dest ?? S.lowPendingOverride ?? S.phone.pendingDest ?? S.userDest ?? null;
   if (S.manualDest && S.manualDest !== cur) { changes.dest = S.manualDest; setDest(S.manualDest); }
   S.manualDest = null;
-  for (const k of ["car", "pay", "coupon"]) {
+  for (const k of ["origin", "car", "pay", "coupon"]) {
     if (S.form[k] !== snap[k]) { changes[k] = S.form[k]; if (S.automation === "low") S.needReask = true; }
   }
   // 검색 화면에서 목적지를 정하지 않고 돌아오면 원래 화면으로
@@ -1038,7 +1048,7 @@ async function sayBusy(step) {
 // ---------- 낮은 자동화 ----------
 // 거부 유형별로 선택지 단계에서 바로 받아들일 수 있는 의도
 const REJECT_EXTRA = {
-  final: ["set_dest", "set_car", "set_pay", "set_coupon", "cancel"],
+  final: ["set_origin", "set_dest", "set_car", "set_pay", "set_coupon", "cancel"],
 };
 
 async function runLowStep(step) {
@@ -1130,6 +1140,13 @@ async function handleReject(step, c, said) {
     }
   }
 
+  if (type === "origin") {
+    // 출발지를 바꾸지 않으면 현재 위치에서 출발
+    await sayKey("origin.skip");
+    await doApply(step, "reject", { announced: true });
+    return "done";
+  }
+
   if (type === "coupon") {
     // 쿠폰을 거부하면 적용하지 않고 다음 단계로
     await sayKey("coupon.skip");
@@ -1144,7 +1161,7 @@ async function handleReject(step, c, said) {
       o = await turn(await waitText(), {
         said: ask,
         intents: [...changeIntents(), "continue", "cancel", "other"],
-        hint: "바꿀 수 있는 것은 목적지, 결제 방식" + (S.complexity === "B" ? ", 택시 종류, 쿠폰" : "") + "이야. 그 외 요청이면 짧게 답하고 최종 확인 단계로 자연스럽게 돌아와.",
+        hint: "바꿀 수 있는 것은 출발지, 목적지, 결제 방식" + (S.complexity === "B" ? ", 택시 종류, 쿠폰" : "") + "이야. 그 외 요청이면 짧게 답하고 최종 확인 단계로 자연스럽게 돌아와.",
       });
     }
     if (o.intent === "set_dest" && PLACES[o.place]) {
@@ -1154,6 +1171,7 @@ async function handleReject(step, c, said) {
       await redoDest(o.place);
       return "retry";
     }
+    if (o.intent === "set_origin" && ORIGINS[o.origin]) { setOption("origin", o.origin, "final"); return "retry"; }
     if (o.intent === "set_car" && CAR_TYPES[o.car_type]) { setOption("car", o.car_type, "final"); return "retry"; }
     if (o.intent === "set_pay" && PAY[o.pay_method]) { setOption("pay", o.pay_method, "final"); return "retry"; }
     if (o.intent === "set_coupon" && typeof o.coupon === "boolean") { setOption("coupon", o.coupon, "final"); return "retry"; }
@@ -1351,6 +1369,8 @@ function summary() {
     dest_step_decision: m.destStepDecision ?? null,
     correction_via: m.correctionVia,
     error_response_ms: m.errorResponseMs,
+    final_origin: S.form.origin,
+    geo_ok: S.geo?.ok ?? null,
     final_dest: m.finalDest,
     final_car: S.form.car,
     final_pay: S.form.pay,
@@ -1376,6 +1396,7 @@ function renderSummary() {
     ["오류 결과 (최종)", label[s.error_outcome] || "-"],
     ["개입 방식", s.correction_via || "-"],
     ["오류→반응", s.error_response_ms != null ? `${(s.error_response_ms / 1000).toFixed(1)}초` : "-"],
+    ["최종 출발지", ORIGINS[s.final_origin].name],
     ["최종 목적지", s.final_dest ? PLACES[s.final_dest].name : "-"],
     ...(S.complexity === "B" ? [["택시·결제·쿠폰", `${CAR_TYPES[s.final_car].label} · ${PAY[s.final_pay].label} · ${s.final_coupon ? "적용" : "안 함"}`]] : []),
     ["승인 응답", s.approvals],
@@ -1505,6 +1526,7 @@ function start() {
   S.scriptVersion = scriptVersion(S.cond);
   $("#prompt-live").value = LLM.prompt;
   logEvent("session_start", { condition: S.cond, participant: cfg.pid, llm: LLM.enabled ? LLM.model : "rules", delay_ms: cfg.delay, pace: cfg.pace, prompt_version: LLM.promptVersion, prompt: LLM.prompt, script_version: S.scriptVersion, script_overrides: SCRIPT_OVERRIDES[S.cond] || null });
+  locate(); // 휴대폰 현재 위치 (출발지 기본값)
   run().catch((e) => { console.error(e); logEvent("error", { message: String(e) }); });
 }
 
