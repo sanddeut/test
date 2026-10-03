@@ -627,3 +627,8 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .pv-fraud div { display: flex; justify-content: space-between; gap: 10px; padding: 9px 14px; font-size: 13.5px; }
 .pv-fraud div + div { border-top: 1px solid #eef0f3; }
 .pv-fraud b { flex: none; color: #0b57d0; }
+.evt.block .evt-art { color: #e5484d; }
+.evt.block p { line-height: 1.5; }
+.evt.block .evt-close { color: #2f7cf6; }
+.sheet.fraud { position: relative; }
+.block-dim { position: fixed; inset: 0; z-index: 5; animation: fadein .25s ease both; }

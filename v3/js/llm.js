@@ -86,6 +86,7 @@ const OUTPUT_FORMAT = `# 출력 형식
 항상 지정된 JSON 스키마로만 답해.
 - intent: 사용자 발화가 "분류할 의도" 목록 중 무엇에 해당하는지 id로 골라. 어느 것에도 맞지 않으면 other.
 - 금액은 원 단위 정수로 바꿔. 예: "30만원", "삼십만 원", "300,000원" → 300000. 구어체, 맞춤법 오류, 음성인식 오류(예: "삼심만원")는 너그럽게 해석해.
+- fraud_q1~fraud_q3: 금융사기 예방질문 1·2·3번 중 사용자가 바꾸라고 한 질문의 답(예 → yes, 아니오 → no). 바꾸라고 하지 않은 질문은 null. 질문 번호 대신 내용(금융기관·정부의 현금 이체 요구 → 1번, 대출 수수료·보증금 → 2번, 앱 설치·원격조정 → 3번)으로 말해도 알아들어. 답을 말하지 않고 "2번 바꿔줘"처럼만 말하면 지금 답의 반대(아니오 → yes)로 채워.
 - reply: 위 원칙에 따라 에이전트가 할 말. intent가 other이거나 "이번 턴 지침"이 응답을 요구할 때 화면에 출력돼.`;
 
 const LLM_TASKS = {
@@ -117,9 +118,12 @@ function turnSchema(intentIds) {
       memo: sch("STRING", { nullable: true }),
       source_account: sch("STRING", { nullable: true, enum: ["main", "savings"] }),
       account_number: sch("STRING", { nullable: true }),
+      fraud_q1: sch("STRING", { nullable: true, enum: ["yes", "no"] }),
+      fraud_q2: sch("STRING", { nullable: true, enum: ["yes", "no"] }),
+      fraud_q3: sch("STRING", { nullable: true, enum: ["yes", "no"] }),
       reply: sch("STRING"),
     },
-    required: ["intent", "amount_won", "memo", "source_account", "account_number", "reply"],
+    required: ["intent", "amount_won", "memo", "source_account", "account_number", "fraud_q1", "fraud_q2", "fraud_q3", "reply"],
   });
 }
 
@@ -134,6 +138,7 @@ const INTENT_MEANINGS = {
   set_memo: "받는 분 통장 메모를 특정 문구로 하라고 함 (memo 채움)",
   set_source: "출금 계좌를 바꾸라고 함 (source_account 채움)",
   set_account: "송금할 계좌번호를 직접 말함 (account_number 채움)",
+  set_fraud: "금융사기 예방질문 중 일부(또는 전부)의 답을 바꾸라고 함 (fraud_q1~fraud_q3 채움)",
   find_other: "다른 계좌를 찾아보라고 함",
   direct_input: "계좌를 직접 입력하겠다고 함 (번호는 말하지 않음)",
   unsuitable_app: "지정된 앱이 아닌 다른 앱(다른 은행 앱, 전화, 카메라 등)을 말함",
@@ -340,6 +345,22 @@ const YES = /(^|\s)(네|예|응|그래|좋아|좋아요|맞아|맞아요|맞습�
 const NO = /(아니|아뇨|거부|아냐|틀려|틀렸|잘못|안\s?돼|하지\s?마|싫어|멈춰|잠깐|바꿔|수정)/i;
 const QUESTION = /(\?|뭐|왜|어떻게|무슨|언제|얼마)/;
 
+// 예방질문 답 바꾸기: "2번은 예로", "대출 질문은 예", "1번 3번 바꿔줘" → [null|"yes"|"no" ×3]
+function extractFraud(text) {
+  const t = text.replace(/\s+/g, " ");
+  const out = [null, null, null];
+  const KEY = [/(1\s?번|첫\s?번|첫째|금융기관|정부|현금)/, /(2\s?번|두\s?번|둘째|대출|수수료|보증금)/, /(3\s?번|세\s?번|셋째|앱\s?설치|원격)/];
+  const all = /(모두|전부|다)\s*(예|네)/.test(t);
+  // 질문별로 뒤따르는 답(예/아니오)을 찾고, 없으면 반대로(지금은 모두 아니오이므로 예)
+  KEY.forEach((re, i) => {
+    const m = t.match(re);
+    if (!m && !all) return;
+    const rest = m ? t.slice(m.index + m[0].length, m.index + m[0].length + 12) : t;
+    out[i] = /아니/.test(rest) ? "no" : "yes";
+  });
+  return out.some(Boolean) ? out : null;
+}
+
 const Rules = {
   request(text) {
     const amount = extractAmount(text);
@@ -360,7 +381,7 @@ const Rules = {
   turn(text, ctx) {
     const allowed = new Set(ctx.intents);
     const out = (intent, extra = {}) => ({
-      intent, amount_won: null, memo: null, source_account: null, account_number: null,
+      intent, amount_won: null, memo: null, source_account: null, account_number: null, fraud_q1: null, fraud_q2: null, fraud_q3: null,
       reply: ctx.fallback_reply || (QUESTION.test(text)
         ? "궁금하신 점은 송금을 마친 뒤에 도와드릴게요. 지금 단계부터 이어서 진행할게요."
         : "제가 잘 이해하지 못했어요. 화면의 버튼을 누르시거나 다시 말씀해주세요."),
@@ -375,6 +396,10 @@ const Rules = {
       if (YES.test(t) && !NO.test(t)) return byIntent("approve");
     }
     if (allowed.has("unsuitable_app") && !QUESTION.test(t) && !NO.test(t)) return byIntent("unsuitable_app");
+    if (allowed.has("set_fraud")) {
+      const f = extractFraud(t);
+      if (f) return out("set_fraud", { fraud_q1: f[0], fraud_q2: f[1], fraud_q3: f[2] });
+    }
     if (allowed.has("pause") && (/(멈춰|멈춰봐|기다려|스톱|stop|잠깐만|이상해|잘못)/i.test(t) || NO.test(t)) && extractAmount(t) == null && !/메모|통장\s?표기|적금|주거래/.test(t)) return byIntent("pause");
 
     const amount = extractAmount(t);

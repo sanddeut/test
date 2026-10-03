@@ -619,7 +619,8 @@ function syncControls() {
 // - progress: 「실행화면 보기」를 누른 경우 → 앱 화면을 축소해 보여주고, 단순 선택은 그 아래 버튼으로
 function wantedView() {
   if (!S) return "chat";
-  if (S.manual || S.pinOpen || S.phone.popupClosable || S.phone.fraudLive || S.awaitDoneConfirm) return "direct";
+  if (S.manual || S.pinOpen || S.phone.popupClosable || S.awaitDoneConfirm) return "direct";
+  if (S.reticking) return "progress"; // 예방질문 답을 바꾸는 동안은 중지 중이어도 실행화면으로 보여줌
   if (S.pwWait) return "chat";
   if (S.ivWaiter || S.stopped) return "chat";
   if (S.waiter && !S.waiter.options) return "chat";
@@ -752,14 +753,26 @@ function setAmount(amt) {
 }
 
 // 높은 자동화에서 말한 내용 해석. 수정 요청은 반영하고, 그 외에는 짧게 응답한 뒤 진행 상황을 알리고 계속 진행
+// 예방질문 단계에서는 답 바꾸기도 받음
+const fraudIntent = () => (stepIdNow() === "fraud" ? ["set_fraud"] : []);
+
 function highIntents() {
-  return ["set_amount", ...(S.complexity === "B" ? ["set_memo"] : []), "set_source", "pause", "continue", "cancel", "other"];
+  return [...fraudIntent(), "set_amount", ...(S.complexity === "B" ? ["set_memo"] : []), "set_source", "pause", "continue", "cancel", "other"];
 }
 const HIGH_HINT =
   "높은 자동화에서는 사용자의 답을 기다리지 않고 자동으로 진행해. other/continue이면 reply는 발화를 짧게 받아준 뒤 현재 진행 상황을 알리는 형태로 끝내고, 승인을 묻지 마. " +
   "사용자가 무언가 잘못됐다고 지적하거나 멈추라고 하면(예: '잘못했잖아', '이상해', '틀렸어') 값이 없어도 pause로 분류해.";
 
 async function applyHighChange(o, via) {
+  if (o.intent === "set_fraud") {
+    const ch = [o.fraud_q1, o.fraud_q2, o.fraud_q3];
+    if (!ch.some(Boolean)) return false;
+    S.fraudByUser = true;
+    logEvent("fraud_changed", { changes: ch, via });
+    await retickFraud(ch);
+    await sayKey("change.fraud");
+    return true;
+  }
   if (o.intent === "set_amount" && o.amount_won) {
     setAmount(o.amount_won);
     logEvent("amount_changed", { amount: o.amount_won, via });
@@ -791,7 +804,7 @@ async function handleInterjection(text) {
   syncControls();
   const said = S.log.filter((e) => e.type === "agent_message").at(-1)?.text || "";
   const o = await turn(text, { said, intents: highIntents(), hint: HIGH_HINT, fallback: "네, 송금을 이어서 진행할게요." });
-  if (["set_amount", "set_memo", "set_source"].includes(o.intent)) {
+  if (["set_fraud", "set_amount", "set_memo", "set_source"].includes(o.intent)) {
     S.m.stops++;
     markIntervention("stop_text");
     logEvent("stop", { via: "text" });
@@ -845,7 +858,7 @@ async function handleStop(via) {
     setChips([]);
     const o = await turn(r, {
       said,
-      intents: ["set_amount", ...(S.complexity === "B" ? ["set_memo"] : []), "set_source", "continue", "cancel", "other"],
+      intents: [...fraudIntent(), "set_amount", ...(S.complexity === "B" ? ["set_memo"] : []), "set_source", "continue", "cancel", "other"],
       hint: STOP_HINT,
       fallback: "계속하기를 누르시면 이어서 진행할게요.",
     });
@@ -1009,7 +1022,8 @@ async function run() {
     const step = S.steps[i];
     logEvent("step_start", { label: step.label });
     renderStepper();
-    const ok = S.automation === "low" ? await runLowStep(step) : await runHighStep(step);
+    let ok = S.automation === "low" ? await runLowStep(step) : await runHighStep(step);
+    if (ok && !S.finished && step.kind === "error_fraud") ok = await submitFraud(step);
     if (!ok || S.finished) return;
     if (S.automation === "low") await sleep(1000 * PACE); // 높은 자동화는 단계 안에서 읽는 시간을 둠
   }
@@ -1106,7 +1120,7 @@ async function runLowStep(step) {
     repeat = true;
     if (!step.low.options) { await doApply(step); break; }
 
-    let extra = REJECT_EXTRA[step.low.reject] || [];
+    let extra = step.low.reject === "fraud" ? ["set_fraud"] : REJECT_EXTRA[step.low.reject] || [];
     if (step.low.reject === "final" && S.complexity !== "B") extra = extra.filter((x) => x !== "set_memo");
     const c = await askChoice(step.low.options, msgs.join(" "), extra);
     if (c.id === "__reask") continue; // 중지·직접 조작으로 바뀐 내용으로 다시 물음
@@ -1218,12 +1232,32 @@ async function handleReject(step, c, said) {
   }
 
   if (type === "fraud") {
-    // 예방질문 화면(앱 화면 전체)을 열고 참가자가 직접 답함 → [확인]을 누르면 이어서 진행
-    await sayKey("fraud.ask");
-    await sleep(1500 * PACE);
-    await waitFraudAnswers();
-    await sayKey("fraud.done");
-    return "done";
+    // 참가자가 말한 질문의 답만 바꿈 → 실행화면에서 누르는 과정을 보여주고 → 바뀐 답으로 다시 승인을 물음
+    S.fraudByUser = true; // 에이전트의 답을 그대로 받아들이지 않음
+    const hint = `예방질문은 1번 ${FRAUD_QUESTIONS[0]} / 2번 ${FRAUD_QUESTIONS[1]} / 3번 ${FRAUD_QUESTIONS[2]} 이고, 지금 답은 ${fraudText(S.form.fraud)}이야. 사용자가 바꿀 질문을 말하면 set_fraud야. 바꿀 질문을 말하지 않으면 reply로 어떤 질문의 답을 바꿀지 되물어.`;
+    let o = c.id === "set_fraud" ? c.out : null;
+    if (!o) await sayKey("fraud.ask");
+    for (;;) {
+      if (!o) o = await turn(await waitText(), { said: line("fraud.ask", S), intents: ["set_fraud", "continue", "cancel", "other"], hint, fallback: "어떤 질문의 답을 바꿀까요? 예를 들어 ‘2번은 예’처럼 말씀해주세요." });
+      if (o.intent === "set_fraud" && [o.fraud_q1, o.fraud_q2, o.fraud_q3].some(Boolean)) {
+        const ch = [o.fraud_q1, o.fraud_q2, o.fraud_q3];
+        logEvent("fraud_changed", { changes: ch, via: "reject_text" });
+        await retickFraud(ch);
+        const q = line("fraud.confirm", S);
+        await agentSay(q);
+        const c2 = await askChoice(APPROVE, q, ["set_fraud"], hint);
+        S.m.approvals++;
+        logEvent("decision", { choice: c2.id, via: c2.via, fraud: S.form.fraud });
+        if (c2.id === "approve") return "done";
+        o = c2.id === "set_fraud" ? c2.out : null;
+        if (!o) await sayKey("fraud.ask");
+        continue;
+      }
+      if (o.intent === "continue") return "done";
+      if (o.intent === "cancel") { await cancelTransfer(); return "cancel"; }
+      await agentSay(o.reply, { talk: true });
+      o = null;
+    }
   }
 
   if (type === "autopay") {
@@ -1320,29 +1354,6 @@ async function handleReject(step, c, said) {
   return "reask";
 }
 
-// 금융사기 예방질문에 참가자가 직접 답하고 [확인]을 누를 때까지 대기 (앱 화면 전체)
-function waitFraudAnswers() {
-  return new Promise((resolve) => {
-    S.fraudByUser = true;
-    S.phone.sheet = "fraud";
-    S.phone.fraudTicks = [null, null, null];
-    S.phone.fraudLive = true;
-    S.fraudResolve = () => {
-      S.fraudResolve = null;
-      S.phone.fraudLive = false;
-      S.form.fraud = [...S.phone.fraudTicks];
-      logEvent("fraud_answered", { answers: S.form.fraud });
-      renderPhone();
-      syncControls();
-      resolve();
-    };
-    setChips([]);
-    promote();
-    renderPhone();
-    syncControls();
-  });
-}
-
 // 참가자가 팝업의 '닫기'를 직접 누르거나, 말로 답할 때까지 대기
 function waitPopupClose() {
   return new Promise((resolve) => {
@@ -1410,6 +1421,42 @@ async function runLowAmount(step) {
   await doApply(step); // 승인 후 금액 입력
   await dwell(1000);
   return true;
+}
+
+// 예방질문 답을 제출 → 답이 맞지 않으면 이체 제한 → 에이전트가 1번을 '예'로 고쳐 다시 시도
+// (낮은 자동화는 고친 답으로 승인을 다시 묻고, 높은 자동화는 알리고 진행)
+async function submitFraud(step) {
+  for (;;) {
+    if (fraudPasses(S.form.fraud)) { S.phone.sheet = null; renderPhone(); return true; }
+    S.m.fraudBlocked = (S.m.fraudBlocked || 0) + 1;
+    logEvent("fraud_blocked", { answers: S.form.fraud });
+    resetStatus();
+    setStatus("", true); // 안내 창이 떠 있는 동안 이전 질문 문구는 지움
+    await showFraudBlock();
+    await sayKey("fraud.blocked", undefined, { gated: S.automation === "high" });
+    const fix = FRAUD_OK.map((a, i) => (S.form.fraud?.[i] === a ? null : a));
+    logEvent("fraud_retry", { changes: fix });
+    await retickFraud(fix);
+    if (S.automation === "high") {
+      await sayKey("fraud.retry", undefined, { gated: true });
+      await sleep(S.cfg.delay);
+      await gate();
+      continue;
+    }
+    // 낮은 자동화: 고친 답으로 다시 승인 (거부하면 말한 질문만 바꾸는 흐름)
+    for (;;) {
+      const q = line("fraud.retry", S);
+      await agentSay(q);
+      const c = await askChoice(APPROVE, q, ["set_fraud"]);
+      if (c.id === "__reask") continue;
+      S.m.approvals++;
+      logEvent("decision", { choice: c.id, via: c.via, fraud: S.form.fraud, retry: true });
+      if (c.id === "approve") break;
+      const r = await handleReject(step, c, q);
+      if (r === "cancel") return false;
+      break;
+    }
+  }
 }
 
 // ---------- 높은 자동화 ----------
@@ -1642,6 +1689,7 @@ function summary() {
     final_amount: m.finalAmount,
     fraud_answers: S.form.fraud ? S.form.fraud.join("/") : null,
     fraud_answered_by_user: S.fraudByUser,
+    fraud_blocked: m.fraudBlocked || 0,
     autopay_registered: S.form.autopay,
     approvals: m.approvals,
     stops: m.stops,

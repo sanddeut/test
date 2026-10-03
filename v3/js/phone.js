@@ -98,7 +98,6 @@ function bindPhone() {
   sc.querySelectorAll("[data-key]").forEach((b) => (b.onclick = () => manualKey(b.dataset.key)));
   sc.querySelectorAll("[data-src-toggle]").forEach((b) => (b.onclick = () => manualToggleSource()));
   sc.querySelectorAll("[data-fq]").forEach((b) => (b.onclick = () => fraudAnswer(Number(b.dataset.fq), b.dataset.ans)));
-  sc.querySelectorAll("[data-fraud-ok]").forEach((b) => (b.onclick = () => fraudConfirm()));
   sc.querySelectorAll("[data-man-autopay-cancel]").forEach((b) => (b.onclick = () => manualCancelAutopay()));
   const memo = sc.querySelector("#m-memo");
   if (memo) memo.oninput = () => (S.manualMemo = memo.value);
@@ -347,16 +346,17 @@ function bankOverlay() {
       <div class="bk-btn2"><span>취소</span><span class="primary">이체</span></div></div></div>`;
   }
   if (p.sheet === "fraud") {
-    // 금융사기 예방질문: 참가자가 직접 답하는 중(fraudLive)이거나 직접 조작 중이면 누를 수 있음
-    const live = p.fraudLive || S.manual;
+    // 금융사기 예방질문: 직접 조작 중이면 참가자가 누를 수 있음
+    const live = S.manual;
     const ticks = p.fraudTicks || [];
-    const allAnswered = ticks.every((t) => t);
     return `<div class="dim ${enter}"><div class="sheet fraud ${enter}">
       <h3>금융사기 예방을 위해<br>아래 질문에 답해주세요</h3>
+      ${p.fraudBlock ? `<div class="dim center block-dim"><div class="evt block">
+        <div class="evt-art">${mi("block", "fill")}</div><b>이체가 제한됐어요</b><p>금융사기 예방질문 답변 내용으로는<br>이체를 진행할 수 없어요.<br>질문을 다시 확인해주세요.</p>
+        <div class="evt-btns"><span class="evt-close">확인</span></div></div></div>` : ""}
       ${FRAUD_QUESTIONS.map((q, i) => `<div class="fq" data-q="${i}"><p>${i + 1}. ${esc(q)}</p><div class="fq-btns ${live ? "live" : ""}">
         <span class="yes ${ticks[i] === "yes" ? "on" : ""}" ${live ? `data-fq="${i}" data-ans="yes"` : ""}>예</span>
         <span class="no ${ticks[i] === "no" ? "on" : ""}" ${live ? `data-fq="${i}" data-ans="no"` : ""}>아니오</span></div></div>`).join("")}
-      ${p.fraudLive ? `<div class="bk-btn ${allAnswered ? "" : "off"}" ${allAnswered ? "data-fraud-ok" : ""}>확인</div>` : ""}
     </div></div>`;
   }
   if (p.sheet === "pin") {
@@ -525,18 +525,61 @@ async function retypeAmount(amount) {
   actNoGate--;
 }
 
+// 답변 때문에 이체가 제한됨 → 은행 앱의 안내 창을 보여주고 에이전트가 [확인]을 누름 (실행화면으로)
+async function showFraudBlock() {
+  const p = S.phone;
+  actNoGate++;
+  S.reticking = true;
+  if (!S.showRun && typeof showRun === "function") showRun(true);
+  setActing(true);
+  await actSleep(600);
+  p.sheet = "fraud";
+  p.fraudBlock = true; // 예방질문 시트 위에 '이체 제한' 안내 창
+  renderPhone();
+  await actSleep(2600);
+  await tap(".evt-close");
+  p.fraudBlock = false;
+  renderPhone();
+  await actSleep(500);
+  setActing(false);
+  S.reticking = false;
+  if (typeof syncControls === "function") syncControls();
+  actNoGate--;
+}
+
+// 참가자가 말한 대로 예방질문 답 일부를 에이전트가 바꿈 (실행화면을 열어 누르는 과정을 보여줌)
+// changes: [null|"yes"|"no", ...] (null = 그대로)
+async function retickFraud(changes) {
+  const p = S.phone;
+  actNoGate++;
+  S.reticking = true;
+  if (!S.showRun && typeof showRun === "function") showRun(true);
+  setActing(true);
+  if (p.sheet !== "fraud") { p.sheet = "fraud"; renderPhone(); }
+  await actSleep(900);
+  for (let i = 0; i < 3; i++) {
+    const a = changes[i];
+    if (!a || p.fraudTicks[i] === a) continue;
+    await tap(`.fq[data-q="${i}"] .${a}`, { pre: 300, after: 300 });
+    p.fraudTicks[i] = a;
+    renderPhone();
+  }
+  S.form.fraud = [...p.fraudTicks];
+  await actSleep(500);
+  setActing(false);
+  S.reticking = false;
+  if (typeof syncControls === "function") syncControls();
+  actNoGate--;
+}
+
 // ---------------- 금융사기 예방질문 · 자동이체 (참가자 직접 조작) ----------------
 function fraudAnswer(i, ans) {
-  if (!S || !(S.phone.fraudLive || S.manual)) return;
+  if (!S?.manual) return;
   S.phone.fraudTicks[i] = ans;
   S.fraudByUser = true;
   if (S.manual) S.form.fraud = S.phone.fraudTicks.map((t) => t || "no");
-  logEvent("fraud_tick", { q: i + 1, answer: ans, via: S.manual ? "manual" : "direct" });
+  logEvent("fraud_tick", { q: i + 1, answer: ans, via: "manual" });
   renderPhone();
-}
-
-function fraudConfirm() {
-  if (S?.fraudResolve && S.phone.fraudTicks.every((t) => t)) S.fraudResolve();
 }
 
 function manualCancelAutopay() {
