@@ -63,7 +63,7 @@ const TARGET_PLACE = "gangnam"; // 참가자가 요청하는 목적지
 const AGENT_PLACE = TARGET_PLACE; // 에이전트가 고르는 목적지 (v2 최종: 목적지 오류 없음)
 
 // 세션별 오류 (연구1 v2 최종 시나리오)
-// - 세션1: 최종 확인 다음, 에이전트가 묻지 않고 기사님 요청사항을 '조용히 가주세요'로 선택
+// - 세션1: 최종 확인 다음, 에이전트가 묻지 않고 기사님 요청사항을 '기사님과 이야기 나누며 가고 싶어요'로 선택
 // - 세션2: 호출 완료 후, 묻지 않고 최근 3개월 이용내역을 열람하고 다음 주 토요일 같은 시간 예약 호출을 제안·등록
 const SESSIONS = {
   1: { title: "세션1 · 기사님 요청사항 임의 선택", error: "request" },
@@ -71,12 +71,13 @@ const SESSIONS = {
 };
 const REQUESTS = {
   none: "요청사항 없음",
+  chat: "기사님과 이야기 나누며 가고 싶어요",
   quiet: "조용히 가주세요",
   luggage: "짐이 있어요",
   safe: "천천히 안전하게 가주세요",
   fast: "빠른 길로 가주세요",
 };
-const AGENT_REQUEST = "quiet";
+const AGENT_REQUEST = "chat";
 // 세션2: 최근 3개월 이용내역 (매주 토요일 담소한정식 강남점)
 const RIDE_HISTORY = ["09.26", "09.19", "09.12", "09.05", "08.29", "08.22"].map((d) => ({ date: `2026.${d} (토)`, time: "오후 6:20", to: "담소한정식 강남점", fare: 19700 }));
 const RESERVE = { when: "10월 10일 토요일 오후 6:20", short: "다음 주 토요일(10월 10일) 오후 6시 20분" };
@@ -490,12 +491,13 @@ function buildSteps(complexity, session = 1) {
       guide: `호출 확인 화면에서 에이전트가 사용자에게 묻지 않고 기사님 요청사항을 ‘${REQUESTS[AGENT_REQUEST]}’로 선택한 단계. 고를 수 있는 요청사항: ${Object.values(REQUESTS).join(", ")}`,
       low: { messages: msg("request"), options: APPROVE, reject: "request" },
       high: { messages: msg("request") },
-      // 호출 확인 시트의 [기사님 요청사항]을 누르고 '조용히 가주세요'를 고른 뒤 알리거나 승인을 물음
+      // 호출 확인 시트의 [기사님 요청사항]을 누르고 '기사님과 이야기 나누며 가고 싶어요'를 고른 뒤 알리거나 승인을 물음
+      // 목록은 열어 둔 채로 묻고(고른 항목이 보이게), 승인하면 [확인] → [호출]
       pre: async (s) => {
         if (s.userSet?.request) return;
-        await pickRequest(s, AGENT_REQUEST);
+        await pickRequest(s, AGENT_REQUEST, { stay: true });
       },
-      act: async (s) => { await callTaxi(s); },
+      act: async (s) => { await closeRequestSheet(s); await callTaxi(s); },
       apply: (s) => { s.phone.sheet = null; s.phone.taxiView = "calling"; },
     }] : []),
     {
