@@ -188,7 +188,7 @@ function stepPreview() {
       return el("pv-evt", `<span class="ms fill">confirmation_number</span><span><b>${esc(COUPON.name)}</b><small>${esc(won0(COUPON.amount))} 할인 · 모든 택시</small></span>`);
     case "final": return rideSummary();
     case "request":
-      return el("pv-accts", Object.entries(REQUESTS).filter(([k]) => k !== "none").map(([k, v]) =>
+      return el("pv-accts pv-req", Object.entries(REQUESTS).map(([k, v]) =>
         `<div class="${S.form.request === k ? "on" : ""}"><span><b>${esc(v)}</b></span>${S.form.request === k ? '<span class="ms">check_circle</span>' : ""}</div>`).join(""));
     case "reserve":
       return el("rc-summary", [["출발", "신분당선 동천역"], ["도착", "담소한정식 강남점"], ["예약 시간", RESERVE.when], ["택시 종류", CAR_TYPES[S.form.car].label]]
@@ -390,24 +390,33 @@ function setChips(options, onPick) {
   } else freezeQuestion(); // 답했으면 질문을 대화 기록으로
   const pill = ["approve", "reject", "manual", "resume"];
   const isList = opts.length >= 2 && !opts.every((o) => pill.includes(o.id));
+  // 목록 선택지와 알약 버튼(직접 조작·계속하기 등)이 섞이면: 목록 아래에 알약 버튼 줄
+  const mixed = isList && opts.some((o) => pill.includes(o.id));
   $("#chips").innerHTML = "";
   [chipsBox(), $("#pv-chips")].forEach((box) => {
     box.innerHTML = "";
     // 진행 카드 안 질문: 실행화면 대신, 판단에 필요한 내용을 재구성한 UI를 함께 보여줌
     if (box.id === "rc-choices" && opts.some((o) => o.id === "approve")) { const pv = stepPreview(); if (pv) box.appendChild(pv); }
     let parent = box;
+    let pills = box;
     if (isList) {
       parent = document.createElement("div");
       parent.className = "choice-list";
       box.appendChild(parent);
     }
+    if (mixed) {
+      pills = document.createElement("div");
+      pills.className = "pill-row";
+      box.appendChild(pills);
+    }
     opts.forEach((o) => {
+      const asPill = mixed && pill.includes(o.id);
       const b = document.createElement("button");
       b.type = "button";
       if (o.card) {
         b.className = "open-card chip";
         b.innerHTML = `<span class="oc-head"><span class="bk-logo sm"><i></i></span><span><b>${esc(o.card.title)}</b><small>${esc(o.card.sub)}</small></span></span><span class="oc-btn">${esc(o.label)}</span>`;
-      } else if (isList) {
+      } else if (isList && !asPill) {
         b.className = "choice chip";
         b.innerHTML = `<span class="c-main"><b>${esc(o.label)}</b>${o.desc ? `<small>${esc(o.desc)}</small>` : ""}</span><span class="ms c-go">chevron_right</span>`;
       } else {
@@ -415,7 +424,7 @@ function setChips(options, onPick) {
         b.textContent = o.label;
       }
       b.onclick = () => onPick(o);
-      parent.appendChild(b);
+      (asPill ? pills : parent).appendChild(b);
     });
   });
   syncControls();
@@ -748,6 +757,11 @@ function setOption(field, value, via) {
 // 대화로 바꿀 수 있는 항목 (조건별)
 const stepIdNow = () => S.steps[S.stepIdx]?.id;
 
+// 기사님 요청사항 선택지 (지금 선택된 항목 표시)
+function requestOptions() {
+  return Object.entries(REQUESTS).map(([id, label]) => ({ id, label, desc: (S.form.request || "none") === id ? "지금 선택됨" : "" }));
+}
+
 function changeIntents() {
   return [...(stepIdNow() === "request" ? ["set_request"] : []), "set_origin", "set_dest", ...(S.complexity === "B" ? ["set_car"] : []), "set_pay", ...(S.complexity === "B" ? ["set_coupon"] : [])];
 }
@@ -842,15 +856,21 @@ async function handleStop(via) {
   resetStatus(); // 진행 문구를 새로 시작
   let said = await sayKey("stop.ask");
   for (;;) {
-    setChips([{ id: "manual", label: "직접 조작" }, { id: "resume", label: "계속하기" }], (o) => {
+    setChips([...(stepIdNow() === "request" ? requestOptions() : []), { id: "manual", label: "직접 조작" }, { id: "resume", label: "계속하기" }], (o) => {
       if (!S.ivWaiter) return;
       const w = S.ivWaiter; S.ivWaiter = null;
       appendBubble("user", o.label);
       logEvent("user_button", { choice: o.id, label: o.label });
-      replyPause().then(() => w({ [o.id]: true }));
+      replyPause().then(() => w(REQUESTS[o.id] ? { req: o.id } : { [o.id]: true }));
     });
     const r = await new Promise((res) => { S.ivWaiter = res; syncControls(); });
     if (r?.resume) break;
+    if (r?.req) {
+      // 목록에서 고른 요청사항으로 바꿈 (실행화면에서 고르는 과정을 보여줌)
+      await applyHighChange({ intent: "set_request", request: r.req }, `stop_${via}`);
+      said = S.log.filter((e) => e.type === "agent_message").at(-1)?.text || said;
+      continue;
+    }
     if (r?.manual) {
       // 중지 상태에서 직접 조작으로 넘어감 → 끝나면 endManual이 원래 단계로 되돌림
       S.stopped = false;
@@ -1190,9 +1210,20 @@ async function handleReject(step, c, said) {
     S.requestByUser = true;
     const hint = `고를 수 있는 기사님 요청사항은 ${Object.entries(REQUESTS).map(([k, v]) => `${v}(${k})`).join(", ")}이고, 지금은 ‘${REQUESTS[S.form.request]}’야. 사용자가 다른 요청사항이나 '없음'을 말하면 set_request야. 말하지 않으면 reply로 어떤 요청사항으로 할지 되물어.`;
     let o = c.id === "set_request" ? c.out : null;
-    if (!o) await sayKey("request.ask");
+    // 요청사항 목록을 선택지로 보여주고 고르게 함 (말로 답해도 됨)
+    const pickFromList = async () => {
+      const ask = line("request.ask", S);
+      await agentSay(ask);
+      for (;;) {
+        const p = await askChoice(requestOptions(), ask, ["set_request", "continue", "cancel"], hint);
+        if (p.id === "__reask") continue;
+        if (REQUESTS[p.id]) return { intent: "set_request", request: p.id };
+        if (p.out) return p.out;
+        return { intent: p.id };
+      }
+    };
     for (;;) {
-      if (!o) o = await turn(await waitText(), { said: line("request.ask", S), intents: ["set_request", "continue", "cancel", "other"], hint, fallback: "기사님 요청사항을 어떻게 할까요? 예를 들어 ‘요청사항 없이’처럼 말씀해주세요." });
+      if (!o) o = await pickFromList();
       if (o.intent === "set_request" && REQUESTS[o.request]) {
         logEvent("request_changed", { request: o.request, via: "reject_text" });
         S.userSet.request = true;
@@ -1204,7 +1235,6 @@ async function handleReject(step, c, said) {
         logEvent("decision", { choice: c2.id, via: c2.via, request: S.form.request });
         if (c2.id === "approve") { await doApply(step, "approve", { announced: true }); return "done"; }
         o = c2.id === "set_request" ? c2.out : null;
-        if (!o) await sayKey("request.ask");
         continue;
       }
       if (o.intent === "continue") { await doApply(step, "approve", { announced: true }); return "done"; }
@@ -1461,7 +1491,7 @@ function renderSummary() {
   if (!el || !S) return;
   const s = summary();
   const label = S.session === 1
-    ? { accepted: "수용 (조용히 가주세요 그대로)", corrected: "거부·수정", cancelled: "취소" }
+    ? { accepted: "수용 (에이전트가 고른 요청사항 그대로)", corrected: "거부·수정", cancelled: "취소" }
     : { accepted: "수용 (예약됨)", corrected: "거부·취소", cancelled: "호출 취소" };
   const items = [
     ["조건", `${S.cond} · 세션${S.session}`],
