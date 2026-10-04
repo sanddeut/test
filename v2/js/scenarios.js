@@ -189,9 +189,11 @@ function scriptDefaults(cond) {
     else add("car", "택시 종류 변경", "안내", "말씀하신 {택시종류}로 바꿨어요.");
   }
 
-  if (low) add("pay", "결제 방식", "선택 요청", "결제 방식이 2개예요. 어떻게 결제할까요?");
-  else if (B) add("pay", "결제 방식", "안내", "말씀하신 {결제}로 바꿨어요.");
-  else add("pay", "결제 방식", "안내", "{결제}(마음카드)로 결제할게요.");
+  // 결제 방식 단계는 B에만 (A는 묻지 않고 기본값인 자동결제로 호출)
+  if (B) {
+    if (low) add("pay", "결제 방식", "선택 요청", "결제 방식이 2개예요. 어떻게 결제할까요?");
+    else add("pay", "결제 방식", "안내", "말씀하신 {결제}로 바꿨어요.");
+  }
 
   if (B && USE_COUPON) {
     if (low) {
@@ -413,32 +415,34 @@ function buildSteps(complexity, session = 1) {
     });
   }
 
-  steps.push({
-    id: "pay",
-    label: "결제 방식",
-    guide: `결제 방식(자동결제: 마음카드 ****1234 / 직접결제: 내릴 때 기사님께)을 고르는 단계. 기본은 자동결제`,
-    low: {
-      messages: msg("pay"),
-      options: Object.entries(PAY).map(([id, p]) => ({ id, label: p.label, desc: p.desc })),
-    },
-    high: B ? { messages: (s) => lines("pay", s, { pay: payTarget(s) }), applyFirst: true } : { messages: (s) => lines("pay", s, { pay: payTarget(s) }) },
-    pre: async (s) => {
-      if (s.phone.sheet === "pay") return;
-      await tap(".tx-pay");
-      s.phone.sheet = "pay";
-      renderPhone();
-      await actSleep(400);
-    },
-    act: async (s, choice) => {
-      const k = choice || payTarget(s);
-      if (s.phone.sheet !== "pay") { s.phone.sheet = "pay"; renderPhone(); await actSleep(400); }
-      await tap(`.tx-pay-opt[data-pay="${k}"]`);
-      s.form.pay = k;
-      s.phone.sheet = null;
-      renderPhone();
-    },
-    apply: (s, choice) => { s.form.pay = choice || payTarget(s); s.phone.sheet = null; },
-  });
+  if (B) {
+    steps.push({
+      id: "pay",
+      label: "결제 방식",
+      guide: `결제 방식(자동결제: 마음카드 ****1234 / 직접결제: 내릴 때 기사님께)을 고르는 단계. 기본은 자동결제`,
+      low: {
+        messages: msg("pay"),
+        options: Object.entries(PAY).map(([id, p]) => ({ id, label: p.label, desc: p.desc })),
+      },
+      high: B ? { messages: (s) => lines("pay", s, { pay: payTarget(s) }), applyFirst: true } : { messages: (s) => lines("pay", s, { pay: payTarget(s) }) },
+      pre: async (s) => {
+        if (s.phone.sheet === "pay") return;
+        await tap(".tx-pay");
+        s.phone.sheet = "pay";
+        renderPhone();
+        await actSleep(400);
+      },
+      act: async (s, choice) => {
+        const k = choice || payTarget(s);
+        if (s.phone.sheet !== "pay") { s.phone.sheet = "pay"; renderPhone(); await actSleep(400); }
+        await tap(`.tx-pay-opt[data-pay="${k}"]`);
+        s.form.pay = k;
+        s.phone.sheet = null;
+        renderPhone();
+      },
+      apply: (s, choice) => { s.form.pay = choice || payTarget(s); s.phone.sheet = null; },
+    });
+  }
 
   if (B && USE_COUPON) {
     steps.push({
