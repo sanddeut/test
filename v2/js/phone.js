@@ -558,7 +558,11 @@ function refreshMap() {
   const current = S.form.origin === "current";
   L.marker([o.lat, o.lng], { icon: pinIcon(current ? "me" : "origin", current ? "<i></i>" : "<span>출발</span>") }).addTo(LiveMap.layer);
   // 경로가 없을 때(출발지 설정 중): 동천역으로 바꾼 뒤에는 역 주변이 보이게 가깝게, 현재 위치는 조금 넓게
-  if (!destKey) { map.setView([o.lat, o.lng], current ? 16 : 18); return; }
+  if (!destKey) {
+    map.setView([o.lat, o.lng], current ? 16 : 18, { animate: false });
+    map.panBy([0, sheetCover() / 2], { animate: false }); // 출발지 핀이 아래 카드에 가리지 않고 보이는 부분 가운데에 오게
+    return;
+  }
   const d = PLACES[destKey];
   L.marker([d.lat, d.lng], { icon: pinIcon("dest", "<span>도착</span>") }).addTo(LiveMap.layer);
   const rk = `${o.lat},${o.lng}>${destKey}`;
@@ -568,8 +572,17 @@ function refreshMap() {
     L.polyline([[o.lat, o.lng], [d.lat, d.lng]], { color: "#1c1d21", weight: 4, opacity: 0.5, dashArray: "6 8" }).addTo(LiveMap.layer);
     fetchRoute(rk, o, d);
   }
-  // 아래쪽은 호출 시트에 조금 가려지므로 여백을 더 둠
-  map.fitBounds(L.latLngBounds([[o.lat, o.lng], [d.lat, d.lng]]), { paddingTopLeft: [40, 44], paddingBottomRight: [40, 80] });
+  // 지도 아래쪽은 바텀시트가 덮으므로, 시트 위로 보이는 부분 안에 경로가 들어오게 맞춤
+  const covered = sheetCover();
+  map.fitBounds(L.latLngBounds([[o.lat, o.lng], [d.lat, d.lng]]), { paddingTopLeft: [40, 56], paddingBottomRight: [40, covered + 36] });
+}
+
+// 지도 아래쪽을 덮고 있는 바텀시트(홈 카드·호출 시트) 높이 (축소 화면이면 실제 크기로 환산)
+function sheetCover() {
+  const sheet = LiveMap.el.closest(".tx-page")?.querySelector(".tx-sheet-fixed, .tx-home-card");
+  const mr = LiveMap.el.getBoundingClientRect();
+  if (!sheet || !mr.height) return 0;
+  return Math.max(0, (mr.bottom - sheet.getBoundingClientRect().top) * (LiveMap.el.clientHeight / mr.height));
 }
 
 // 실제 도로 경로 (OSRM 공개 서버). 실패하면 점선 직선을 그대로 둠
