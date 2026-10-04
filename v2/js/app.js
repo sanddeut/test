@@ -505,7 +505,7 @@ function recentDialog(n = 6) {
 }
 
 // 대화 턴 해석: 의도 분류 + 값 추출 + 스크립트 밖 응답(reply)
-async function turn(text, { said, intents, hint, fallback, fallbackBy, appKeywords }) {
+async function turn(text, { said, intents, hint, fallback, fallbackBy, appKeywords, freeOrigin }) {
   const step = S.steps[S.stepIdx];
   const res = await interpret("turn", text, {
     automation: S.automation === "high" ? "높은 자동화" : "낮은 자동화",
@@ -519,6 +519,7 @@ async function turn(text, { said, intents, hint, fallback, fallbackBy, appKeywor
     fallback_reply: fallback || null,
     fallback_by_intent: fallbackBy || null,
     app_keywords: appKeywords || null,
+    free_origin: freeOrigin || null,
   });
   return res.output;
 }
@@ -1280,14 +1281,19 @@ async function handleReject(step, c, said) {
       const o = await turn(await waitText(), {
         said,
         intents: ["set_origin", "cancel", "other"],
-        hint: `출발지로 고를 수 있는 곳은 ‘${ORIGINS[TARGET_ORIGIN].name}’(${TARGET_ORIGIN})과 현재 위치(current)야. 사용자가 둘 중 하나를 말하면 set_origin이야. 그 외 장소나 다른 말이면 reply는 짧게 받아준 뒤 출발지를 어디로 할지 다시 묻는 형태로 써. 시나리오에 없는 개념을 만들어내지 마.`,
-        fallback: `출발지는 ‘${ORIGINS[TARGET_ORIGIN].name}’이나 현재 위치로 설정할 수 있어요. 어디로 할까요?`,
+        hint: `사용자가 출발지로 할 장소를 말하면 set_origin이야. ‘${ORIGINS[TARGET_ORIGIN].name}’이면 origin=${TARGET_ORIGIN}, 현재 위치면 origin=current, 그 외 장소면 origin=null로 두고 origin_name에 그 장소 이름을 써. 장소를 말하지 않았으면(잡담, 질문 등) other이고, reply는 짧게 받아준 뒤 출발지를 어디로 할지 다시 묻는 형태로 써.`,
+        fallback: "출발지를 어디로 바꿀까요?",
+        freeOrigin: true,
       });
       logEvent("origin_named", { intent: o.intent, origin: o.origin });
-      if (o.intent === "set_origin" && ORIGINS[o.origin]) {
-        const keep = o.origin !== TARGET_ORIGIN;
-        await sayKey(keep ? "origin.skip" : "origin.confirm", undefined, { talk: true });
-        await doApply(step, keep ? "reject" : "approve", { announced: true });
+      // 말한 곳으로 바로 설정 (다시 묻지 않음): 동천역 / 현재 위치 / 그 외 말한 장소
+      const named = o.intent === "set_origin" && !ORIGINS[o.origin] && o.origin_name ? setCustomOrigin(o.origin_name, S.geo) : null;
+      if (o.intent === "set_origin" && (ORIGINS[o.origin] || named)) {
+        const k = named || o.origin;
+        const choice = k === "current" ? "reject" : k === TARGET_ORIGIN ? "approve" : "custom";
+        logEvent("origin_changed", { origin: k, name: ORIGINS[k].name, via: "reject_text" });
+        await sayKey(k === "current" ? "origin.skip" : "origin.confirm", { origin: k }, { talk: true });
+        await doApply(step, choice, { announced: true });
         return "done";
       }
       if (o.intent === "cancel") { await cancelRide(); return "cancel"; }
