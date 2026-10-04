@@ -180,7 +180,8 @@ function scriptDefaults(cond) {
   if (low) {
     add("dest", "목적지 설정", "승인 요청", "‘{목적지}’을 찾았어요. 여기로 갈까요?");
     add("dest.ask", "목적지 설정", "거부 시", "어디로 갈까요?");
-    add("dest.confirm", "목적지 설정", "목적지를 말했을 때", "‘{목적지}’으로 갈까요?");
+    add("dest.confirm", "목적지 설정", "목적지를 말했을 때 (다시 묻지 않고 진행)", "‘{목적지}’으로 갈게요.");
+    add("dest.reask", "목적지 설정", "미리 말한 목적지·중지 후 다시 물을 때", "‘{목적지}’으로 갈까요?");
   } else {
     add("dest", "목적지 설정", "안내", "‘{목적지}’을 목적지로 설정했어요.");
   }
@@ -363,6 +364,7 @@ function buildSteps(complexity, session = 1) {
     correction: {
       lowAsk: (s) => line("dest.ask", s),
       lowConfirm: (s, k) => line("dest.confirm", s, { dest: k }),
+      lowReask: (s, k) => line("dest.reask", s, { dest: k }),
     },
     // 검색창을 누르고 가게 이름을 입력 → 검색 결과가 나옴
     pre: async (s) => {
