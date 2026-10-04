@@ -387,6 +387,7 @@ mark.on { background: #ffe066; }
 .choice-list { display: flex; flex-direction: column; width: 100%; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 1px #e3e6ea; }
 .choice { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: #fff; padding: 14px 16px; text-align: left; color: #1c1d21; font-size: 16.5px; }
 .choice + .choice { border-top: 1px solid #eef0f3; }
+.choice-list .choice.chip { border-radius: 0; min-height: 60px; margin: 0; } /* 한 상자 안의 목록(행 사이 구분선만) */
 .choice:active:not(:disabled) { background: #f1f5fd; }
 .choice .c-main { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .choice .c-main b { font-weight: 600; }
@@ -572,12 +573,12 @@ select { border: 1px solid var(--line); background: var(--bg); border-radius: 8p
 .pv-amount { padding: 14px; text-align: center; }
 .pv-amount small { display: block; color: #6b6f7a; font-size: 13px; }
 .pv-amount b { display: block; font-size: 26px; font-weight: 700; margin-top: 2px; letter-spacing: -0.5px; }
-.pv-accts div { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; }
+.pv-accts div { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 60px; padding: 10px 16px; cursor: default; }
 .pv-accts div + div { border-top: 1px solid #eef0f3; }
-.pv-accts b { display: block; font-size: 15.5px; font-weight: 600; }
+.pv-accts b { display: block; font-size: 15.5px; font-weight: 500; color: #3c4048; line-height: 1.4; word-break: keep-all; }
+.pv-accts div.on b { font-weight: 700; color: #1c1d21; }
 .pv-accts small { color: #6b6f7a; font-size: 13px; }
-.pv-accts div:not(.on) { opacity: .5; }
-.pv-accts .ms { color: #0b57d0; font-size: 22px; vertical-align: 0; }
+.pv-accts .pv-check { flex: none; color: #0b57d0; font-size: 22px; font-weight: 700; vertical-align: 0; }
 .rc-manual { display: none; border: 0; background: none; color: #5f6470; font-size: 13.5px; text-decoration: underline; text-underline-offset: 3px; padding: 2px; align-self: center; }
 .run-card.asking.can-manual .rc-manual { display: block; }
 .rc-manual:disabled { opacity: .4; }
@@ -783,15 +784,7 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .tx-resv .tx-call + .tx-call { margin-top: 8px; }
 .pill-row { display: flex; justify-content: center; gap: 8px; width: 100%; margin-top: 10px; }
 .tx-req-ok { margin-top: 12px; cursor: default; }
-.rc-pv.pv-req { display: grid; grid-auto-rows: 1fr; gap: 8px; background: none; box-shadow: none; }
-.pv-req div { display: flex; align-items: center; justify-content: flex-start; gap: 12px; min-height: 64px; padding: 12px 16px; background: #fff; border-radius: 14px; box-shadow: 0 0 0 1px #d6dce6; }
-.pv-req div + div { border-top: 0; }
-.pv-req div:not(.on) { opacity: 1; }
-.pv-req div:not(.on) b { color: #3c4048; font-weight: 500; }
-.pv-req div:not(.on) .ms { color: #a3a8b3; }
-.pv-req div.on { background: #eef4ff; box-shadow: 0 0 0 1.5px #0b57d0; }
-.pv-req .ms { flex: none; width: 24px; overflow: hidden; font-size: 24px; }
-.pv-req b { font-size: 15.5px; line-height: 1.4; word-break: keep-all; }
+
 
 /* 비밀번호: 대화창에는 [화면 열기]만 */
 .pw-open { display: flex; flex-direction: column; gap: 12px; }

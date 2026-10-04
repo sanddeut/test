@@ -172,6 +172,8 @@ function freezeQuestion() {
 }
 
 // 단계별 재구성 UI (승인 질문과 함께 진행 카드 안에 표시)
+// 선택지 목록은 누르는 버튼처럼 보이지 않게: 한 상자 안의 목록(스택드 리스트) + 고른 행 오른쪽에 색 체크만
+const PV_CHECK = '<span class="ms pv-check">check</span>';
 function stepPreview() {
   const id = S.steps[S.stepIdx]?.id;
   const el = (cls, html) => { const d = document.createElement("div"); d.className = `rc-pv ${cls}`; d.innerHTML = html; return d; };
@@ -179,12 +181,12 @@ function stepPreview() {
     el("pv-app", `<span class="pv-icon" style="background:${color}"><span class="ms">${icon}</span></span><span><b>${esc(name)}</b><small>${esc(sub)}</small></span>`);
   // 높은 자동화: 고른 항목 표시 (낮은 자동화는 선택 목록이 대신함)
   const picked = (opts, cur) => el("pv-accts", Object.entries(opts).map(([k, o]) =>
-    `<div class="${cur === k ? "on" : ""}"><span><b>${esc(o.label)}</b><small>${esc(o.desc)}</small></span>${cur === k ? '<span class="ms">check_circle</span>' : ""}</div>`).join(""));
+    `<div class="${cur === k ? "on" : ""}"><span><b>${esc(o.label)}</b><small>${esc(o.desc)}</small></span>${cur === k ? PV_CHECK : ""}</div>`).join(""));
   switch (id) {
     case "taxi_open": return appTile(TAXI_APP, "local_taxi", "#f5b400", "택시 앱");
     case "origin":
       return el("pv-accts pv-origin", `<div><span><small>지금 출발지</small><b>${esc(originLabel("current", S.geo))}</b></span></div>
-        <div class="on"><span><small>바꿀 출발지</small><b>${esc(ORIGINS[TARGET_ORIGIN].name)}</b><small>${esc(ORIGINS[TARGET_ORIGIN].addr)}</small></span><span class="ms">subway</span></div>`);
+        <div class="on"><span><small>바꿀 출발지</small><b>${esc(ORIGINS[TARGET_ORIGIN].name)}</b><small>${esc(ORIGINS[TARGET_ORIGIN].addr)}</small></span>${PV_CHECK}</div>`);
     case "dest": {
       const k = S.phone.pendingDest ?? S.form.dest ?? AGENT_PLACE;
       return el("pv-acct pv-place", `<span class="pv-pin"><span class="ms fill">location_on</span></span><span><b>${esc(PLACES[k].name)}</b><small>${esc(PLACES[k].addr)} · ${esc(distText(S.form.origin, k, S.geo))}</small></span>`);
@@ -197,7 +199,7 @@ function stepPreview() {
     case "request": {
       const cur = S.phone.reqFocus ?? S.form.request;
       return el("pv-accts pv-req", REQUEST_CHOICES.map((k) => [k, REQUESTS[k]]).map(([k, v]) =>
-        `<div class="${cur === k ? "on" : ""}"><span class="ms${cur === k ? " fill" : ""}">${cur === k ? "check_circle" : "radio_button_unchecked"}</span><b>${esc(v)}</b></div>`).join(""));
+        `<div class="${cur === k ? "on" : ""}"><b>${esc(v)}</b>${cur === k ? PV_CHECK : ""}</div>`).join(""));
     }
     case "reserve":
       return el("rc-summary", [["출발", "신분당선 동천역"], ["도착", "담소한정식 강남점"], ["예약 시간", RESERVE.when], ["택시 종류", CAR_TYPES[S.form.car].label]]
