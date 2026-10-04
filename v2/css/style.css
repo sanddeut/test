@@ -604,7 +604,8 @@ body.show-src [data-src="script"]::after { content: "시나리오"; color: #9aa0
 body.show-src [data-src="llm"]::after { content: "LLM"; color: #1a73e8; }
 body.show-src [data-src="rules"]::after { content: "규칙 대체 (Gemini 실패)"; color: #c5221f; }
 body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gemini 실패: " attr(data-err) ")"; font-weight: 500; word-break: break-all; }
-.setup-src { margin: 16px 0 0; }
+.setup-src { flex-direction: row; align-items: center; gap: 5px; justify-content: center; flex-wrap: nowrap; width: 100%; white-space: nowrap; margin: 6px 0 0; font-size: 12px; font-weight: 400; color: var(--muted); }
+.setup-src input { width: 13px; height: 13px; margin: 0; }
 
 /* =====================================================================
    v2 · 마음택시 (가상 택시 앱)
