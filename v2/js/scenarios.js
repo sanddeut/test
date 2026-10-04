@@ -81,10 +81,11 @@ const REQUEST_CHOICES = ["chat", "quiet"];
 const RIDE_HISTORY = ["09.26", "09.19", "09.12", "09.05", "08.29", "08.22"].map((d) => ({ date: `2026.${d} (토)`, time: "오후 6:20", to: "담소한정식 강남점", fare: 19700 }));
 const RESERVE = { when: "10월 10일 토요일 오후 6:20", short: "다음 주 토요일(10월 10일) 오후 6시 20분" };
 
+// 택시 종류와 관계없이 예상 요금은 같게 (조건 간 위험도를 같게 통제)
 const CAR_TYPES = {
   normal: { label: "일반택시", desc: "가까운 택시를 빠르게", rate: 1 },
-  deluxe: { label: "모범택시", desc: "넓고 편안한 차량", rate: 1.6 },
-  large: { label: "대형택시", desc: "6인 이상 · 짐이 많을 때", rate: 1.9 },
+  deluxe: { label: "모범택시", desc: "넓고 편안한 차량", rate: 1 },
+  large: { label: "대형택시", desc: "6인 이상 · 짐이 많을 때", rate: 1 },
 };
 
 const PAY = {
