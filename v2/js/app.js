@@ -197,7 +197,7 @@ function stepPreview() {
     case "request": {
       const cur = S.phone.reqFocus ?? S.form.request;
       return el("pv-accts pv-req", REQUEST_CHOICES.map((k) => [k, REQUESTS[k]]).map(([k, v]) =>
-        `<div class="${cur === k ? "on" : ""}"><span><b>${esc(v)}</b></span>${cur === k ? '<span class="ms">check_circle</span>' : ""}</div>`).join(""));
+        `<div class="${cur === k ? "on" : ""}"><span class="ms${cur === k ? " fill" : ""}">${cur === k ? "check_circle" : "radio_button_unchecked"}</span><b>${esc(v)}</b></div>`).join(""));
     }
     case "reserve":
       return el("rc-summary", [["출발", "신분당선 동천역"], ["도착", "담소한정식 강남점"], ["예약 시간", RESERVE.when], ["택시 종류", CAR_TYPES[S.form.car].label]]
@@ -863,7 +863,7 @@ async function handleStop(via) {
   syncControls();
 
   resetStatus(); // 진행 문구를 새로 시작
-  let said = await sayKey("stop.ask");
+  let said = await sayKey(stepIdNow() === "reserve" ? "stop.ask.reserve" : "stop.ask");
   for (;;) {
     setChips([...(stepIdNow() === "request" ? requestOptions() : []), { id: "manual", label: "직접 조작" }, { id: "resume", label: "계속하기" }], (o) => {
       if (!S.ivWaiter) return;
@@ -1216,10 +1216,28 @@ async function handleReject(step, c, said) {
   }
 
   if (type === "origin") {
-    // 출발지를 바꾸지 않으면 현재 위치에서 출발
-    await sayKey("origin.skip");
-    await doApply(step, "reject", { announced: true });
-    return "done";
+    // 출발지를 어디로 할지 물음 → 말한 출발지로 다시 묻지 않고 바로 진행 (현재 위치면 그대로 둠)
+    const ask = line("origin.ask", S);
+    await agentSay(ask);
+    let said = ask;
+    for (;;) {
+      const o = await turn(await waitText(), {
+        said,
+        intents: ["set_origin", "cancel", "other"],
+        hint: `출발지로 고를 수 있는 곳은 ‘${ORIGINS[TARGET_ORIGIN].name}’(${TARGET_ORIGIN})과 현재 위치(current)야. 사용자가 둘 중 하나를 말하면 set_origin이야. 그 외 장소나 다른 말이면 reply는 짧게 받아준 뒤 출발지를 어디로 할지 다시 묻는 형태로 써. 시나리오에 없는 개념을 만들어내지 마.`,
+        fallback: `출발지는 ‘${ORIGINS[TARGET_ORIGIN].name}’이나 현재 위치로 설정할 수 있어요. 어디로 할까요?`,
+      });
+      logEvent("origin_named", { intent: o.intent, origin: o.origin });
+      if (o.intent === "set_origin" && ORIGINS[o.origin]) {
+        const keep = o.origin !== TARGET_ORIGIN;
+        await sayKey(keep ? "origin.skip" : "origin.confirm", undefined, { talk: true });
+        await doApply(step, keep ? "reject" : "approve", { announced: true });
+        return "done";
+      }
+      if (o.intent === "cancel") { await cancelRide(); return "cancel"; }
+      said = o.reply;
+      await agentSay(o.reply, { talk: true });
+    }
   }
 
   if (type === "request") {

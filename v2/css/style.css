@@ -779,4 +779,12 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .tx-resv .tx-call + .tx-call { margin-top: 8px; }
 .pill-row { display: flex; justify-content: center; gap: 8px; width: 100%; margin-top: 10px; }
 .tx-req-ok { margin-top: 12px; cursor: default; }
-.pv-req div { padding: 9px 14px; }
+.rc-pv.pv-req { display: grid; grid-auto-rows: 1fr; gap: 8px; background: none; box-shadow: none; }
+.pv-req div { display: flex; align-items: center; justify-content: flex-start; gap: 12px; min-height: 64px; padding: 12px 16px; background: #fff; border-radius: 14px; box-shadow: 0 0 0 1px #d6dce6; }
+.pv-req div + div { border-top: 0; }
+.pv-req div:not(.on) { opacity: 1; }
+.pv-req div:not(.on) b { color: #3c4048; font-weight: 500; }
+.pv-req div:not(.on) .ms { color: #a3a8b3; }
+.pv-req div.on { background: #eef4ff; box-shadow: 0 0 0 1.5px #0b57d0; }
+.pv-req .ms { flex: none; width: 24px; overflow: hidden; font-size: 24px; }
+.pv-req b { font-size: 15.5px; line-height: 1.4; word-break: keep-all; }
