@@ -196,7 +196,7 @@ function stepPreview() {
     case "final": return rideSummary();
     case "request": {
       const cur = S.phone.reqFocus ?? S.form.request;
-      return el("pv-accts pv-req", Object.entries(REQUESTS).map(([k, v]) =>
+      return el("pv-accts pv-req", REQUEST_CHOICES.map((k) => [k, REQUESTS[k]]).map(([k, v]) =>
         `<div class="${cur === k ? "on" : ""}"><span><b>${esc(v)}</b></span>${cur === k ? '<span class="ms">check_circle</span>' : ""}</div>`).join(""));
     }
     case "reserve":
@@ -768,7 +768,7 @@ const stepIdNow = () => S.steps[S.stepIdx]?.id;
 
 // 기사님 요청사항 선택지 (지금 선택된 항목 표시)
 function requestOptions() {
-  return Object.entries(REQUESTS).map(([id, label]) => ({ id, label, desc: (S.form.request || "none") === id ? "지금 선택됨" : "" }));
+  return REQUEST_CHOICES.map((id) => ({ id, label: REQUESTS[id], desc: (S.form.request || "none") === id ? "지금 선택됨" : "" }));
 }
 
 function changeIntents() {
@@ -1225,7 +1225,7 @@ async function handleReject(step, c, said) {
   if (type === "request") {
     // 참가자가 말한 요청사항으로 바꿈 → 실행화면에서 고르는 과정을 보여주고 → 다시 승인을 물음
     S.requestByUser = true;
-    const hint = `고를 수 있는 기사님 요청사항은 ${Object.entries(REQUESTS).map(([k, v]) => `${v}(${k})`).join(", ")}이고, 지금은 ‘${REQUESTS[S.form.request]}’야. 사용자가 다른 요청사항이나 '없음'을 말하면 set_request야. 말하지 않으면 reply로 어떤 요청사항으로 할지 되물어.`;
+    const hint = `고를 수 있는 기사님 요청사항은 ${REQUEST_CHOICES.map((k) => `${REQUESTS[k]}(${k})`).join(", ")}이고(요청사항 없이 하려면 none), 지금은 ‘${REQUESTS[S.form.request]}’야. 사용자가 다른 요청사항이나 '없음'을 말하면 set_request야. 말하지 않으면 reply로 어떤 요청사항으로 할지 되물어.`;
     let o = c.id === "set_request" ? c.out : null;
     // 요청사항 목록을 선택지로 보여주고 고르게 함 (말로 답해도 됨)
     const pickFromList = async () => {
