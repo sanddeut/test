@@ -557,7 +557,8 @@ function refreshMap() {
   LiveMap.layer.clearLayers();
   const current = S.form.origin === "current";
   L.marker([o.lat, o.lng], { icon: pinIcon(current ? "me" : "origin", current ? "<i></i>" : "<span>출발</span>") }).addTo(LiveMap.layer);
-  if (!destKey) { map.setView([o.lat, o.lng], 15); return; }
+  // 경로가 없을 때(출발지 설정 중): 동천역으로 바꾼 뒤에는 역 주변이 보이게 가깝게, 현재 위치는 조금 넓게
+  if (!destKey) { map.setView([o.lat, o.lng], current ? 16 : 18); return; }
   const d = PLACES[destKey];
   L.marker([d.lat, d.lng], { icon: pinIcon("dest", "<span>도착</span>") }).addTo(LiveMap.layer);
   const rk = `${o.lat},${o.lng}>${destKey}`;
