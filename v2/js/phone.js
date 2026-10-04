@@ -130,6 +130,12 @@ function taxiScreen() {
   return `<div class="taxi">${view}${taxiOverlay()}</div>`;
 }
 
+// 경로 화면 위에 떠 있는 상단 바: 앱 로고 + 출발 › 도착 (실제 택시 앱처럼)
+function floatHead() {
+  const dest = PLACES[shownDest() || TARGET_PLACE];
+  return `<div class="tx-float"><span class="tx-logo sm">${mi("local_taxi", "fill")}</span><span class="tx-float-od"><b>${esc(originLabel(S.form.origin, S.geo))}</b>${mi("chevron_right")}<b>${esc(dest.name)}</b></span></div>`;
+}
+
 // 지도: 실제 지도(Leaflet + 오픈스트리트맵 기반 타일)를 이 자리에 붙임. 지도 라이브러리를 못 불러오면 그림 지도로 대체
 function mapArt({ route = false } = {}) {
   if (window.L) return `<div class="tx-map-slot ${route ? "route" : ""}"></div>`;
@@ -213,6 +219,7 @@ function taxiRide() {
       <span class="tx-car-main"><b>${c.label}</b><small>${c.desc}</small></span><b class="tx-price">${won0(fareOf({ ...f, car: k }, shownDest()))}</b></div>`).join("");
   return `<div class="tx-page">
     ${mapArt({ route: true })}
+    ${floatHead()}
     <div class="tx-sheet-fixed">
       <div class="tx-od">
         <div>${mi("trip_origin", "o")}<span>${originHtml()}</span></div>
@@ -229,6 +236,7 @@ function taxiRide() {
 function taxiCalling() {
   return `<div class="tx-page">
     ${mapArt({ route: true })}
+    ${floatHead()}
     <div class="tx-sheet-fixed center"><div class="tx-radar"><i></i><i></i>${mi("local_taxi", "fill")}</div>
       <b>주변 ${esc(CAR_TYPES[S.form.car].label)}를 찾고 있어요</b><small class="muted">잠시만 기다려 주세요</small></div>
   </div>`;
@@ -275,6 +283,7 @@ function taxiComplete() {
   const f = S.form;
   return `<div class="tx-page">
     ${mapArt({ route: true })}
+    ${floatHead()}
     <div class="tx-sheet-fixed">
       <div class="tx-done-head"><span class="done-check">${mi("check")}</span><span><b>기사님이 오고 있어요</b><small>3분 뒤 도착 · 서울 32바 1234 · 흰색 쏘나타</small></span></div>
       <div class="done-box">${rideRows().map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join("")}</div>
@@ -313,7 +322,7 @@ function taxiOverlay() {
   }
   if (p.sheet === "pin") {
     const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
-    return `<div class="dim ${enter}"><div class="sheet pin ${enter}"><h3>결제 비밀번호</h3><p class="muted">마음카드 ****1234 · 비밀번호 4자리를 입력해주세요</p>
+    return `<div class="dim ${enter}"><div class="sheet pin ${enter}"><div class="tx-brand"><span class="tx-logo sm">${mi("local_taxi", "fill")}</span><b>${TAXI_APP} 페이</b><small>${mi("lock")} 보안 키패드</small></div><h3>결제 비밀번호</h3><p class="muted">마음카드 ****1234 · 비밀번호 4자리를 입력해주세요</p>
       <div class="dots">${[0, 1, 2, 3].map((i) => `<i class="${i < (p.pin || "").length ? "on" : ""}"></i>`).join("")}</div>
       <div class="keypad">${keys.map((k) => (k ? `<button type="button" data-pin="${k}">${k === "del" ? mi("backspace") : k}</button>` : "<span></span>")).join("")}</div></div></div>`;
   }
@@ -556,20 +565,37 @@ function refreshMap() {
   LiveMap.key = key;
   LiveMap.layer.clearLayers();
   const current = S.form.origin === "current";
-  L.marker([o.lat, o.lng], { icon: pinIcon(current ? "me" : "origin", current ? "<i></i>" : "<span>출발</span>") }).addTo(LiveMap.layer);
+  L.marker([o.lat, o.lng], { icon: pinIcon(current ? "me" : "origin", current ? "<i></i>" : `<span>출발 ${mi("chevron_right")}</span>`) }).addTo(LiveMap.layer);
   // 경로가 없을 때(출발지 설정 중): 동천역으로 바꾼 뒤에는 역 주변이 보이게 가깝게, 현재 위치는 조금 넓게
-  if (!destKey) { map.setView([o.lat, o.lng], current ? 16 : 18); return; }
+  if (!destKey) {
+    map.setView([o.lat, o.lng], current ? 16 : 18, { animate: false });
+    map.panBy([0, sheetCover() / 2], { animate: false }); // 출발지 핀이 아래 카드에 가리지 않고 보이는 부분 가운데에 오게
+    return;
+  }
   const d = PLACES[destKey];
-  L.marker([d.lat, d.lng], { icon: pinIcon("dest", "<span>도착</span>") }).addTo(LiveMap.layer);
+  const eta = d.road ? Math.round(d.road * 1.3) : null; // 도로 거리로 어림한 예상 소요 시간(분)
+  L.marker([d.lat, d.lng], { icon: pinIcon("dest", `<span><em>도착</em>${eta ? `<b>${eta}분 예상 ${mi("chevron_right")}</b>` : ""}</span>`) }).addTo(LiveMap.layer);
   const rk = `${o.lat},${o.lng}>${destKey}`;
   const line = LiveMap.routes[rk];
-  if (line) L.polyline(line, { color: "#1c1d21", weight: 5, opacity: 0.85 }).addTo(LiveMap.layer);
+  if (line) {
+    L.polyline(line, { color: "#fff", weight: 9, opacity: 0.9 }).addTo(LiveMap.layer);
+    L.polyline(line, { color: "#3274e6", weight: 6, opacity: 1 }).addTo(LiveMap.layer);
+  }
   else {
-    L.polyline([[o.lat, o.lng], [d.lat, d.lng]], { color: "#1c1d21", weight: 4, opacity: 0.5, dashArray: "6 8" }).addTo(LiveMap.layer);
+    L.polyline([[o.lat, o.lng], [d.lat, d.lng]], { color: "#3274e6", weight: 4, opacity: 0.6, dashArray: "6 8" }).addTo(LiveMap.layer);
     fetchRoute(rk, o, d);
   }
-  // 아래쪽은 호출 시트에 조금 가려지므로 여백을 더 둠
-  map.fitBounds(L.latLngBounds([[o.lat, o.lng], [d.lat, d.lng]]), { paddingTopLeft: [40, 44], paddingBottomRight: [40, 80] });
+  // 지도 아래쪽은 바텀시트가 덮으므로, 시트 위로 보이는 부분 안에 경로가 들어오게 맞춤
+  const covered = sheetCover();
+  map.fitBounds(L.latLngBounds([[o.lat, o.lng], [d.lat, d.lng]]), { paddingTopLeft: [40, 110], paddingBottomRight: [40, covered + 36] });
+}
+
+// 지도 아래쪽을 덮고 있는 바텀시트(홈 카드·호출 시트) 높이 (축소 화면이면 실제 크기로 환산)
+function sheetCover() {
+  const sheet = LiveMap.el.closest(".tx-page")?.querySelector(".tx-sheet-fixed, .tx-home-card");
+  const mr = LiveMap.el.getBoundingClientRect();
+  if (!sheet || !mr.height) return 0;
+  return Math.max(0, (mr.bottom - sheet.getBoundingClientRect().top) * (LiveMap.el.clientHeight / mr.height));
 }
 
 // 실제 도로 경로 (OSRM 공개 서버). 실패하면 점선 직선을 그대로 둠
