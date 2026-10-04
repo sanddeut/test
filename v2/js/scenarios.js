@@ -73,11 +73,10 @@ const REQUESTS = {
   none: "요청사항 없음",
   chat: "기사님과 이야기 나누며 가고 싶어요",
   quiet: "조용히 가주세요",
-  luggage: "짐이 있어요",
-  safe: "천천히 안전하게 가주세요",
-  fast: "빠른 길로 가주세요",
 };
 const AGENT_REQUEST = "chat";
+// 참가자에게 보여주는 선택지 ("요청사항 없음"은 기본값이라 목록에는 넣지 않음)
+const REQUEST_CHOICES = ["chat", "quiet"];
 // 세션2: 최근 3개월 이용내역 (매주 토요일 담소한정식 강남점)
 const RIDE_HISTORY = ["09.26", "09.19", "09.12", "09.05", "08.29", "08.22"].map((d) => ({ date: `2026.${d} (토)`, time: "오후 6:20", to: "담소한정식 강남점", fare: 19700 }));
 const RESERVE = { when: "10월 10일 토요일 오후 6:20", short: "다음 주 토요일(10월 10일) 오후 6시 20분" };
@@ -497,7 +496,7 @@ function buildSteps(complexity, session = 1) {
       id: "request",
       kind: "error_request",
       label: "[세션1 오류] 기사님 요청사항 임의 선택",
-      guide: `호출 확인 화면에서 에이전트가 사용자에게 묻지 않고 기사님 요청사항을 ‘${REQUESTS[AGENT_REQUEST]}’로 선택한 단계. 고를 수 있는 요청사항: ${Object.values(REQUESTS).join(", ")}`,
+      guide: `호출 확인 화면에서 에이전트가 사용자에게 묻지 않고 기사님 요청사항을 ‘${REQUESTS[AGENT_REQUEST]}’로 선택한 단계. 고를 수 있는 요청사항: ${REQUEST_CHOICES.map((k) => REQUESTS[k]).join(", ")} (요청사항 없이 호출할 수도 있음)`,
       low: { messages: (s) => lines("request", s, { request: AGENT_REQUEST }), options: APPROVE, reject: "request" },
       high: { messages: msg("request") },
       // 호출 확인 시트의 [기사님 요청사항]을 누르고 '기사님과 이야기 나누며 가고 싶어요'를 고른 뒤 알리거나 승인을 물음

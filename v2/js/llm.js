@@ -86,7 +86,7 @@ const DEFAULT_PROMPT = `# 역할
 const OUTPUT_FORMAT = `# 출력 형식
 항상 지정된 JSON 스키마로만 답해.
 - intent: 사용자 발화가 "분류할 의도" 목록 중 무엇에 해당하는지 id로 골라. 어느 것에도 맞지 않으면 other.
-- request: 사용자가 말한 기사님 요청사항. 요청사항 없이·빼줘 → none, 기사님과 이야기하며 가기 → chat, 조용히 가주세요 → quiet, 짐이 있어요 → luggage, 천천히 안전하게 → safe, 빠른 길로 → fast. 그 외는 null.
+- request: 사용자가 말한 기사님 요청사항. 요청사항 없이·빼줘 → none, 기사님과 이야기하며 가기 → chat, 조용히 가주세요 → quiet. 그 외는 null.
 - origin: 사용자가 말한 출발지. 동천역 → dongcheon, 현재 위치(여기, 지금 있는 곳) → current. 그 외는 null.
 - place: 사용자가 말한 목적지 지점. 강남점 → gangnam, 강남구청점 → gucheong, 역삼점 → yeoksam. 구어체, 맞춤법 오류, 음성인식 오류(예: "강남 구청점", "강남쩜")는 너그럽게 해석해. 세 곳이 아니면 null.
 - car_type: 일반택시 → normal, 모범택시 → deluxe, 대형택시 → large.
@@ -119,7 +119,7 @@ function turnSchema(intentIds) {
   return sch("OBJECT", {
     properties: {
       intent: sch("STRING", { enum: intentIds }),
-      request: sch("STRING", { nullable: true, enum: ["none", "chat", "quiet", "luggage", "safe", "fast"] }),
+      request: sch("STRING", { nullable: true, enum: ["none", "chat", "quiet"] }),
       origin: sch("STRING", { nullable: true, enum: ["current", "dongcheon"] }),
       place: sch("STRING", { nullable: true, enum: PLACE_ENUM }),
       car_type: sch("STRING", { nullable: true, enum: ["normal", "deluxe", "large"] }),
@@ -141,7 +141,7 @@ const INTENT_MEANINGS = {
   auto: "자동결제(등록된 카드)를 고름",
   direct: "직접결제(내릴 때 기사님께)를 고름",
   set_origin: "출발지를 바꾸라고 함 (origin 채움)",
-  set_request: "기사님 요청사항을 바꾸거나 빼라고 함 (request 채움: 없음 → none, 대화·이야기 → chat, 조용히 → quiet, 짐 → luggage, 천천히·안전 → safe, 빠른 길 → fast)",
+  set_request: "기사님 요청사항을 바꾸거나 빼라고 함 (request 채움: 없음 → none, 대화·이야기 → chat, 조용히 → quiet)",
   set_dest: "목적지를 특정 지점으로 바꾸라고 함 (place 채움)",
   set_car: "택시 종류를 바꾸라고 함 (car_type 채움)",
   set_pay: "결제 방식을 바꾸라고 함 (pay_method 채움)",
@@ -318,13 +318,10 @@ async function geminiRequest(key, model, prompt, schema, thinking) {
 // ---------------- 규칙 기반 해석 (키 없음 / 실패 시) ----------------
 // 예상 밖 답변을 몇 가지 유형으로 나누고, 유형별로 정해진 답변을 돌려줍니다.
 
-// 기사님 요청사항: "빼줘"·"없이" → none, "대화"·"이야기" → chat, "조용히" → quiet, "짐" → luggage, "천천히"·"안전" → safe, "빠른" → fast
+// 기사님 요청사항: "빼줘"·"없이" → none, "대화"·"이야기" → chat, "조용히" → quiet
 function extractRequest(t) {
   if (/조용/.test(t)) return /(빼|말고|없이|취소|싫)/.test(t) ? "none" : "quiet";
   if (/(대화|이야기|얘기|말\s?걸)/.test(t)) return /(빼|말고|없이|취소|싫|안\s?하)/.test(t) ? "none" : "chat";
-  if (/짐/.test(t)) return "luggage";
-  if (/천천|안전/.test(t)) return "safe";
-  if (/빠른|빨리/.test(t)) return "fast";
   if (/(요청|요청사항)/.test(t) && /(빼|없이|없애|취소|안\s?해)/.test(t)) return "none";
   if (/^(없어|없이|빼줘|빼|없음)/.test(t.trim())) return "none";
   return null;
