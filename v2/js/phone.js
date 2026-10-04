@@ -148,7 +148,7 @@ function taxiHome() {
       <div class="tx-from ${S.phone.focus === "origin" ? "hl" : ""}" ${S.manual ? "data-man-from" : ""}>${mi(S.form.origin === "current" ? "my_location" : "trip_origin")}<span><small>출발</small> ${originHtml()}</span>${mi("chevron_right", "tx-from-go")}</div>
       <div class="tx-search ${S.phone.focus === "search" ? "hl" : ""}" ${live}>${mi("search")}<span class="ph">어디로 갈까요?</span></div>
       <div class="tx-quick"><span>${mi("home")}집</span><span>${mi("work")}회사</span><span>${mi("add")}추가</span></div>
-      <div class="tx-banner">${mi("confirmation_number")}<span>쿠폰함에 쓸 수 있는 쿠폰이 있어요</span></div>
+      ${USE_COUPON ? `<div class="tx-banner">${mi("confirmation_number")}<span>쿠폰함에 쓸 수 있는 쿠폰이 있어요</span></div>` : ""}
     </div>
   </div>`;
 }
@@ -219,7 +219,7 @@ function taxiRide() {
       </div>
       <div class="tx-cars ${p.focus === "car" ? "hl" : ""}">${cars}</div>
       <div class="tx-row tx-pay" ${man ? "data-man-pay" : ""}><span>결제</span><b>${PAY[f.pay].label} <small>${PAY[f.pay].desc}</small> ${mi("chevron_right")}</b></div>
-      <div class="tx-row tx-coupon" ${man ? "data-man-coupon" : ""}><span>쿠폰</span><b class="${f.coupon ? "on" : ""}">${f.coupon ? `−${won0(COUPON.amount)} 적용` : "1장 사용 가능"} ${mi("chevron_right")}</b></div>
+      ${USE_COUPON ? `<div class="tx-row tx-coupon" ${man ? "data-man-coupon" : ""}><span>쿠폰</span><b class="${f.coupon ? "on" : ""}">${f.coupon ? `−${won0(COUPON.amount)} 적용` : "1장 사용 가능"} ${mi("chevron_right")}</b></div>` : ""}
       <div class="tx-call">${CAR_TYPES[f.car].label} 호출하기</div>
     </div>
   </div>`;
@@ -264,7 +264,7 @@ function rideRows() {
     ["도착", PLACES[f.dest || TARGET_PLACE].name],
     ["택시 종류", CAR_TYPES[f.car].label],
     ["결제", `${PAY[f.pay].label} · ${PAY[f.pay].desc}`],
-    ...(S.complexity === "B" || f.coupon ? [["쿠폰", f.coupon ? `${COUPON.name}` : "적용 안 함"]] : []),
+    ...((S.complexity === "B" && USE_COUPON) || f.coupon ? [["쿠폰", f.coupon ? `${COUPON.name}` : "적용 안 함"]] : []),
     ...(f.request && f.request !== "none" ? [["기사님 요청사항", REQUESTS[f.request]]] : []),
     ["예상 요금", won0(fareOf(f))],
   ];
