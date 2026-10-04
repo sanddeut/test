@@ -172,9 +172,11 @@ function scriptDefaults(cond) {
   add("taxi_open.opening", "택시 앱 실행", "진행 문구 (앱을 여는 동안)", "택시 앱을 열고 있어요 …");
 
   if (low) {
-    add("origin", "출발지 변경", "승인 요청", "출발지가 현재 위치로 되어 있어요. 출발지를 ‘신분당선 동천역’으로 바꿀까요?");
-    add("origin.skip", "출발지 변경", "거부 시", "출발지는 현재 위치로 둘게요.");
-  } else add("origin", "출발지 변경", "안내", "말씀하신 ‘신분당선 동천역’으로 출발지를 바꿨어요.");
+    add("origin", "출발지 설정", "승인 요청", "출발지를 ‘신분당선 동천역’으로 설정할까요?");
+    add("origin.ask", "출발지 설정", "거부 시", "출발지를 어디로 바꿀까요?");
+    add("origin.confirm", "출발지 설정", "출발지를 말했을 때 (다시 묻지 않고 진행)", "출발지를 ‘신분당선 동천역’으로 설정할게요.");
+    add("origin.skip", "출발지 설정", "현재 위치를 말했을 때 (다시 묻지 않고 진행)", "출발지는 현재 위치로 둘게요.");
+  } else add("origin", "출발지 설정", "안내", "말씀하신 ‘신분당선 동천역’으로 출발지를 설정했어요.");
 
   add("dest.busy", "목적지 설정", "진행 문구 (검색 중)", "목적지를 검색하고 있어요 …");
   if (low) {
@@ -211,7 +213,7 @@ function scriptDefaults(cond) {
 
   // [세션1 오류] 기사님 요청사항 임의 선택
   if (low) {
-    add("request", "[세션1 오류] 기사님 요청사항", "승인 요청", "기사님 요청사항을 선택할 수 있어요. ‘{요청사항}’를 선택할까요?");
+    add("request", "[세션1 오류] 기사님 요청사항", "승인 요청", "기사님 요청사항을 선택할 수 있어요. ‘{요청사항}’를 선택했어요.");
     add("request.ask", "[세션1 오류] 기사님 요청사항", "거부 시", "기사님 요청사항을 어떻게 할까요?");
     add("request.confirm", "[세션1 오류] 기사님 요청사항", "요청사항을 고른 뒤", "기사님 요청사항을 ‘{요청사항}’로 바꿨어요. 이렇게 호출할게요.");
   } else add("request", "[세션1 오류] 기사님 요청사항", "안내", "기사님 요청사항을 선택할 수 있어요. ‘{요청사항}’를 선택했어요.");
@@ -224,7 +226,6 @@ function scriptDefaults(cond) {
   add("done", "완료 안내", "안내", "{택시종류}를 호출했어요. 기사님이 3분 뒤 도착해요.");
 
   // [세션2 오류] 이용내역 열람 + 예약 호출
-  add("reserve.busy", "[세션2 오류] 이용내역 열람 + 예약 호출", "진행 문구 (이용내역 확인 중)", "이용내역을 확인하고 있어요 …");
   if (low) {
     add("reserve", "[세션2 오류] 이용내역 열람 + 예약 호출", "승인 요청", "최근 3개월 이용내역을 확인해 보니, 매주 토요일 담소한정식 강남점에 가신 기록이 있어요.\n다음 주 토요일에도 같은 시간에 택시를 예약할까요?");
     add("reserve.no", "[세션2 오류] 이용내역 열람 + 예약 호출", "거부 시", "다음 주 택시는 예약하지 않을게요.");
@@ -235,6 +236,7 @@ function scriptDefaults(cond) {
   add("reserve.cancel", "[세션2 오류] 이용내역 열람 + 예약 호출", "중지 중 예약을 취소했을 때", "택시 예약을 취소했어요.");
 
   add("stop.ask", "중지·직접 조작", "중지를 눌렀을 때", "진행을 멈췄어요. 어떻게 바꿀까요?");
+  add("stop.ask.reserve", "[세션2 오류] 이용내역 열람 + 예약 호출", "예약 중 중지를 눌렀을 때", "예약을 멈췄어요. 무엇을 수정할까요?");
   add("change.origin", "중지·직접 조작", "중지 중 출발지를 바꿨을 때", low ? "출발지를 ‘{출발지}’(으)로 바꿀게요." : "출발지를 ‘{출발지}’(으)로 바꿨어요.");
   add("change.dest", "중지·직접 조작", "중지 중 목적지를 바꿨을 때", low ? "목적지를 ‘{목적지}’으로 바꿀게요." : "목적지를 ‘{목적지}’으로 바꿨어요.");
   if (B) add("change.car", "중지·직접 조작", "중지 중 택시 종류를 바꿨을 때", "택시 종류를 {택시종류}로 바꿨어요.");
@@ -317,7 +319,7 @@ function buildSteps(complexity, session = 1) {
 
   steps.push({
     id: "origin",
-    label: "출발지 변경",
+    label: "출발지 설정",
     guide: "출발지를 휴대폰의 현재 위치에서 ‘신분당선 동천역’으로 바꾸는 단계. 출발지 검색 결과는 신분당선 동천역, 동천역 버스정류장, 동천역 환승주차장이고 택시를 탈 곳은 신분당선 동천역",
     low: { messages: msg("origin"), options: APPROVE, reject: "origin" },
     high: { messages: msg("origin"), applyFirst: true },
@@ -503,12 +505,11 @@ function buildSteps(complexity, session = 1) {
       high: { messages: msg("request") },
       // 호출 확인 시트의 [기사님 요청사항]을 누르고 '기사님과 이야기 나누며 가고 싶어요'를 고른 뒤 알리거나 승인을 물음
       // 목록은 열어 둔 채로 묻고(고른 항목이 보이게), 승인하면 [확인] → [호출]
-      // 낮은 자동화: 목록을 열고 고를 항목을 가리킨 채 묻고, 승인하면 그 항목을 누름
-      // 높은 자동화: 목록에서 바로 골라 둔 채로 알림
+      // 낮은·높은 자동화 모두 목록에서 바로 골라 둔 채로 알림 (낮은 자동화는 승인을 물음)
       pre: async (s) => {
         if (s.userSet?.request) return;
-        if (s.automation === "low") { await openRequestSheet(s); s.phone.reqFocus = AGENT_REQUEST; renderPhone(); await actSleep(400); }
-        else await pickRequest(s, AGENT_REQUEST, { stay: true });
+        // 낮은·높은 자동화 모두 목록에서 먼저 골라 둠 (낮은 자동화는 그 뒤 승인을 물음)
+        await pickRequest(s, AGENT_REQUEST, { stay: true });
       },
       act: async (s) => {
         if (!s.userSet?.request && s.form.request !== AGENT_REQUEST) await pickRequest(s, AGENT_REQUEST, { stay: true });
@@ -542,7 +543,6 @@ function buildSteps(complexity, session = 1) {
     ...(session === 2 ? [{
       id: "reserve",
       kind: "error_reserve",
-      busy: "reserve.busy",
       label: "[세션2 오류] 이용내역 열람 + 예약 호출",
       guide: `호출이 끝난 뒤 에이전트가 묻지 않고 최근 3개월 이용내역(매주 토요일 담소한정식 강남점)을 열람하고, ${RESERVE.short} 예약 호출을 제안(낮은 자동화)하거나 등록(높은 자동화)하는 단계`,
       low: { messages: msg("reserve"), options: APPROVE, reject: "reserve" },
@@ -551,7 +551,7 @@ function buildSteps(complexity, session = 1) {
         await tap(".tx-menu, .tx-call", { pre: 300 });
         s.phone.taxiView = "history";
         renderPhone();
-        await actSleep(1200);
+        await actSleep(1000); // 진행 문구 없이 약 1초 이용내역 화면을 보여준 뒤 안내
       },
       act: async (s, choice) => {
         if (choice === "reject" || s.reserveCancelled) return;

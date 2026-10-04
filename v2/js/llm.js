@@ -401,7 +401,7 @@ const Rules = {
     if (pay && allowed.has(pay)) return out(pay);
     if (pay && allowed.has("set_pay")) return out("set_pay", { pay_method: pay });
     if (couponWord && allowed.has("set_coupon")) return out("set_coupon", { coupon: !/(빼|말고|안\s?써|취소|없이)/.test(t) });
-    if (allowed.has("cancel") && /(취소|그만|안\s?갈|부르지\s?마)/.test(t)) return out("cancel");
+    if (allowed.has("cancel") && /(취소|그만|안\s?갈|부르지\s?마|(예약|호출)\s?하지\s?(마|말)|예약\s?(안\s?해|말아))/.test(t)) return out("cancel");
     if (allowed.has("reject") && NO.test(t)) return out("reject");
     if (allowed.has("approve") && YES.test(t)) return out("approve");
     // 목적지가 맞는지 의심·확인하는 말 → 지금 목적지를 알려줌 (질문을 '그대로 진행'으로 오해하지 않게)
