@@ -1282,16 +1282,23 @@ async function handleReject(step, c, said) {
         hint: "바꿀 수 있는 것은 출발지, 목적지" + (USE_PAY_STEP ? ", 결제 방식" : "") + (S.complexity === "B" ? ", 택시 종류" + (USE_COUPON ? ", 쿠폰" : "") : "") + "이야. 그 외 요청이면 짧게 답하고 최종 확인 단계로 자연스럽게 돌아와.",
       });
     }
+    // 거부 후 말한 수정은 반영한 뒤 다시 묻지 않고 바로 진행
+    const proceed = async (key, vars) => {
+      S.needReask = false;
+      await sayKey(key, vars, { talk: true });
+      await doApply(step, "approve", { announced: true });
+      return "done";
+    };
     if (o.intent === "set_dest" && PLACES[o.place]) {
       setDest(o.place);
       logEvent("dest_changed", { dest: o.place, via: "final" });
       await redoDest(o.place);
-      return "retry";
+      return proceed("change.dest", { dest: o.place });
     }
-    if (o.intent === "set_origin" && ORIGINS[o.origin]) { setOption("origin", o.origin, "final"); return "retry"; }
-    if (o.intent === "set_car" && CAR_TYPES[o.car_type]) { setOption("car", o.car_type, "final"); return "retry"; }
-    if (o.intent === "set_pay" && PAY[o.pay_method]) { setOption("pay", o.pay_method, "final"); return "retry"; }
-    if (o.intent === "set_coupon" && typeof o.coupon === "boolean") { setOption("coupon", o.coupon, "final"); return "retry"; }
+    if (o.intent === "set_origin" && ORIGINS[o.origin]) { setOption("origin", o.origin, "final"); return proceed("change.origin"); }
+    if (o.intent === "set_car" && CAR_TYPES[o.car_type]) { setOption("car", o.car_type, "final"); return proceed("change.car"); }
+    if (o.intent === "set_pay" && PAY[o.pay_method]) { setOption("pay", o.pay_method, "final"); return proceed("change.pay"); }
+    if (o.intent === "set_coupon" && typeof o.coupon === "boolean") { setOption("coupon", o.coupon, "final"); return proceed(o.coupon ? "change.coupon.on" : "change.coupon.off"); }
     if (o.intent === "cancel") { await cancelRide(); return "cancel"; }
     if (o.intent !== "continue") await agentSay(o.reply, { talk: true });
     return "reask";
@@ -1309,7 +1316,7 @@ async function runLowDest(step) {
   S.phone.pendingDest = pending;
   renderPhone();
 
-  const qLines = preempted ? [corr.lowConfirm(S, pending)] : resolveMsgs(step.low.messages);
+  const qLines = preempted ? [corr.lowReask(S, pending)] : resolveMsgs(step.low.messages);
   for (const t of qLines) await agentSay(t);
   let question = qLines.join(" ");
   if (preempted) logEvent("dest_preset", { dest: pending });
@@ -1318,7 +1325,7 @@ async function runLowDest(step) {
     const c = await askChoice(step.low.options, question, ["set_dest"]);
     if (c.id === "__reask") {
       if (S.lowPendingOverride != null) { pending = S.lowPendingOverride; S.lowPendingOverride = null; S.phone.pendingDest = pending; renderPhone(); }
-      question = corr.lowConfirm(S, pending);
+      question = corr.lowReask(S, pending);
       await agentSay(question);
       continue;
     }
@@ -1339,9 +1346,9 @@ async function runLowDest(step) {
       S.phone.pendingDest = pending;
       renderPhone();
       logEvent("dest_changed", { dest: pending, via: "reject_text" });
-      question = corr.lowConfirm(S, pending);
-      await agentSay(question);
-      continue;
+      // 거부 후 말한 목적지는 다시 묻지 않고 "‘○○’으로 갈게요." → 바로 진행
+      await agentSay(corr.lowConfirm(S, pending), { talk: true });
+      break;
     }
     if (o.intent === "continue") break;
     if (o.intent === "cancel") return cancelRide();
