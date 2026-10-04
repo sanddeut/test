@@ -640,8 +640,11 @@ function syncView() {
     const zoom = ["progress", "direct"].includes(prev) && ["progress", "direct"].includes(v);
     const clip = $(".screen-clip");
     const before = zoom ? clip.getBoundingClientRect() : null;
+    const ghost = (prev === "chat" && v === "direct") || (prev === "direct" && v === "chat") ? snapshotView(phone, prev) : null;
     phone.dataset.view = v;
     if (S) logEvent("view", { view: v });
+    // 대화창 ↔ 앱 전체 화면: 나가는 화면은 튕기듯 작아지며 옆으로 빠지고, 들어오는 화면은 반대편에서 튕기며 들어옴
+    if ((prev === "chat" && v === "direct") || (prev === "direct" && v === "chat")) slideSwap(phone, ghost, v === "direct");
     // 대화창 ↔ 진행 화면 전환 효과 (길고 분명하게)
     if ((prev === "chat" && v === "progress") || (prev === "progress" && v === "chat")) {
       phone.dataset.trans = v;
@@ -658,6 +661,57 @@ function syncView() {
   if (S) {
     // 직접 조작·비밀번호 직접 입력 중에는 왼쪽 위 뒤로(<) 버튼만 → 누르면 대화로 돌아감 (팝업 직접 닫기·완료 화면은 버튼 없이 앱 화면만)
     $(".direct-bar").classList.toggle("off", !(S.manual || S.pinOpen));
+  }
+}
+
+// 지금 보이는 화면(대화창 또는 앱 전체 화면)을 복제해 그대로 덮어 둠 → 전환하는 동안 이 복제본이 빠져나감
+function snapshotView(phone, view) {
+  const pr = phone.getBoundingClientRect();
+  const ghost = document.createElement("div");
+  ghost.className = "trans-ghost";
+  ghost.style.background = getComputedStyle(phone).backgroundColor;
+  const sel = view === "chat" ? ".chat-head, #chat, #composer" : ".direct-bar, .screen-box";
+  for (const el of phone.querySelectorAll(sel)) {
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    const c = el.cloneNode(true);
+    c.classList.remove("only-chat", "only-direct", "only-screen");
+    [c, ...c.querySelectorAll("[id]")].forEach((x) => x.removeAttribute("id"));
+    Object.assign(c.style, { position: "absolute", left: `${r.left - pr.left}px`, top: `${r.top - pr.top}px`, width: `${r.width}px`, height: `${r.height}px`, margin: "0", display: getComputedStyle(el).display });
+    c.dataset.scroll = el.scrollTop;
+    ghost.appendChild(c);
+  }
+  return ghost;
+}
+
+function slideSwap(phone, ghost, toApp) {
+  if (!ghost || !ghost.animate) return;
+  phone.querySelectorAll(".trans-ghost").forEach((g) => g.remove());
+  phone.prepend(ghost);
+  ghost.querySelectorAll("[data-scroll]").forEach((c) => (c.scrollTop = +c.dataset.scroll));
+  const dir = toApp ? -1 : 1; // 앱으로: 대화창은 왼쪽으로 / 대화창으로: 앱은 오른쪽으로
+  const out = ghost.animate([
+    { transform: "none", borderRadius: "0px", boxShadow: "0 0 0 rgba(0,0,0,0)" },
+    { transform: "scale(.86)", borderRadius: "28px", boxShadow: "0 12px 40px rgba(0,0,0,.22)", offset: 0.22 },
+    { transform: "scale(.9)", borderRadius: "28px", boxShadow: "0 12px 40px rgba(0,0,0,.22)", offset: 0.34 },
+    { transform: `translateX(${dir * 112}%) scale(.86)`, borderRadius: "28px", boxShadow: "0 12px 40px rgba(0,0,0,.18)" },
+  ], { duration: 950, easing: "cubic-bezier(.45,0,.3,1)", fill: "forwards" });
+  out.onfinish = () => ghost.remove();
+  // 들어오는 화면: 기기 가운데를 기준으로 함께 움직이도록 요소별 기준점을 맞춤
+  const pr = phone.getBoundingClientRect();
+  const sel = toApp ? ".direct-bar:not(.off), .screen-box" : ".chat-head, #chat, #composer";
+  for (const el of phone.querySelectorAll(sel)) {
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    el.style.transformOrigin = `${pr.left + pr.width / 2 - r.left}px ${pr.top + pr.height / 2 - r.top}px`;
+    const card = el.classList.contains("screen-box"); // 앱 화면은 카드처럼 둥근 모서리로 들어와 전체 화면으로 펴짐
+    const a = el.animate([
+      { transform: `translateX(${-dir * 108}%) scale(.86)`, opacity: 0.6, ...(card && { borderRadius: "28px" }) },
+      { transform: `translateX(${dir * 4}%) scale(.97)`, opacity: 1, offset: 0.62, ...(card && { borderRadius: "22px" }) },
+      { transform: `translateX(${-dir * 1.5}%) scale(1)`, offset: 0.8, ...(card && { borderRadius: "10px" }) },
+      { transform: "none", ...(card && { borderRadius: "0px" }) },
+    ], { duration: 950, delay: 220, easing: "cubic-bezier(.3,.7,.3,1)", fill: "backwards" });
+    a.onfinish = () => (el.style.transformOrigin = "");
   }
 }
 
@@ -1440,14 +1494,14 @@ async function runHighStep(step) {
 
 // ---------- 결제 비밀번호 (공통 · 직접조작 1회) ----------
 // ---------- 비밀번호 (공통) ----------
-// 앱 화면으로 넘기지 않고, 대화창 안의 자체 입력 UI(보안 키패드)로 받음
+// 대화창에는 [화면 열기]만 두고, 입력은 택시 앱 전체 화면의 비밀번호 창에서 받음
 async function runPassword(step, spec) {
   if (S.automation === "high") await gate();
   S.pwWait = true;
   syncControls();
   await sleep(900 * PACE);
   S.phone.pin = "";
-  step.apply(S); // 은행 앱에도 비밀번호 입력 창을 띄움 (입력은 대화창에서)
+  step.apply(S); // 택시 앱에 비밀번호 입력 창을 띄움 (입력은 [화면 열기] → 앱 화면에서)
   renderPhone();
   for (const m of resolveMsgs(spec.messages)) await agentSay(m, { gated: S.automation === "high" });
   S.lastQuestion = resolveMsgs(spec.messages).join("\n");
@@ -1467,7 +1521,7 @@ async function runPassword(step, spec) {
     await agentSay(o.reply, { talk: true });
   }
   logEvent("pin_entered", { duration_ms: now() - t, via: S.pinOpen ? "app" : "chat" });
-  if (S.pinOpen) { await sleep(500 * PACE); S.pinOpen = false; }
+  if (S.pinOpen) { await sleep(600 * PACE); S.pinOpen = false; syncControls(); await sleep(900); }
   renderPinDone();
   S.pwWait = false;
   syncControls();
@@ -1490,29 +1544,20 @@ function waitPin() {
   });
 }
 
-const PIN_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
+// 대화창에는 [화면 열기] 버튼만 둠 → 누르면 택시 앱 전체 화면으로 넘어가 비밀번호 창에 직접 입력
 function renderPinCard() {
   const box = chipsBox();
-  box.innerHTML = `<div class="pw-card">
-    <div class="pw-head"><span class="tx-logo">${mi("local_taxi", "fill")}</span><span><b>결제 비밀번호를 입력해주세요</b><small><span class="ms">lock</span> ${esc(TAXI_APP)} · 마음카드 ****1234</small></span></div>
-    <div class="pw-dots">${[0, 1, 2, 3].map((i) => `<i class="${i < S.phone.pin.length ? "on" : ""}"></i>`).join("")}</div>
-    <div class="pw-keys">${PIN_KEYS.map((k) => (k ? `<button type="button" data-k="${k}">${k === "del" ? '<span class="ms">backspace</span>' : k}</button>` : "<span></span>")).join("")}</div>
-    <p class="pw-note">비밀번호는 택시 앱에 바로 입력되고, AI에게 전달되거나 저장되지 않아요.</p>
-    <div class="pw-foot"><button type="button" class="pw-direct">택시 앱에서 직접 입력하기</button><button type="button" class="pw-cancel">취소</button></div></div>`;
-  box.querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => pinPress(b.dataset.k)));
-  // chatGPT의 "Sign in manually instead"처럼: 앱 화면 전체로 전환해 택시 앱의 비밀번호 창에 직접 입력
+  box.innerHTML = `<div class="pw-card pw-open">
+    <div class="pw-head"><span class="tx-logo">${mi("local_taxi", "fill")}</span><span><b>결제 비밀번호 입력</b><small><span class="ms">lock</span> ${esc(TAXI_APP)} · 마음카드 ****1234</small></span></div>
+    <p class="pw-note">비밀번호는 택시 앱에서 직접 입력하고, AI에게 전달되거나 저장되지 않아요.</p>
+    <button type="button" class="pw-go"><span class="ms">open_in_new</span> 화면 열기</button>
+    <button type="button" class="pw-cancel">취소</button></div>`;
   // 취소: 중지와 같음 → "진행을 멈췄어요. 어떻게 바꿀까요?" (계속하기를 누르면 다시 비밀번호 입력)
   box.querySelector(".pw-cancel").onclick = () => { if (S.pinResolve) handleStop("pin_cancel"); };
-  box.querySelector(".pw-direct").onclick = () => {
+  box.querySelector(".pw-go").onclick = () => {
     if (!S.pinResolve) return;
     S.pinOpen = true;
     logEvent("pin_direct");
-    // 택시 앱 화면으로 넘어가는 동안 흰 화면 + 스피너
-    const p = S.phone;
-    p.loading = "splash-app";
-    p.loadingUntil = Date.now() + 1200 * PACE;
-    clearTimeout(p.loadingTimer);
-    p.loadingTimer = setTimeout(() => { p.loading = null; renderPhone(); }, 1200 * PACE);
     renderPhone();
     syncControls();
   };
@@ -1532,7 +1577,6 @@ function pinPress(k) {
   if (k === "del") S.phone.pin = S.phone.pin.slice(0, -1);
   else if (S.phone.pin.length < 4) S.phone.pin += k;
   renderPhone();
-  document.querySelectorAll(".pw-dots i").forEach((el, i) => el.classList.toggle("on", i < S.phone.pin.length));
   if (S.phone.pin.length === 4) {
     const r = S.pinResolve; S.pinResolve = null;
     setTimeout(r, 300);
@@ -2045,7 +2089,7 @@ function init() {
   $("#btn-manual-done").onclick = () => {
     if (!S) return;
     if (S.manual) return endManual();
-    if (S.pinOpen) { S.pinOpen = false; logEvent("pin_direct_back"); renderPhone(); syncControls(); } // 대화창 키패드로 돌아감
+    if (S.pinOpen) { S.pinOpen = false; logEvent("pin_direct_back"); renderPhone(); syncControls(); } // 대화창으로 돌아감 ([화면 열기]로 다시 열 수 있음)
   };
   $("#btn-back").onclick = () => showRun(false);
   $("#btn-task-close").onclick = () => openTask(false);

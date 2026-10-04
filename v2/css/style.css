@@ -788,3 +788,14 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .pv-req div.on { background: #eef4ff; box-shadow: 0 0 0 1.5px #0b57d0; }
 .pv-req .ms { flex: none; width: 24px; overflow: hidden; font-size: 24px; }
 .pv-req b { font-size: 15.5px; line-height: 1.4; word-break: keep-all; }
+
+/* 비밀번호: 대화창에는 [화면 열기]만 */
+.pw-open { display: flex; flex-direction: column; gap: 12px; }
+.pw-open .pw-note { margin: 0; }
+.pw-go { display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 14px; background: #0b57d0; color: #fff; font-size: 16.5px; font-weight: 600; padding: 15px; }
+.pw-go .ms { font-size: 20px; vertical-align: 0; }
+.pw-open .pw-cancel { align-self: center; border: 0; background: none; color: #5f6470; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; padding: 2px; }
+
+/* 대화창 ↔ 앱 전체 화면 전환: 나가는 화면의 복제본 */
+.phone { isolation: isolate; }
+.trans-ghost { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; transform-origin: 50% 50%; will-change: transform; }
