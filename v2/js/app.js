@@ -763,7 +763,7 @@ function requestOptions() {
 }
 
 function changeIntents() {
-  return [...(stepIdNow() === "request" ? ["set_request"] : []), "set_origin", "set_dest", ...(S.complexity === "B" ? ["set_car"] : []), "set_pay", ...(S.complexity === "B" ? ["set_coupon"] : [])];
+  return [...(stepIdNow() === "request" ? ["set_request"] : []), "set_origin", "set_dest", ...(S.complexity === "B" ? ["set_car"] : []), "set_pay", ...(S.complexity === "B" && USE_COUPON ? ["set_coupon"] : [])];
 }
 
 // 높은 자동화에서 말한 내용 해석. 수정 요청은 반영하고, 그 외에는 짧게 응답한 뒤 진행 상황을 알리고 계속 진행
@@ -1265,7 +1265,7 @@ async function handleReject(step, c, said) {
       o = await turn(await waitText(), {
         said: ask,
         intents: [...changeIntents(), "continue", "cancel", "other"],
-        hint: "바꿀 수 있는 것은 출발지, 목적지, 결제 방식" + (S.complexity === "B" ? ", 택시 종류, 쿠폰" : "") + "이야. 그 외 요청이면 짧게 답하고 최종 확인 단계로 자연스럽게 돌아와.",
+        hint: "바꿀 수 있는 것은 출발지, 목적지, 결제 방식" + (S.complexity === "B" ? ", 택시 종류" + (USE_COUPON ? ", 쿠폰" : "") : "") + "이야. 그 외 요청이면 짧게 답하고 최종 확인 단계로 자연스럽게 돌아와.",
       });
     }
     if (o.intent === "set_dest" && PLACES[o.place]) {
@@ -1501,7 +1501,7 @@ function renderSummary() {
     ["오류→반응", s.error_response_ms != null ? `${(s.error_response_ms / 1000).toFixed(1)}초` : "-"],
     ["최종 출발지", ORIGINS[s.final_origin].name],
     ["최종 목적지", s.final_dest ? PLACES[s.final_dest].name : "-"],
-    ...(S.complexity === "B" ? [["택시·결제·쿠폰", `${CAR_TYPES[s.final_car].label} · ${PAY[s.final_pay].label} · ${s.final_coupon ? "적용" : "안 함"}`]] : []),
+    ...(S.complexity === "B" ? [[USE_COUPON ? "택시·결제·쿠폰" : "택시·결제", `${CAR_TYPES[s.final_car].label} · ${PAY[s.final_pay].label}${USE_COUPON ? ` · ${s.final_coupon ? "적용" : "안 함"}` : ""}`]] : []),
     ["승인 응답", s.approvals],
     ["중지 / 직접조작", `${s.stops} / ${s.manual_controls}`],
     ["LLM 호출 (대체)", `${s.llm_calls} (${s.llm_fallbacks})`],

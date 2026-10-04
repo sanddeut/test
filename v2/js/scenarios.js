@@ -94,6 +94,8 @@ const PAY = {
 };
 
 const COUPON = { name: "가을맞이 3,000원 할인 쿠폰", amount: 3000 };
+// 쿠폰 적용 단계 사용 여부 (최종 시나리오: B에서 제외)
+const USE_COUPON = false;
 
 const CONDITIONS = {
   A1: { complexity: "A", automation: "low", title: "A1 · 낮은 복잡도 × 낮은 자동화" },
@@ -117,14 +119,13 @@ const SITUATION = {
       "모임 장소는 ‘담소한정식 강남점’입니다.",
       "지금 동천역으로 걸어가는 중이라, 택시는 ‘신분당선 동천역’에서 타려고 합니다.",
       "오늘은 정장을 입어서 편하게 모범택시를 타려고 합니다.",
-      "요금은 내릴 때 기사님께 직접 내고, 택시 앱에 있는 할인 쿠폰도 쓰려고 합니다.",
+      "요금은 내릴 때 기사님께 직접 내려고 합니다.",
     ],
     task: [
       "출발지를 ‘신분당선 동천역’으로 바꾸기",
       "‘담소한정식 강남점’으로 가는 택시 호출",
       "택시 종류를 모범택시로 바꾸기",
       "결제 방식을 직접결제로 바꾸기",
-      "할인 쿠폰 적용하기",
     ],
   },
 };
@@ -188,11 +189,13 @@ function scriptDefaults(cond) {
     else add("car", "택시 종류 변경", "안내", "말씀하신 {택시종류}로 바꿨어요.");
   }
 
-  if (low) add("pay", "결제 방식", "선택 요청", "결제 방식이 2개예요. 어떻게 결제할까요?");
-  else if (B) add("pay", "결제 방식", "안내", "말씀하신 {결제}로 바꿨어요.");
-  else add("pay", "결제 방식", "안내", "{결제}(마음카드)로 결제할게요.");
-
+  // 결제 방식 단계는 B에만 (A는 묻지 않고 기본값인 자동결제로 호출)
   if (B) {
+    if (low) add("pay", "결제 방식", "선택 요청", "결제 방식이 2개예요. 어떻게 결제할까요?");
+    else add("pay", "결제 방식", "안내", "말씀하신 {결제}로 바꿨어요.");
+  }
+
+  if (B && USE_COUPON) {
     if (low) {
       add("coupon", "쿠폰 적용", "승인 요청", "쓸 수 있는 쿠폰이 있어요. ‘{쿠폰}’을 적용할까요?");
       add("coupon.skip", "쿠폰 적용", "거부 시", "쿠폰은 적용하지 않을게요.");
@@ -232,7 +235,7 @@ function scriptDefaults(cond) {
   add("change.dest", "중지·직접 조작", "중지 중 목적지를 바꿨을 때", low ? "목적지를 ‘{목적지}’으로 바꿀게요." : "목적지를 ‘{목적지}’으로 바꿨어요.");
   if (B) add("change.car", "중지·직접 조작", "중지 중 택시 종류를 바꿨을 때", "택시 종류를 {택시종류}로 바꿨어요.");
   add("change.pay", "중지·직접 조작", "중지 중 결제 방식을 바꿨을 때", "결제 방식을 {결제}로 바꿨어요.");
-  if (B) {
+  if (B && USE_COUPON) {
     add("change.coupon.on", "중지·직접 조작", "중지 중 쿠폰을 적용했을 때", "‘{쿠폰}’을 적용했어요.");
     add("change.coupon.off", "중지·직접 조작", "중지 중 쿠폰을 뺐을 때", "쿠폰 적용을 취소했어요.");
   }
@@ -412,34 +415,36 @@ function buildSteps(complexity, session = 1) {
     });
   }
 
-  steps.push({
-    id: "pay",
-    label: "결제 방식",
-    guide: `결제 방식(자동결제: 마음카드 ****1234 / 직접결제: 내릴 때 기사님께)을 고르는 단계. 기본은 자동결제`,
-    low: {
-      messages: msg("pay"),
-      options: Object.entries(PAY).map(([id, p]) => ({ id, label: p.label, desc: p.desc })),
-    },
-    high: B ? { messages: (s) => lines("pay", s, { pay: payTarget(s) }), applyFirst: true } : { messages: (s) => lines("pay", s, { pay: payTarget(s) }) },
-    pre: async (s) => {
-      if (s.phone.sheet === "pay") return;
-      await tap(".tx-pay");
-      s.phone.sheet = "pay";
-      renderPhone();
-      await actSleep(400);
-    },
-    act: async (s, choice) => {
-      const k = choice || payTarget(s);
-      if (s.phone.sheet !== "pay") { s.phone.sheet = "pay"; renderPhone(); await actSleep(400); }
-      await tap(`.tx-pay-opt[data-pay="${k}"]`);
-      s.form.pay = k;
-      s.phone.sheet = null;
-      renderPhone();
-    },
-    apply: (s, choice) => { s.form.pay = choice || payTarget(s); s.phone.sheet = null; },
-  });
-
   if (B) {
+    steps.push({
+      id: "pay",
+      label: "결제 방식",
+      guide: `결제 방식(자동결제: 마음카드 ****1234 / 직접결제: 내릴 때 기사님께)을 고르는 단계. 기본은 자동결제`,
+      low: {
+        messages: msg("pay"),
+        options: Object.entries(PAY).map(([id, p]) => ({ id, label: p.label, desc: p.desc })),
+      },
+      high: B ? { messages: (s) => lines("pay", s, { pay: payTarget(s) }), applyFirst: true } : { messages: (s) => lines("pay", s, { pay: payTarget(s) }) },
+      pre: async (s) => {
+        if (s.phone.sheet === "pay") return;
+        await tap(".tx-pay");
+        s.phone.sheet = "pay";
+        renderPhone();
+        await actSleep(400);
+      },
+      act: async (s, choice) => {
+        const k = choice || payTarget(s);
+        if (s.phone.sheet !== "pay") { s.phone.sheet = "pay"; renderPhone(); await actSleep(400); }
+        await tap(`.tx-pay-opt[data-pay="${k}"]`);
+        s.form.pay = k;
+        s.phone.sheet = null;
+        renderPhone();
+      },
+      apply: (s, choice) => { s.form.pay = choice || payTarget(s); s.phone.sheet = null; },
+    });
+  }
+
+  if (B && USE_COUPON) {
     steps.push({
       id: "coupon",
       label: "쿠폰 적용",
