@@ -89,6 +89,7 @@ function bindPhone() {
   on("data-man-coupon", () => manualCoupon());
   on("data-man-close", () => manualCloseSheet());
   on("data-done-confirm", () => confirmDone());
+  on("data-pin", (k) => pinPress(k));
   on("data-man-req", () => manualRequestSheet());
   on("data-man-reqopt", (k) => manualRequest(k));
   on("data-man-reqok", () => { if (S?.manual) { S.phone.sheet = "confirm"; renderPhone(); } });
@@ -310,9 +311,15 @@ function taxiOverlay() {
       <div class="kv tx-req ${p.focus === "request" ? "hl" : ""}" ${man ? "data-man-req" : ""}><span>기사님 요청사항</span><b>${esc(REQUESTS[f.request || "none"])} ${mi("chevron_right")}</b></div>
       <div class="bk-btn2"><span>취소</span><span class="primary">호출</span></div></div></div>`;
   }
+  if (p.sheet === "pin") {
+    const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
+    return `<div class="dim ${enter}"><div class="sheet pin ${enter}"><h3>결제 비밀번호</h3><p class="muted">마음카드 ****1234 · 비밀번호 4자리를 입력해주세요</p>
+      <div class="dots">${[0, 1, 2, 3].map((i) => `<i class="${i < (p.pin || "").length ? "on" : ""}"></i>`).join("")}</div>
+      <div class="keypad">${keys.map((k) => (k ? `<button type="button" data-pin="${k}">${k === "del" ? mi("backspace") : k}</button>` : "<span></span>")).join("")}</div></div></div>`;
+  }
   if (p.sheet === "request") {
     return `<div class="dim" ${closer}><div class="sheet" onclick="event.stopPropagation()"><h3>기사님 요청사항</h3>
-      ${Object.entries(REQUESTS).map(([k, v]) => `<div class="tx-pay-opt tx-reqopt ${(f.request || "none") === k ? "on" : ""}" data-req="${k}" ${man ? `data-man-reqopt="${k}"` : ""}>
+      ${Object.entries(REQUESTS).map(([k, v]) => `<div class="tx-pay-opt tx-reqopt ${(f.request || "none") === k ? "on" : ""} ${p.reqFocus === k ? "hl" : ""}" data-req="${k}" ${man ? `data-man-reqopt="${k}"` : ""}>
         <span><b>${esc(v)}</b></span>${mi((f.request || "none") === k ? "radio_button_checked" : "radio_button_unchecked", "radio")}</div>`).join("")}
       <div class="tx-call tx-req-ok" ${man ? "data-man-reqok" : ""}>확인</div>
     </div></div>`;
@@ -601,10 +608,17 @@ function locate() {
   );
 }
 
-// 호출 확인 시트에서 [호출] → 주변 택시 찾기
+// 호출 확인 시트에서 [호출] → 결제 비밀번호 창 (비밀번호를 넣으면 호출됨)
 async function callTaxi(s) {
   if (s.phone.sheet !== "confirm") { s.phone.sheet = "confirm"; renderPhone(); await actSleep(400); }
   await tap(".sheet .primary");
+  s.phone.pin = "";
+  s.phone.sheet = "pin";
+  renderPhone();
+}
+
+// 결제 비밀번호를 넣은 뒤: 결제 확인 → 주변 택시 찾기
+function startCalling(s) {
   s.phone.sheet = null;
   s.phone.taxiView = "calling";
   renderPhone();
@@ -630,6 +644,20 @@ async function pickRequest(s, k, { stay = false } = {}) {
   await actSleep(300);
   if (stay) return;
   await closeRequestSheet(s);
+}
+
+// 호출 확인 시트의 [기사님 요청사항] → 목록 열기 (아직 고르지 않음)
+async function openRequestSheet(s) {
+  const p = s.phone;
+  if (p.sheet === "request") return;
+  if (p.sheet !== "confirm") { p.sheet = "confirm"; renderPhone(); await actSleep(400); }
+  p.focus = "request";
+  renderPhone();
+  await tap(".tx-req");
+  p.focus = null;
+  p.sheet = "request";
+  renderPhone();
+  await actSleep(500);
 }
 
 // 요청사항 목록의 [확인] → 호출 확인 시트로

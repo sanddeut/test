@@ -94,8 +94,10 @@ const PAY = {
 };
 
 const COUPON = { name: "가을맞이 3,000원 할인 쿠폰", amount: 3000 };
-// 쿠폰 적용 단계 사용 여부 (최종 시나리오: B에서 제외)
-const USE_COUPON = false;
+// 쿠폰 적용 단계 사용 여부 (B에만)
+const USE_COUPON = true;
+// 결제 방식 단계 사용 여부 (최종: 결제는 기본값인 자동결제로 미리 하고, 호출 전에 결제 비밀번호를 직접 입력)
+const USE_PAY_STEP = false;
 
 const CONDITIONS = {
   A1: { complexity: "A", automation: "low", title: "A1 · 낮은 복잡도 × 낮은 자동화" },
@@ -119,13 +121,13 @@ const SITUATION = {
       "모임 장소는 ‘담소한정식 강남점’입니다.",
       "지금 동천역으로 걸어가는 중이라, 택시는 ‘신분당선 동천역’에서 타려고 합니다.",
       "오늘은 정장을 입어서 편하게 모범택시를 타려고 합니다.",
-      "요금은 내릴 때 기사님께 직접 내려고 합니다.",
+      "택시 앱에 있는 할인 쿠폰도 쓰려고 합니다.",
     ],
     task: [
       "출발지를 ‘신분당선 동천역’으로 바꾸기",
       "‘담소한정식 강남점’으로 가는 택시 호출",
       "택시 종류를 모범택시로 바꾸기",
-      "결제 방식을 직접결제로 바꾸기",
+      "할인 쿠폰 적용하기",
     ],
   },
 };
@@ -189,8 +191,8 @@ function scriptDefaults(cond) {
     else add("car", "택시 종류 변경", "안내", "말씀하신 {택시종류}로 바꿨어요.");
   }
 
-  // 결제 방식 단계는 B에만 (A는 묻지 않고 기본값인 자동결제로 호출)
-  if (B) {
+  // 결제 방식 단계 (최종 시나리오에서는 사용 안 함: 모든 조건이 자동결제)
+  if (B && USE_PAY_STEP) {
     if (low) add("pay", "결제 방식", "선택 요청", "결제 방식이 2개예요. 어떻게 결제할까요?");
     else add("pay", "결제 방식", "안내", "말씀하신 {결제}로 바꿨어요.");
   }
@@ -209,21 +211,23 @@ function scriptDefaults(cond) {
 
   // [세션1 오류] 기사님 요청사항 임의 선택
   if (low) {
-    add("request", "[세션1 오류] 기사님 요청사항", "승인 요청", "기사님 요청사항으로 ‘{요청사항}’를 선택했어요. 이대로 호출할까요?");
+    add("request", "[세션1 오류] 기사님 요청사항", "승인 요청", "기사님 요청사항을 선택할 수 있어요. ‘{요청사항}’를 선택할까요?");
     add("request.ask", "[세션1 오류] 기사님 요청사항", "거부 시", "기사님 요청사항을 어떻게 할까요?");
-    add("request.confirm", "[세션1 오류] 기사님 요청사항", "요청사항을 바꾼 뒤 다시 확인", "기사님 요청사항을 ‘{요청사항}’로 바꿨어요. 이대로 호출할까요?");
-  } else add("request", "[세션1 오류] 기사님 요청사항", "안내", "기사님 요청사항으로 ‘{요청사항}’를 선택했어요.");
+    add("request.confirm", "[세션1 오류] 기사님 요청사항", "요청사항을 고른 뒤", "기사님 요청사항을 ‘{요청사항}’로 바꿨어요. 이렇게 호출할게요.");
+  } else add("request", "[세션1 오류] 기사님 요청사항", "안내", "기사님 요청사항을 선택할 수 있어요. ‘{요청사항}’를 선택했어요.");
   add("change.request", "[세션1 오류] 기사님 요청사항", "중지 중 요청사항을 바꿨을 때", "기사님 요청사항을 ‘{요청사항}’로 바꿨어요.");
-  if (low) add("request.none.confirm", "[세션1 오류] 기사님 요청사항", "요청사항을 뺀 뒤 다시 확인", "기사님 요청사항을 뺐어요. 요청사항 없이 호출할까요?");
+  if (low) add("request.none.confirm", "[세션1 오류] 기사님 요청사항", "요청사항을 뺀 뒤", "기사님 요청사항을 뺐어요. 이렇게 호출할게요.");
   add("change.request.none", "[세션1 오류] 기사님 요청사항", "중지 중 요청사항을 뺐을 때", "기사님 요청사항을 뺐어요.");
 
+  add("password", "[직접조작] 결제 비밀번호", "안내", "결제를 위해 결제 비밀번호 입력이 필요해요. 아래에 직접 입력해주세요.");
+  add("done.busy", "완료 안내", "진행 문구 (택시를 찾는 동안)", "택시를 찾고 있어요 …");
   add("done", "완료 안내", "안내", "{택시종류}를 호출했어요. 기사님이 3분 뒤 도착해요.");
 
   // [세션2 오류] 이용내역 열람 + 예약 호출
   add("reserve.busy", "[세션2 오류] 이용내역 열람 + 예약 호출", "진행 문구 (이용내역 확인 중)", "이용내역을 확인하고 있어요 …");
   if (low) {
     add("reserve", "[세션2 오류] 이용내역 열람 + 예약 호출", "승인 요청", "최근 3개월 이용내역을 확인해 보니, 매주 토요일 담소한정식 강남점에 가신 기록이 있어요.\n다음 주 토요일에도 같은 시간에 택시를 예약할까요?");
-    add("reserve.no", "[세션2 오류] 이용내역 열람 + 예약 호출", "거부 시", "택시는 예약하지 않을게요.");
+    add("reserve.no", "[세션2 오류] 이용내역 열람 + 예약 호출", "거부 시", "다음 주 택시는 예약하지 않을게요.");
   } else {
     add("reserve", "[세션2 오류] 이용내역 열람 + 예약 호출", "안내", "최근 3개월 이용내역을 확인해 보니, 매주 토요일 담소한정식 강남점에 가신 기록이 있어요.\n다음 주 토요일에도 같은 시간에 택시를 예약할게요.");
   }
@@ -415,7 +419,7 @@ function buildSteps(complexity, session = 1) {
     });
   }
 
-  if (B) {
+  if (B && USE_PAY_STEP) {
     steps.push({
       id: "pay",
       label: "결제 방식",
@@ -487,27 +491,46 @@ function buildSteps(complexity, session = 1) {
       },
       // 세션1은 다음 단계(기사님 요청사항)에서 호출하므로 확인 시트를 그대로 둠
       act: async (s) => { if (session === 2) await callTaxi(s); },
-      apply: (s) => { if (session === 2) { s.phone.sheet = null; s.phone.taxiView = "calling"; } },
+      apply: (s) => { if (session === 2) { s.phone.pin = ""; s.phone.sheet = "pin"; } },
     },
     ...(session === 1 ? [{
       id: "request",
       kind: "error_request",
       label: "[세션1 오류] 기사님 요청사항 임의 선택",
       guide: `호출 확인 화면에서 에이전트가 사용자에게 묻지 않고 기사님 요청사항을 ‘${REQUESTS[AGENT_REQUEST]}’로 선택한 단계. 고를 수 있는 요청사항: ${Object.values(REQUESTS).join(", ")}`,
-      low: { messages: msg("request"), options: APPROVE, reject: "request" },
+      low: { messages: (s) => lines("request", s, { request: AGENT_REQUEST }), options: APPROVE, reject: "request" },
       high: { messages: msg("request") },
       // 호출 확인 시트의 [기사님 요청사항]을 누르고 '기사님과 이야기 나누며 가고 싶어요'를 고른 뒤 알리거나 승인을 물음
       // 목록은 열어 둔 채로 묻고(고른 항목이 보이게), 승인하면 [확인] → [호출]
+      // 낮은 자동화: 목록을 열고 고를 항목을 가리킨 채 묻고, 승인하면 그 항목을 누름
+      // 높은 자동화: 목록에서 바로 골라 둔 채로 알림
       pre: async (s) => {
         if (s.userSet?.request) return;
-        await pickRequest(s, AGENT_REQUEST, { stay: true });
+        if (s.automation === "low") { await openRequestSheet(s); s.phone.reqFocus = AGENT_REQUEST; renderPhone(); await actSleep(400); }
+        else await pickRequest(s, AGENT_REQUEST, { stay: true });
       },
-      act: async (s) => { await closeRequestSheet(s); await callTaxi(s); },
-      apply: (s) => { s.phone.sheet = null; s.phone.taxiView = "calling"; },
+      act: async (s) => {
+        if (!s.userSet?.request && s.form.request !== AGENT_REQUEST) await pickRequest(s, AGENT_REQUEST, { stay: true });
+        s.phone.reqFocus = null;
+        await closeRequestSheet(s);
+        await callTaxi(s);
+      },
+      apply: (s) => { s.phone.pin = ""; s.phone.sheet = "pin"; },
     }] : []),
+    {
+      // [직접조작] 결제 비밀번호: 자동결제라 호출 전에 참가자가 대화창 보안 키패드(또는 앱 화면)에 직접 입력
+      id: "password",
+      kind: "password",
+      label: "[직접조작] 결제 비밀번호 입력",
+      guide: "자동결제(마음카드 ****1234)로 미리 결제하기 위해 참가자가 결제 비밀번호 4자리를 대화창의 보안 키패드에 직접 입력하는 단계. 비밀번호는 에이전트에게 전달되지 않음",
+      low: { messages: msg("password") },
+      high: { messages: msg("password") },
+      apply: (s) => { s.phone.pin = ""; s.phone.sheet = "pin"; },
+    },
     {
       id: "done",
       kind: "done",
+      busy: "done.busy",
       label: "완료 안내",
       low: { messages: msg("done"), applyFirst: true },
       high: { messages: msg("done"), applyFirst: true },

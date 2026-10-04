@@ -39,7 +39,8 @@ function newSession(cfg) {
     form: { origin: "current", dest: null, car: "normal", pay: "auto", coupon: false, request: "none", reserved: false },
     geo: null, // 휴대폰 현재 위치 (locate)
     userSet: {}, // 참가자가 직접 바꾼 항목 (높은 자동화에서 과업 값으로 덮어쓰지 않게)
-    phone: { app: "home", taxiView: "home", focus: null, sheet: null, toast: null, pendingDest: null, searchTyped: "", results: false, tappedPlace: null, originTyped: "", originResults: false },
+    pinResolve: null,
+    phone: { pin: "", app: "home", taxiView: "home", focus: null, sheet: null, toast: null, pendingDest: null, searchTyped: "", results: false, tappedPlace: null, originTyped: "", originResults: false },
     running: false,
     paused: false,
     manual: false,
@@ -117,7 +118,7 @@ function promote(ask = false) {
       q.textContent = ls.join("\n");
       tagSrc(q, q.textContent);
       q.hidden = false;
-    } else if (!$("#rc-q").textContent.trim() && S.lastQuestion && !lastBubbleAsks()) {
+    } else if (!$("#rc-q").textContent.trim() && S.lastQuestion && !lastBubbleAsks() && lastAgentText() !== S.lastQuestion) {
       // 같은 질문으로 돌아온 경우(거부 후 "그대로 해", 직접 조작 후 복귀): 마지막 질문을 다시 카드에
       $("#rc-q").textContent = S.lastQuestion;
       tagSrc($("#rc-q"), S.lastQuestion);
@@ -140,6 +141,12 @@ function promote(ask = false) {
 function lastBubbleAsks() {
   const last = [...chat().querySelectorAll(".bubble")].at(-1);
   return Boolean(last?.classList.contains("agent") && /[?？]\s*$/.test(last.textContent));
+}
+
+// 대화창의 마지막 AI 말풍선 문구 (같은 질문을 카드에 다시 띄우지 않으려고 비교)
+function lastAgentText() {
+  const last = [...chat().querySelectorAll(".bubble.agent")].at(-1);
+  return last ? last.textContent : "";
 }
 
 const cardLive = () => Boolean($("#run-card") && S?.running && !S.finished);
@@ -187,9 +194,11 @@ function stepPreview() {
     case "coupon":
       return el("pv-evt", `<span class="ms fill">confirmation_number</span><span><b>${esc(COUPON.name)}</b><small>${esc(won0(COUPON.amount))} 할인 · 모든 택시</small></span>`);
     case "final": return rideSummary();
-    case "request":
+    case "request": {
+      const cur = S.phone.reqFocus ?? S.form.request;
       return el("pv-accts pv-req", Object.entries(REQUESTS).map(([k, v]) =>
-        `<div class="${S.form.request === k ? "on" : ""}"><span><b>${esc(v)}</b></span>${S.form.request === k ? '<span class="ms">check_circle</span>' : ""}</div>`).join(""));
+        `<div class="${cur === k ? "on" : ""}"><span><b>${esc(v)}</b></span>${cur === k ? '<span class="ms">check_circle</span>' : ""}</div>`).join(""));
+    }
     case "reserve":
       return el("rc-summary", [["출발", "신분당선 동천역"], ["도착", "담소한정식 강남점"], ["예약 시간", RESERVE.when], ["택시 종류", CAR_TYPES[S.form.car].label]]
         .map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join(""));
@@ -763,7 +772,7 @@ function requestOptions() {
 }
 
 function changeIntents() {
-  return [...(stepIdNow() === "request" ? ["set_request"] : []), "set_origin", "set_dest", ...(S.complexity === "B" ? ["set_car"] : []), "set_pay", ...(S.complexity === "B" && USE_COUPON ? ["set_coupon"] : [])];
+  return [...(stepIdNow() === "request" ? ["set_request"] : []), "set_origin", "set_dest", ...(S.complexity === "B" ? ["set_car"] : []), ...(USE_PAY_STEP ? ["set_pay"] : []), ...(S.complexity === "B" && USE_COUPON ? ["set_coupon"] : [])];
 }
 
 // 높은 자동화에서 말한 내용 해석. 수정 요청은 반영하고, 그 외에는 짧게 응답한 뒤 진행 상황을 알리고 계속 진행
@@ -909,6 +918,10 @@ async function finishIntervention(saved) {
   if (reask) {
     const w = S.waiter; S.waiter = null;
     w.resolve({ type: "reask" });
+  } else if (S.waiter?.pin) {
+    // 비밀번호 입력 중 취소(중지) → 계속하기: 비밀번호 카드를 다시 보여줌
+    promote(true);
+    renderPinCard();
   } else if (saved && S.waiter) {
     // 멈추기 전 질문을 다시 보여주고 선택지를 함께 띄움
     resetStatus();
@@ -988,6 +1001,9 @@ async function endManual() {
     // 낮은 자동화에서 내용이 바뀌었으면 바뀐 내용으로 다시 물음
     S.waiter = null;
     w.resolve({ type: "reask" });
+  } else if (w?.pin) {
+    promote(true);
+    renderPinCard();
   } else if (w?.options) {
     if (S.waiter) setChips(w.options, w.onPick);
   }
@@ -1099,6 +1115,7 @@ const REJECT_EXTRA = {
 };
 
 async function runLowStep(step) {
+  if (step.kind === "password") return runPassword(step, step.low);
   if (step.kind === "dest") return runLowDest(step);
 
   if (manualDone(step) && step.low.options) { logEvent("step_done_manually"); return true; } // 이미 직접 한 단계는 묻지 않고 넘어감
@@ -1227,17 +1244,14 @@ async function handleReject(step, c, said) {
       if (o.intent === "set_request" && REQUESTS[o.request]) {
         logEvent("request_changed", { request: o.request, via: "reject_text" });
         S.userSet.request = true;
+        S.phone.reqFocus = null;
         await redoRequest(o.request);
-        const q = line(S.form.request === "none" ? "request.none.confirm" : "request.confirm", S);
-        await agentSay(q);
-        const c2 = await askChoice(APPROVE, q, ["set_request"], hint);
-        S.m.approvals++;
-        logEvent("decision", { choice: c2.id, via: c2.via, request: S.form.request });
-        if (c2.id === "approve") { await doApply(step, "approve", { announced: true }); return "done"; }
-        o = c2.id === "set_request" ? c2.out : null;
-        continue;
+        // 고른 뒤 다시 묻지 않고 "이렇게 호출할게요." → 호출
+        await sayKey(S.form.request === "none" ? "request.none.confirm" : "request.confirm", undefined, { talk: true });
+        await doApply(step, "approve", { announced: true });
+        return "done";
       }
-      if (o.intent === "continue") { await doApply(step, "approve", { announced: true }); return "done"; }
+      if (o.intent === "continue") { S.phone.reqFocus = null; S.userSet.request = true; await doApply(step, "approve", { announced: true }); return "done"; }
       if (o.intent === "cancel") { await cancelRide(); return "cancel"; }
       await agentSay(o.reply, { talk: true });
       o = null;
@@ -1265,7 +1279,7 @@ async function handleReject(step, c, said) {
       o = await turn(await waitText(), {
         said: ask,
         intents: [...changeIntents(), "continue", "cancel", "other"],
-        hint: "바꿀 수 있는 것은 출발지, 목적지, 결제 방식" + (S.complexity === "B" ? ", 택시 종류" + (USE_COUPON ? ", 쿠폰" : "") : "") + "이야. 그 외 요청이면 짧게 답하고 최종 확인 단계로 자연스럽게 돌아와.",
+        hint: "바꿀 수 있는 것은 출발지, 목적지" + (USE_PAY_STEP ? ", 결제 방식" : "") + (S.complexity === "B" ? ", 택시 종류" + (USE_COUPON ? ", 쿠폰" : "") : "") + "이야. 그 외 요청이면 짧게 답하고 최종 확인 단계로 자연스럽게 돌아와.",
       });
     }
     if (o.intent === "set_dest" && PLACES[o.place]) {
@@ -1343,6 +1357,7 @@ async function runLowDest(step) {
 
 // ---------- 높은 자동화 ----------
 async function runHighStep(step) {
+  if (step.kind === "password") return runPassword(step, step.high);
   if (manualDone(step) && step.kind !== "dest") { logEvent("step_done_manually"); return true; }
 
   let msgs = resolveMsgs(step.high.messages);
@@ -1396,6 +1411,107 @@ async function runHighStep(step) {
   if (step.kind === "done") S.rideDone = true;
   if (isLastStep(step)) return finish("completed");
   return true;
+}
+
+// ---------- 결제 비밀번호 (공통 · 직접조작 1회) ----------
+// ---------- 비밀번호 (공통) ----------
+// 앱 화면으로 넘기지 않고, 대화창 안의 자체 입력 UI(보안 키패드)로 받음
+async function runPassword(step, spec) {
+  if (S.automation === "high") await gate();
+  S.pwWait = true;
+  syncControls();
+  await sleep(900 * PACE);
+  S.phone.pin = "";
+  step.apply(S); // 은행 앱에도 비밀번호 입력 창을 띄움 (입력은 대화창에서)
+  renderPhone();
+  for (const m of resolveMsgs(spec.messages)) await agentSay(m, { gated: S.automation === "high" });
+  S.lastQuestion = resolveMsgs(spec.messages).join("\n");
+  logEvent("pin_open");
+  const t = now();
+  for (;;) {
+    const r = await waitPin();
+    if (r.type === "pin") break;
+    if (r.type === "reask") continue; // 취소(중지) 후 계속하기 → 다시 비밀번호 입력
+    if (S.automation === "high") {
+      // 높은 자동화: 말을 걸면 중지로 간주하고 개입 대화 후 다시 대기
+      await handleInterjection(r.text);
+      if (S.finished) return false;
+      continue;
+    }
+    const o = await turn(r.text, { said: resolveMsgs(spec.messages).join(" "), intents: ["other"] });
+    await agentSay(o.reply, { talk: true });
+  }
+  logEvent("pin_entered", { duration_ms: now() - t, via: S.pinOpen ? "app" : "chat" });
+  if (S.pinOpen) { await sleep(500 * PACE); S.pinOpen = false; }
+  renderPinDone();
+  S.pwWait = false;
+  syncControls();
+  // 결제 확인 → [호출] → 주변 택시 찾기
+  startCalling(S);
+  setStatus("", true);
+  await sleep(1200 * PACE);
+  return true;
+}
+
+// 대화창에 비밀번호 입력 카드를 띄우고 4자리 입력(또는 말)을 기다림
+function waitPin() {
+  return new Promise((resolve) => {
+    S.pinResolve = () => { S.waiter = null; setChips([]); resolve({ type: "pin" }); };
+    S.waiter = { resolve: (r) => { S.pinResolve = null; resolve(r); }, options: null, pin: true };
+    setChips([]);
+    promote(true);
+    renderPinCard();
+    syncControls();
+  });
+}
+
+const PIN_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
+function renderPinCard() {
+  const box = chipsBox();
+  box.innerHTML = `<div class="pw-card">
+    <div class="pw-head"><span class="tx-logo">${mi("local_taxi", "fill")}</span><span><b>결제 비밀번호를 입력해주세요</b><small><span class="ms">lock</span> ${esc(TAXI_APP)} · 마음카드 ****1234</small></span></div>
+    <div class="pw-dots">${[0, 1, 2, 3].map((i) => `<i class="${i < S.phone.pin.length ? "on" : ""}"></i>`).join("")}</div>
+    <div class="pw-keys">${PIN_KEYS.map((k) => (k ? `<button type="button" data-k="${k}">${k === "del" ? '<span class="ms">backspace</span>' : k}</button>` : "<span></span>")).join("")}</div>
+    <p class="pw-note">비밀번호는 택시 앱에 바로 입력되고, AI에게 전달되거나 저장되지 않아요.</p>
+    <div class="pw-foot"><button type="button" class="pw-direct">택시 앱에서 직접 입력하기</button><button type="button" class="pw-cancel">취소</button></div></div>`;
+  box.querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => pinPress(b.dataset.k)));
+  // chatGPT의 "Sign in manually instead"처럼: 앱 화면 전체로 전환해 택시 앱의 비밀번호 창에 직접 입력
+  // 취소: 중지와 같음 → "진행을 멈췄어요. 어떻게 바꿀까요?" (계속하기를 누르면 다시 비밀번호 입력)
+  box.querySelector(".pw-cancel").onclick = () => { if (S.pinResolve) handleStop("pin_cancel"); };
+  box.querySelector(".pw-direct").onclick = () => {
+    if (!S.pinResolve) return;
+    S.pinOpen = true;
+    logEvent("pin_direct");
+    // 택시 앱 화면으로 넘어가는 동안 흰 화면 + 스피너
+    const p = S.phone;
+    p.loading = "splash-app";
+    p.loadingUntil = Date.now() + 1200 * PACE;
+    clearTimeout(p.loadingTimer);
+    p.loadingTimer = setTimeout(() => { p.loading = null; renderPhone(); }, 1200 * PACE);
+    renderPhone();
+    syncControls();
+  };
+  scrollChat();
+}
+
+function renderPinDone() {
+  const div = document.createElement("div");
+  div.className = "bubble user pw-done";
+  div.innerHTML = '<span class="ms">lock</span> 비밀번호 입력 완료';
+  chat().insertBefore(div, $("#chips"));
+  scrollChat();
+}
+
+function pinPress(k) {
+  if (!S?.pinResolve) return;
+  if (k === "del") S.phone.pin = S.phone.pin.slice(0, -1);
+  else if (S.phone.pin.length < 4) S.phone.pin += k;
+  renderPhone();
+  document.querySelectorAll(".pw-dots i").forEach((el, i) => el.classList.toggle("on", i < S.phone.pin.length));
+  if (S.phone.pin.length === 4) {
+    const r = S.pinResolve; S.pinResolve = null;
+    setTimeout(r, 300);
+  }
 }
 
 function finish(status) {
@@ -1501,7 +1617,7 @@ function renderSummary() {
     ["오류→반응", s.error_response_ms != null ? `${(s.error_response_ms / 1000).toFixed(1)}초` : "-"],
     ["최종 출발지", ORIGINS[s.final_origin].name],
     ["최종 목적지", s.final_dest ? PLACES[s.final_dest].name : "-"],
-    ...(S.complexity === "B" ? [[USE_COUPON ? "택시·결제·쿠폰" : "택시·결제", `${CAR_TYPES[s.final_car].label} · ${PAY[s.final_pay].label}${USE_COUPON ? ` · ${s.final_coupon ? "적용" : "안 함"}` : ""}`]] : []),
+    ...(S.complexity === "B" ? [["택시 종류·쿠폰", `${CAR_TYPES[s.final_car].label} · 쿠폰 ${s.final_coupon ? "적용" : "안 함"}`]] : []),
     ["승인 응답", s.approvals],
     ["중지 / 직접조작", `${s.stops} / ${s.manual_controls}`],
     ["LLM 호출 (대체)", `${s.llm_calls} (${s.llm_fallbacks})`],
