@@ -81,11 +81,12 @@ const REQUEST_CHOICES = ["chat", "quiet"];
 const RIDE_HISTORY = ["09.26", "09.19", "09.12", "09.05", "08.29", "08.22"].map((d) => ({ date: `2026.${d} (토)`, time: "오후 6:20", to: "담소한정식 강남점", fare: 19700 }));
 const RESERVE = { when: "10월 10일 토요일 오후 6:20", short: "다음 주 토요일(10월 10일) 오후 6시 20분" };
 
-// 택시 종류와 관계없이 예상 요금은 같게 (조건 간 위험도를 같게 통제)
+// 조건 간 위험도(실제 결제 금액)를 같게 통제: 모범택시는 일반택시보다 쿠폰 금액(3,000원)만큼 비싸서
+// B(모범택시 + 쿠폰)도 결제 금액이 A(일반택시)와 같은 19,700원이 됨
 const CAR_TYPES = {
-  normal: { label: "일반택시", desc: "가까운 택시를 빠르게", rate: 1 },
-  deluxe: { label: "모범택시", desc: "넓고 편안한 차량", rate: 1 },
-  large: { label: "대형택시", desc: "6인 이상 · 짐이 많을 때", rate: 1 },
+  normal: { label: "일반택시", desc: "가까운 택시를 빠르게", extra: 0 },
+  deluxe: { label: "모범택시", desc: "넓고 편안한 차량", extra: 3000 },
+  large: { label: "대형택시", desc: "6인 이상 · 짐이 많을 때", extra: 6000 },
 };
 
 const PAY = {
@@ -138,7 +139,7 @@ const won0 = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
 function fareOf(f, destKey = f.dest) {
   const km = distKm(f.origin || "current", destKey || TARGET_PLACE, typeof S !== "undefined" ? S?.geo : null);
   const base = 4800 + Math.max(0, km - 1.6) * 760;
-  const fare = Math.round((base * CAR_TYPES[f.car].rate) / 100) * 100;
+  const fare = Math.round(base / 100) * 100 + CAR_TYPES[f.car].extra;
   return Math.max(0, fare - (f.coupon ? COUPON.amount : 0));
 }
 
