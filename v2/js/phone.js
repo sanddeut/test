@@ -523,8 +523,9 @@ function ensureMap() {
     zoomControl: false, attributionControl: true, dragging: false, touchZoom: false, scrollWheelZoom: false,
     doubleClickZoom: false, boxZoom: false, keyboard: false, tap: false, fadeAnimation: false, zoomAnimation: false,
   });
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    subdomains: "abcd", maxZoom: 19, attribution: "© OpenStreetMap © CARTO",
+  // 지도 타일: OpenStreetMap 기본 타일 (API 키 불필요. CARTO 타일은 API 키를 요구해 교체)
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19, attribution: "© OpenStreetMap",
   }).addTo(map);
   map.attributionControl.setPrefix(false);
   LiveMap.layer = L.layerGroup().addTo(map);
