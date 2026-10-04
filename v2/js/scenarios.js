@@ -47,11 +47,29 @@ function originLabel(key, geo) {
   return g.label ? `현재 위치 · ${g.label}` : "현재 위치";
 }
 
-// 거리(km): 동천역에서는 고정값, 현재 위치에서는 직선거리 × 1.35 (도로 거리 근사)
+// 참가자가 말한 출발지(동천역·현재 위치 외)를 그대로 출발지로 등록. 좌표는 현재 위치 근처로 두고, 지도 검색이 되면 그 위치로 옮김
+function setCustomOrigin(name, geo) {
+  const g = geo || GEO_FALLBACK;
+  ORIGINS.custom = { name, addr: "", lat: g.lat, lng: g.lng };
+  try {
+    fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=kr&accept-language=ko&q=${encodeURIComponent(name)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        const hit = j?.[0];
+        if (!hit || ORIGINS.custom?.name !== name) return;
+        Object.assign(ORIGINS.custom, { lat: +hit.lat, lng: +hit.lon, addr: (hit.display_name || "").split(",").slice(0, 3).join(",") });
+        if (typeof renderPhone === "function") renderPhone();
+      })
+      .catch(() => {});
+  } catch { /* 좌표는 현재 위치 근처 그대로 */ }
+  return "custom";
+}
+
+// 거리(km): 동천역에서는 고정값, 현재 위치·참가자가 말한 출발지에서는 직선거리 × 1.35 (도로 거리 근사)
 function distKm(originKey, destKey, geo) {
   const d = PLACES[destKey];
-  if (originKey !== "current") return d.road;
-  const o = originPoint("current", geo);
+  if (originKey === TARGET_ORIGIN) return d.road;
+  const o = originPoint(originKey, geo);
   const R = 6371, rad = Math.PI / 180;
   const a = Math.sin(((d.lat - o.lat) * rad) / 2) ** 2 + Math.cos(o.lat * rad) * Math.cos(d.lat * rad) * Math.sin(((d.lng - o.lng) * rad) / 2) ** 2;
   return Math.max(0.5, Math.round(2 * R * Math.asin(Math.sqrt(a)) * 1.35 * 10) / 10);
@@ -110,25 +128,23 @@ const CONDITIONS = {
 const SITUATION = {
   A: {
     situation: [
-      "오늘 저녁 7시에 동창회 모임이 있습니다.",
-      "모임 장소는 ‘담소한정식 강남점’입니다.",
-      "지금 동천역으로 걸어가는 중이라, 택시는 ‘신분당선 동천역’에서 타려고 합니다.",
+      "오늘 저녁 7시에 동창회 모임이 있습니다. 모임 장소는 ‘담소한정식 강남점’입니다.",
+      "지하철을 타기엔 계단이 많고 다리가 아파서, 편하게 택시를 타고가려 합니다.",
+      "택시는 ‘신분당선 동천역’에서 타려고 합니다.",
     ],
-    task: ["출발지를 ‘신분당선 동천역’으로 바꾸기", "‘담소한정식 강남점’으로 가는 택시 호출"],
+    task: ["AI와 대화를 하며 ‘신분당선 동천역’에서 ‘담소한정식 강남점’까지 가는 택시를 불러주세요."],
   },
   B: {
     situation: [
-      "오늘 저녁 7시에 동창회 모임이 있습니다.",
-      "모임 장소는 ‘담소한정식 강남점’입니다.",
-      "지금 동천역으로 걸어가는 중이라, 택시는 ‘신분당선 동천역’에서 타려고 합니다.",
-      "오늘은 정장을 입어서 편하게 모범택시를 타려고 합니다.",
-      "택시 앱에 있는 할인 쿠폰도 쓰려고 합니다.",
+      "오늘 저녁 7시에 동창회 모임이 있습니다. 모임 장소는 ‘담소한정식 강남점’입니다.",
+      "오늘 정장을 입었기 때문에, 편하게 모범택시를 타고 가려고 합니다.",
+      "택시는 ‘신분당선 동천역’에서 타려고 합니다.",
+      "가지고 계신 할인쿠폰이 1장 있어서, 이걸 사용하려 합니다.",
     ],
     task: [
-      "출발지를 ‘신분당선 동천역’으로 바꾸기",
-      "‘담소한정식 강남점’으로 가는 택시 호출",
-      "택시 종류를 모범택시로 바꾸기",
-      "할인 쿠폰 적용하기",
+      "AI와 대화를 하며 ‘신분당선 동천역’에서 ‘담소한정식 강남점’까지 가는 택시를 불러주세요.",
+      "택시종류는 ‘모범택시’로 선택해주세요.",
+      "택시비 결제 전에, 할인쿠폰을 적용해주세요.",
     ],
   },
 };
@@ -176,7 +192,7 @@ function scriptDefaults(cond) {
   if (low) {
     add("origin", "출발지 설정", "승인 요청", "출발지를 ‘신분당선 동천역’으로 설정할까요?");
     add("origin.ask", "출발지 설정", "거부 시", "출발지를 어디로 바꿀까요?");
-    add("origin.confirm", "출발지 설정", "출발지를 말했을 때 (다시 묻지 않고 진행)", "출발지를 ‘신분당선 동천역’으로 설정할게요.");
+    add("origin.confirm", "출발지 설정", "출발지를 말했을 때 (다시 묻지 않고 진행)", "출발지를 ‘{출발지}’(으)로 설정할게요.");
     add("origin.skip", "출발지 설정", "현재 위치를 말했을 때 (다시 묻지 않고 진행)", "출발지는 현재 위치로 둘게요.");
   } else add("origin", "출발지 설정", "안내", "말씀하신 ‘신분당선 동천역’으로 출발지를 설정했어요.");
 
@@ -343,9 +359,10 @@ function buildSteps(complexity, session = 1) {
     },
     act: async (s, choice) => {
       const p = s.phone;
-      if (choice === "reject") {
-        // 출발지를 바꾸지 않고 홈으로 돌아감
+      if (choice === "reject" || choice === "custom") {
+        // 동천역이 아닌 곳: 검색 화면을 닫고 홈으로 (custom이면 말한 곳을 출발지로)
         if (p.taxiView === "origin") await tap(".tx-sbar .back");
+        if (choice === "custom") s.form.origin = "custom";
       } else if (p.taxiView === "origin") {
         await tap(`.tx-ores[data-origin="${TARGET_ORIGIN}"]`);
         s.form.origin = TARGET_ORIGIN;
@@ -354,7 +371,7 @@ function buildSteps(complexity, session = 1) {
       renderPhone();
       await actSleep(300);
     },
-    apply: (s, choice) => { if (choice !== "reject") s.form.origin = TARGET_ORIGIN; s.phone.taxiView = "home"; s.phone.focus = null; },
+    apply: (s, choice) => { if (choice === "custom") s.form.origin = "custom"; else if (choice !== "reject") s.form.origin = TARGET_ORIGIN; s.phone.taxiView = "home"; s.phone.focus = null; },
   });
 
   steps.push({
