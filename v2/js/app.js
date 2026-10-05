@@ -2011,10 +2011,13 @@ function setupMic() {
     rec = new SR();
     rec.lang = "ko-KR";
     rec.interimResults = true;
+    // 받아 적기만 함: 보내기 버튼을 누를 때까지 보내지 않음 (이미 입력해 둔 글 뒤에 이어 씀)
+    const input = $("#msg");
+    const base = input.value.trim();
     rec.onresult = (e) => {
-      const r = e.results[e.results.length - 1];
-      $("#msg").value = r[0].transcript;
-      if (r.isFinal) onSubmit();
+      const said = Array.from(e.results).map((r) => r[0].transcript).join("").trim();
+      input.value = [base, said].filter(Boolean).join(" ");
+      input.dispatchEvent(new Event("input")); // 보내기 버튼 상태 갱신
     };
     rec.onend = () => { rec = null; btn.classList.remove("rec"); };
     rec.onerror = () => { rec = null; btn.classList.remove("rec"); };
