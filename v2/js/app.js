@@ -2196,9 +2196,9 @@ function init() {
   // 설정 화면과 연구자 패널의 두 스위치를 같이 움직임
   // 큰 글씨 모드 (설정 화면 토글, 이 기기에 저장)
   const bigBox = $("#big-text");
-  const setBig = (on) => { store.set("big_text", on); document.body.classList.toggle("big-text", on); bigBox.checked = on; requestAnimationFrame(() => { if (typeof fitScreen === "function") fitScreen(); }); };
+  const setBig = (on) => { store.set("big_text", on); document.body.classList.toggle("big-text", on); if (bigBox) bigBox.checked = on; requestAnimationFrame(() => { if (typeof fitScreen === "function") fitScreen(); }); };
   setBig(Boolean(store.get("big_text", false)));
-  bigBox.onchange = () => setBig(bigBox.checked);
+  if (bigBox) bigBox.onchange = () => setBig(bigBox.checked);
   const srcBoxes = [$("#show-src"), $("#show-src-setup")];
   const setSrc = (on) => { store.set("show_src", on); document.body.classList.toggle("show-src", on); srcBoxes.forEach((b) => (b.checked = on)); };
   setSrc(Boolean(store.get("show_src", false)));
