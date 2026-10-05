@@ -198,7 +198,10 @@ function stepPreview() {
         `<div class="${S.form.car === k ? "on" : ""}"><span><b>${esc(c.label)}</b></span><span class="pv-right"><small>예상 ${esc(won0(fareOf({ ...S.form, car: k })))}</small>${S.form.car === k ? PV_CHECK : ""}</span></div>`).join(""));
     case "pay": return picked(PAY, S.form.pay);
     case "coupon":
-      return el("pv-evt", `<span class="ms fill">confirmation_number</span><span><b>${esc(COUPON.name)}</b><small>${esc(won0(COUPON.amount))} 할인 · 모든 택시</small></span>`);
+      return el("pv-accts", [["off", "적용 안 함"], ["on", COUPON.name]].map(([k, v]) => {
+        const cur = S.form.coupon ? "on" : "off";
+        return `<div class="${cur === k ? "on" : ""}"><span><b>${esc(v)}</b></span>${cur === k ? PV_CHECK : ""}</div>`;
+      }).join(""));
     case "final": return rideSummary();
     case "request": {
       const cur = S.phone.reqFocus ?? S.form.request;
@@ -1327,10 +1330,21 @@ async function handleReject(step, c, said) {
   }
 
   if (type === "coupon") {
-    // 쿠폰을 거부하면 적용하지 않고 다음 단계로
-    await sayKey("coupon.skip");
-    await doApply(step, "reject", { announced: true });
-    return "done";
+    // 기본(적용 안 함)을 거부하면 적용 여부를 고르게 함 → 고른 대로 다시 묻지 않고 진행
+    const ask = line("coupon.ask", S);
+    await agentSay(ask);
+    const opts = [{ id: "off", label: "적용 안 함" }, { id: "on", label: COUPON.name }];
+    for (;;) {
+      const p = await askChoice(opts, ask, ["set_coupon", "continue", "cancel"], `쿠폰을 적용하라고 하면 set_coupon(coupon=true), 적용하지 말라고 하면 set_coupon(coupon=false)이야.`);
+      if (p.id === "__reask") continue;
+      let on = p.id === "on" ? true : p.id === "off" ? false : p.out?.intent === "set_coupon" && typeof p.out.coupon === "boolean" ? p.out.coupon : p.out?.intent === "continue" ? false : null;
+      if (p.out?.intent === "cancel") { await cancelRide(); return "cancel"; }
+      if (on === null) { if (p.out?.reply) await agentSay(p.out.reply, { talk: true }); continue; }
+      logEvent("coupon_chosen", { coupon: on, via: p.via });
+      await sayKey(on ? "coupon.on" : "coupon.skip", undefined, { talk: true });
+      await doApply(step, on ? "on" : "off", { announced: true });
+      return "done";
+    }
   }
 
   if (type === "final") {
