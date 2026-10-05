@@ -98,7 +98,7 @@ const OUTPUT_FORMAT = `# 출력 형식
 
 const LLM_TASKS = {
   request:
-    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 택시 호출 요청이면 clarification은 null로 둬. 택시 호출 요청인데 목적지를 알 수 없을 때만 목적지를 되물어. " +
+    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 사용자가 실제로 말한 정보만 채워: 출발지를 말했으면 동천역 → origin=dongcheon, 현재 위치(여기) → origin=current, 그 외 장소 → origin=null, origin_name=장소 이름. 출발지를 말하지 않았으면 둘 다 null. 택시 종류도 말했을 때만 car_type을 채우고, 과업 설명으로 짐작해서 채우지 마. 택시 호출 요청이면 clarification은 null로 둬. 택시 호출 요청인데 목적지를 알 수 없을 때만 목적지를 되물어. " +
     "택시 호출 요청이 아니면(인사, 잡담, 의미 없는 말, 다른 부탁 등) 먼저 택시를 꺼내지 말고, 발화를 짧게 받아준 뒤 휴대폰 앱을 대신 조작해서 할 수 있는 일(예: 택시 호출, 앱 실행)을 알려주고 무엇을 도와드릴지 물어. clarification은 해요체 2문장 이내.",
   turn: "현재 상태에서 사용자가 말했어. 의도를 분류하고 필요한 값을 채운 뒤, reply를 써.",
 };
@@ -109,12 +109,14 @@ const REQUEST_SCHEMA = sch("OBJECT", {
   properties: {
     is_ride_request: sch("BOOLEAN"),
     destination: sch("STRING", { nullable: true }),
+    origin: sch("STRING", { nullable: true, enum: ["current", "dongcheon"] }),
+    origin_name: sch("STRING", { nullable: true }),
     car_type: sch("STRING", { nullable: true, enum: ["normal", "deluxe", "large"] }),
     pay_method: sch("STRING", { nullable: true, enum: ["auto", "direct"] }),
     wants_coupon: sch("BOOLEAN"),
     clarification: sch("STRING", { nullable: true }),
   },
-  required: ["is_ride_request", "destination", "car_type", "pay_method", "wants_coupon", "clarification"],
+  required: ["is_ride_request", "destination", "origin", "origin_name", "car_type", "pay_method", "wants_coupon", "clarification"],
 });
 
 function turnSchema(intentIds) {
@@ -364,6 +366,8 @@ const Rules = {
     return {
       is_ride_request: isRide,
       destination: place ? PLACES[place].name : /한정식|담소|모임/.test(text) ? text : null,
+      origin: extractOrigin(text),
+      origin_name: extractOrigin(text) ? null : (text.match(/([가-힣A-Za-z0-9]+(?:\s[가-힣A-Za-z0-9]+)?)\s*에서/)?.[1] ?? null),
       car_type: extractCar(text),
       pay_method: extractPay(text),
       wants_coupon: /쿠폰|할인/.test(text),

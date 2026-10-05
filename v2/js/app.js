@@ -48,6 +48,8 @@ function newSession(cfg) {
     showRun: false, // 참가자가 「실행화면 보기」로 진행 화면을 연 상태 (기본은 대화창)
     finished: false,
     userDest: null, // 오류 단계 이전에 참가자가 미리 정정한 목적지
+    req: { origin: null, originName: null, car: null }, // 처음 요청(과 이어진 답)에서 참가자가 말한 출발지·택시 종류. 없으면 해당 단계에서 물음
+    originTarget: null, // 설정할 출발지 (말한 곳. 없으면 물어서 받음)
     waiter: null, // 러너가 참가자 입력을 기다릴 때 {resolve, options}
     ivWaiter: null, // 중지 후 개입 대화가 입력을 기다릴 때
     resumeWaiters: [],
@@ -1082,6 +1084,10 @@ async function run() {
       scenario_task: SITUATION[S.complexity].task,
     });
     const o = res.output;
+    // 참가자가 말한 출발지·택시 종류는 이어진 답에서도 모아 둠 (말하지 않은 정보는 해당 단계에서 물음)
+    if (o.origin && ORIGINS[o.origin]) S.req.origin = o.origin;
+    else if (o.origin_name) { S.req.origin = null; S.req.originName = o.origin_name; }
+    if (o.car_type && CAR_TYPES[o.car_type]) S.req.car = o.car_type;
     if (o.is_ride_request && !(o.destination == null && o.clarification)) {
       S.m.request = { text, ...o };
       showTyping(true);
@@ -1175,6 +1181,7 @@ const REJECT_EXTRA = {
 
 async function runLowStep(step) {
   if (step.kind === "password") return runPassword(step, step.low);
+  if (step.id === "origin") { const r = await prepOrigin(step); if (r !== "go") return r; }
   if (step.kind === "dest") return runLowDest(step);
 
   if (manualDone(step) && step.low.options) { logEvent("step_done_manually"); return true; } // 이미 직접 한 단계는 묻지 않고 넘어감
@@ -1274,35 +1281,7 @@ async function handleReject(step, c, said) {
     }
   }
 
-  if (type === "origin") {
-    // 출발지를 어디로 할지 물음 → 말한 출발지로 다시 묻지 않고 바로 진행 (현재 위치면 그대로 둠)
-    const ask = line("origin.ask", S);
-    await agentSay(ask);
-    let said = ask;
-    for (;;) {
-      const o = await turn(await waitText(), {
-        said,
-        intents: ["set_origin", "cancel", "other"],
-        hint: `사용자가 출발지로 할 장소를 말하면 set_origin이야. ‘${ORIGINS[TARGET_ORIGIN].name}’이면 origin=${TARGET_ORIGIN}, 현재 위치면 origin=current, 그 외 장소면 origin=null로 두고 origin_name에 그 장소 이름을 써. 장소를 말하지 않았으면(잡담, 질문 등) other이고, reply는 짧게 받아준 뒤 출발지를 어디로 할지 다시 묻는 형태로 써.`,
-        fallback: "출발지를 어디로 할까요?",
-        freeOrigin: true,
-      });
-      logEvent("origin_named", { intent: o.intent, origin: o.origin });
-      // 말한 곳으로 바로 설정 (다시 묻지 않음): 동천역 / 현재 위치 / 그 외 말한 장소
-      const named = o.intent === "set_origin" && !ORIGINS[o.origin] && o.origin_name ? setCustomOrigin(o.origin_name, S.geo) : null;
-      if (o.intent === "set_origin" && (ORIGINS[o.origin] || named)) {
-        const k = named || o.origin;
-        const choice = k === "current" ? "reject" : k === TARGET_ORIGIN ? "approve" : "custom";
-        logEvent("origin_changed", { origin: k, name: ORIGINS[k].name, via: "reject_text" });
-        await sayKey(k === "current" ? "origin.skip" : "origin.confirm", { origin: k }, { talk: true });
-        await doApply(step, choice, { announced: true });
-        return "done";
-      }
-      if (o.intent === "cancel") { await cancelRide(); return "cancel"; }
-      said = o.reply;
-      await agentSay(o.reply, { talk: true });
-    }
-  }
+  if (type === "origin") return askOrigin(step, "reject_text");
 
   if (type === "request") {
     // 참가자가 말한 요청사항으로 바꿈 → 실행화면에서 고르는 과정을 보여주고 → 다시 승인을 물음
@@ -1444,9 +1423,79 @@ async function runLowDest(step) {
   return true;
 }
 
+// ---------- 처음 요청에 없던 정보 묻기 ----------
+// 출발지: 처음 요청에서 말했으면 그 곳으로 승인을 묻거나(낮은 자동화) 설정(높은 자동화), 말하지 않았으면 먼저 물음
+async function prepOrigin(step) {
+  if (manualDone(step) || S.userSet.origin) return "go";
+  if (S.req.originName && !S.req.origin) S.req.origin = setCustomOrigin(S.req.originName, S.geo);
+  if (S.req.origin) { S.originTarget = S.req.origin; return "go"; }
+  if (S.automation === "high") await gate();
+  const r = await askOrigin(step, "asked");
+  if (r === "cancel") return false;
+  if (S.automation === "low") await dwell();
+  return true;
+}
+
+// 출발지를 어디로 할지 물음 → 말한 곳(동천역 / 현재 위치 / 그 외 장소)으로 다시 묻지 않고 바로 설정
+async function askOrigin(step, via) {
+  const ask = line("origin.ask", S);
+  await agentSay(ask);
+  let said = ask;
+  for (;;) {
+    const o = await turn(await waitText(), {
+      said,
+      intents: ["set_origin", "cancel", "other"],
+      hint: `사용자가 출발지로 할 장소를 말하면 set_origin이야. ‘${ORIGINS[TARGET_ORIGIN].name}’이면 origin=${TARGET_ORIGIN}, 현재 위치면 origin=current, 그 외 장소면 origin=null로 두고 origin_name에 그 장소 이름을 써. 장소를 말하지 않았으면(잡담, 질문 등) other이고, reply는 짧게 받아준 뒤 출발지를 어디로 할지 다시 묻는 형태로 써.`,
+      fallback: "출발지를 어디로 할까요?",
+      freeOrigin: true,
+    });
+    logEvent("origin_named", { intent: o.intent, origin: o.origin, via });
+    const named = o.intent === "set_origin" && !ORIGINS[o.origin] && o.origin_name ? setCustomOrigin(o.origin_name, S.geo) : null;
+    if (o.intent === "set_origin" && (ORIGINS[o.origin] || named)) {
+      const k = named || o.origin;
+      S.originTarget = k;
+      logEvent("origin_changed", { origin: k, name: ORIGINS[k].name, via });
+      await sayKey(k === "current" ? "origin.skip" : "origin.confirm", { origin: k }, { talk: true });
+      // 동천역이면 실행화면에서 검색해 고르는 과정을 보여줌
+      if (k === TARGET_ORIGIN && S.phone.taxiView !== "origin") await doPre(step);
+      await doApply(step, k === "current" ? "reject" : k === TARGET_ORIGIN ? "approve" : "custom", { announced: true });
+      return "done";
+    }
+    if (o.intent === "cancel") { await cancelRide(); return "cancel"; }
+    said = o.reply;
+    await agentSay(o.reply, { talk: true });
+  }
+}
+
+// 택시 종류(B, 높은 자동화): 처음 요청에서 말하지 않았으면 고르게 함 (말했으면 그대로 설정)
+async function askCarHigh(step) {
+  await gate();
+  const opts = step.low.options;
+  const ask = line("car.ask", S);
+  await agentSay(ask);
+  for (;;) {
+    const c = await askChoice(opts, ask, ["set_car"]);
+    if (c.id === "__reask") continue;
+    const k = CAR_TYPES[c.id] ? c.id : c.out?.car_type;
+    if (k && CAR_TYPES[k]) {
+      S.req.car = k;
+      logEvent("car_named", { car: k, via: c.via });
+      await doPre(step);
+      await doApply(step, k, { announced: true });
+      await sayKey("car.set", { car: k }, { talk: true });
+      await dwell();
+      return true;
+    }
+    if (c.out?.intent === "cancel") return cancelRide();
+    if (c.out?.reply) await agentSay(c.out.reply, { talk: true });
+  }
+}
+
 // ---------- 높은 자동화 ----------
 async function runHighStep(step) {
   if (step.kind === "password") return runPassword(step, step.high);
+  if (step.id === "origin") { const r = await prepOrigin(step); if (r !== "go") return r; }
+  if (step.id === "car" && !S.req.car && !S.userSet.car && !manualDone(step)) return askCarHigh(step);
   if (manualDone(step) && step.kind !== "dest") { logEvent("step_done_manually"); return true; }
 
   let msgs = resolveMsgs(step.high.messages);
