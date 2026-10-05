@@ -826,3 +826,62 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .pv-accts .pv-right { display: flex; align-items: center; gap: 10px; flex: none; }
 .pv-accts .pv-right small { color: #3c4048; font-size: 14.5px; }
 .pv-accts div:not(.on) .pv-right { padding-right: 32px; } /* 체크 없는 행도 금액 위치를 맞춤 */
+
+/* ================= 큰 글씨 모드 (설정 화면 토글) ================= */
+.big-toggle { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 4px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; }
+.big-toggle > span { display: flex; flex-direction: column; gap: 2px; }
+.big-toggle b { font-size: 15px; color: var(--text); }
+.big-toggle small { font-size: 12.5px; color: var(--muted); }
+.big-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.big-toggle i { position: relative; flex: none; width: 46px; height: 28px; border-radius: 999px; background: #c9ced8; transition: background .2s; }
+.big-toggle i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s; }
+.big-toggle input:checked + i { background: #0b57d0; }
+.big-toggle input:checked + i::after { transform: translateX(18px); }
+.big-toggle input:focus-visible + i { outline: 2px solid #0b57d0; outline-offset: 2px; }
+
+/* 대화창 */
+.big-text .chat-head b { font-size: 19px; font-weight: 700; }
+.big-text .bubble { font-size: 19px; line-height: 1.55; font-weight: 500; }
+.big-text .rc-q { font-size: 19px; font-weight: 500; }
+.big-text .rc-text b { font-size: 18px; font-weight: 700; }
+.big-text .rc-text small { font-size: 17px; font-weight: 500; }
+.big-text .chip { font-size: 18px; font-weight: 700; padding: 12px 24px; }
+.big-text .choice { font-size: 18.5px; }
+.big-text .choice .c-main b { font-weight: 700; }
+.big-text .choice .c-main small { font-size: 15px; }
+.big-text .choice .c-price { font-size: 16.5px; font-weight: 600; }
+.big-text .composer input { font-size: 18px; }
+.big-text .rc-open { font-size: 17px; font-weight: 600; }
+.big-text .rc-manual { font-size: 15px; font-weight: 500; }
+.big-text .pv-accts b, .big-text .pv-app b, .big-text .pv-acct b, .big-text .pv-evt b { font-size: 17.5px; font-weight: 600; }
+.big-text .pv-accts div.on b { font-weight: 800; }
+.big-text .pv-accts small, .big-text .pv-acct small, .big-text .pv-app small { font-size: 15px; }
+.big-text .pv-accts .pv-right small { font-size: 16px; font-weight: 600; }
+.big-text .rc-summary div { font-size: 16.5px; }
+.big-text .rc-summary b { font-weight: 700; }
+.big-text .pw-head b { font-size: 18px; font-weight: 700; }
+.big-text .pw-note { font-size: 14.5px; }
+.big-text .pw-go { font-size: 18.5px; font-weight: 700; }
+.big-text .pw-open .pw-cancel { font-size: 15.5px; }
+.big-text .direct-bar .db-app b { font-size: 18px; }
+.big-text .pv-head b, .big-text .pv-status { font-size: 18px; font-weight: 600; }
+
+/* 앱 화면 */
+.big-text .taxi { font-size: 17px; font-weight: 500; }
+.big-text .tx-from { font-size: 16.5px; }
+.big-text .tx-search { font-size: 20px; }
+.big-text .tx-od > div { font-size: 16.5px; }
+.big-text .tx-od b { font-size: 18px; font-weight: 700; }
+.big-text .tx-car-main b { font-size: 17.5px; font-weight: 700; }
+.big-text .tx-car-main small { font-size: 14px; }
+.big-text .tx-row { font-size: 16.5px; }
+.big-text .tx-row b { font-weight: 700; }
+.big-text .tx-call { font-size: 19px; font-weight: 800; }
+.big-text .tx-done-head b { font-size: 20px; font-weight: 800; }
+.big-text .tx-done-head small { font-size: 15px; }
+.big-text .done-box div { font-size: 16.5px; }
+.big-text .done-box b { font-weight: 700; }
+.big-text .sheet h3 { font-size: 23px; font-weight: 800; }
+.big-text .muted { font-size: 16px; }
+.big-text .keypad button { font-size: 25px; font-weight: 600; }
+.big-text .tx-float-od b { font-size: 16px; font-weight: 700; }
