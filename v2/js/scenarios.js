@@ -113,8 +113,11 @@ const PAY = {
 };
 
 const COUPON = { name: "가을맞이 3,000원 할인 쿠폰", amount: 3000 };
-// 쿠폰 적용 단계 사용 여부 (B에만)
+// 쿠폰 (B에만): 앱에 쿠폰이 있고 참가자가 요청하면(중지·최종 확인 거부·직접 조작) 적용할 수 있음
 const USE_COUPON = true;
+// 쿠폰 적용 단계 사용 여부: 에이전트가 먼저 쿠폰을 제시하지 않음 → '쿠폰 사용 안 함'이 기본값으로 진행되고,
+// 참가자가 스스로 중지·거부해 쿠폰을 적용하는지 봄
+const COUPON_STEP = false;
 // 결제 방식 단계 사용 여부 (최종: 결제는 기본값인 자동결제로 미리 하고, 호출 전에 결제 비밀번호를 직접 입력)
 const USE_PAY_STEP = false;
 
@@ -217,7 +220,7 @@ function scriptDefaults(cond) {
     else add("pay", "결제 방식", "안내", "말씀하신 {결제}로 바꿨어요.");
   }
 
-  if (B && USE_COUPON) {
+  if (B && USE_COUPON && COUPON_STEP) {
     if (low) {
       add("coupon", "쿠폰 적용", "승인 요청", "쓸 수 있는 쿠폰이 있어요. ‘{쿠폰}’을 적용할까요?");
       add("coupon.skip", "쿠폰 적용", "거부 시", "쿠폰은 적용하지 않을게요.");
@@ -470,7 +473,7 @@ function buildSteps(complexity, session = 1) {
     });
   }
 
-  if (B && USE_COUPON) {
+  if (B && USE_COUPON && COUPON_STEP) {
     steps.push({
       id: "coupon",
       label: "쿠폰 적용",
