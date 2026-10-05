@@ -87,6 +87,8 @@ function bindPhone() {
   on("data-man-pay", () => manualPaySheet());
   on("data-man-payopt", (k) => manualPay(k));
   on("data-man-coupon", () => manualCoupon());
+  on("data-man-call", () => manualCallSheet());
+  on("data-man-confirm", () => manualConfirmCall());
   on("data-man-close", () => manualCloseSheet());
   on("data-done-confirm", () => confirmDone());
   on("data-pin", (k) => pinPress(k));
@@ -227,7 +229,7 @@ function taxiRide() {
       <div class="tx-cars ${p.focus === "car" ? "hl" : ""}">${cars}</div>
       <div class="tx-row tx-pay" ${man ? "data-man-pay" : ""}><span>결제</span><b>${PAY[f.pay].label} <small>${PAY[f.pay].desc}</small> ${mi("chevron_right")}</b></div>
       ${USE_COUPON ? `<div class="tx-row tx-coupon" ${man ? "data-man-coupon" : ""}><span>쿠폰</span><b class="${f.coupon ? "on" : ""}">${f.coupon ? `−${won0(COUPON.amount)} 적용` : "1장 사용 가능"} ${mi("chevron_right")}</b></div>` : ""}
-      <div class="tx-call">${CAR_TYPES[f.car].label} 호출하기</div>
+      <div class="tx-call" ${man ? "data-man-call" : ""}>${CAR_TYPES[f.car].label} 호출하기</div>
     </div>
   </div>`;
 }
@@ -317,7 +319,7 @@ function taxiOverlay() {
       <h3>${esc(PLACES[f.dest || TARGET_PLACE].name)}으로<br><em>${CAR_TYPES[f.car].label}</em>를 호출할까요?</h3>
       ${rideRows().slice(2).filter(([k]) => k !== "기사님 요청사항").map(([k, v]) => `<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`).join("")}
       <div class="kv tx-req ${p.focus === "request" ? "hl" : ""}" ${man ? "data-man-req" : ""}><span>기사님 요청사항</span><b>${esc(REQUESTS[f.request || "none"])} ${mi("chevron_right")}</b></div>
-      <div class="bk-btn2"><span>취소</span><span class="primary">호출</span></div></div></div>`;
+      <div class="bk-btn2"><span ${man ? "data-man-close" : ""}>취소</span><span class="primary" ${man ? "data-man-confirm" : ""}>호출</span></div></div></div>`;
   }
   if (p.sheet === "pin") {
     const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
@@ -434,6 +436,35 @@ function manualCoupon() {
   S.form.coupon = !S.form.coupon;
   (S.userSet ||= {}).coupon = true;
   if (curStepId() === "coupon") manualMark("coupon", "approve"); // 참가자가 직접 정한 값(userSet)을 그대로 씀
+  renderPhone();
+}
+
+// [○○ 호출하기] → 호출 확인 시트
+function manualCallSheet() {
+  if (!S?.manual) return;
+  S.phone.sheet = "confirm";
+  logEvent("manual_action", { step: curStepId(), choice: "call_sheet" });
+  renderPhone();
+}
+
+// 호출 확인 시트의 [호출]: 지금 단계부터 최종 호출 확인까지(택시 종류·쿠폰·결제·최종 확인)를 참가자가 직접 끝낸 것으로 보고
+// 직접 조작을 마침 → 에이전트는 다음 단계(기사님 요청사항·결제 비밀번호 등)부터 이어서 진행
+function manualConfirmCall() {
+  if (!S?.manual) return;
+  const ids = S.steps.map((st) => st.id);
+  const fi = ids.indexOf("final");
+  if (fi < 0 || S.stepIdx > fi) return;
+  for (let i = S.stepIdx; i <= fi; i++) {
+    const id = ids[i];
+    if (S.manualDone?.[id] !== undefined) continue;
+    if (id === "car") manualMark("car", S.form.car);
+    else if (id === "coupon" || id === "pay" || id === "final") manualMark(id, "approve");
+  }
+  (S.userSet ||= {}).car = true;
+  S.userSet.coupon = true;
+  logEvent("manual_call", { car: S.form.car, coupon: S.form.coupon });
+  endManual();
+  S.phone.sheet = "confirm"; // 호출 확인 화면에서 이어서 진행
   renderPhone();
 }
 
