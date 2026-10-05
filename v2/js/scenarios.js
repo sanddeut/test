@@ -99,12 +99,12 @@ const REQUEST_CHOICES = ["chat", "quiet"];
 const RIDE_HISTORY = ["09.26", "09.19", "09.12", "09.05", "08.29", "08.22"].map((d) => ({ date: `2026.${d} (토)`, time: "오후 6:20", to: "담소한정식 강남점", fare: 19700 }));
 const RESERVE = { when: "10월 10일 토요일 오후 6:20", short: "다음 주 토요일(10월 10일) 오후 6시 20분" };
 
-// 조건 간 위험도(실제 결제 금액)를 같게 통제: 모범택시는 일반택시보다 쿠폰 금액(3,000원)만큼 비싸서
-// B(모범택시 + 쿠폰)도 결제 금액이 A(일반택시)와 같은 19,700원이 됨
+// 예상 요금(동천역 → 강남점): 일반택시 16,000원 / 모범택시 18,000원 / 대형택시 20,000원
+// 모범택시에 쿠폰(2,000원)을 적용하면 일반택시와 같은 16,000원
 const CAR_TYPES = {
   normal: { label: "일반택시", desc: "가까운 택시를 빠르게", extra: 0 },
-  deluxe: { label: "모범택시", desc: "넓고 편안한 차량", extra: 3000 },
-  large: { label: "대형택시", desc: "6인 이상 · 짐이 많을 때", extra: 6000 },
+  deluxe: { label: "모범택시", desc: "넓고 편안한 차량", extra: 2000 },
+  large: { label: "대형택시", desc: "6인 이상 · 짐이 많을 때", extra: 4000 },
 };
 
 const PAY = {
@@ -112,7 +112,7 @@ const PAY = {
   direct: { label: "직접결제", desc: "내릴 때 기사님께 결제" },
 };
 
-const COUPON = { name: "가을맞이 3,000원 할인 쿠폰", amount: 3000 };
+const COUPON = { name: "가을맞이 2,000원 할인 쿠폰", amount: 2000 };
 // 쿠폰 (B에만): 앱에 쿠폰이 있고 참가자가 요청하면(중지·최종 확인 거부·직접 조작) 적용할 수 있음
 const USE_COUPON = true;
 // 쿠폰 적용 단계 사용 여부: 에이전트가 먼저 쿠폰을 제시하지 않음 → '쿠폰 사용 안 함'이 기본값으로 진행되고,
@@ -154,10 +154,10 @@ const SITUATION = {
 
 const won0 = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
 
-// 예상 요금: 거리 요금(기본 4,800원 + 1.6km 이후 km당 약 760원) × 택시 종류 배율 − 쿠폰
+// 예상 요금: 거리 요금(기본 4,800원 + 1.6km 이후 km당 약 571원 → 동천역~강남점 21.2km = 16,000원) + 택시 종류 추가 요금 − 쿠폰
 function fareOf(f, destKey = f.dest) {
   const km = distKm(f.origin || "current", destKey || TARGET_PLACE, typeof S !== "undefined" ? S?.geo : null);
-  const base = 4800 + Math.max(0, km - 1.6) * 760;
+  const base = 4800 + Math.max(0, km - 1.6) * (11200 / 19.6);
   const fare = Math.round(base / 100) * 100 + CAR_TYPES[f.car].extra;
   return Math.max(0, fare - (f.coupon ? COUPON.amount : 0));
 }
