@@ -817,3 +817,12 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .tx-brand b { font-size: 13.5px; font-weight: 700; }
 .tx-brand small { display: flex; align-items: center; gap: 2px; color: #6b6f7a; font-size: 12px; margin-left: 4px; }
 .tx-brand small .ms { font-size: 13px; }
+
+/* 출발지 미리보기: 목적지 카드와 같은 모양, 출발 표시는 검은색 */
+.pv-origin .pv-pin { background: #eceef2; color: #1c1d21; }
+
+/* 택시 종류 목록: 설명 없이 이름 + 오른쪽(쉐브론·체크 왼쪽)에 예상 금액 */
+.choice .c-price { flex: none; color: #3c4048; font-size: 15px; font-weight: 500; }
+.pv-accts .pv-right { display: flex; align-items: center; gap: 10px; flex: none; }
+.pv-accts .pv-right small { color: #3c4048; font-size: 14.5px; }
+.pv-accts div:not(.on) .pv-right { padding-right: 32px; } /* 체크 없는 행도 금액 위치를 맞춤 */

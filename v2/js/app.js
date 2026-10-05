@@ -185,13 +185,15 @@ function stepPreview() {
   switch (id) {
     case "taxi_open": return appTile(TAXI_APP, "local_taxi", "#f5b400", "택시 앱");
     case "origin":
-      return el("pv-accts pv-origin", `<div><span><small>지금 출발지</small><b>${esc(originLabel("current", S.geo))}</b></span></div>
-        <div class="on"><span><small>바꿀 출발지</small><b>${esc(ORIGINS[TARGET_ORIGIN].name)}</b><small>${esc(ORIGINS[TARGET_ORIGIN].addr)}</small></span>${PV_CHECK}</div>`);
+      // 출발지를 '바꾼다'는 개념은 드러내지 않고, 설정할 출발지 하나만 보여줌
+      return el("pv-acct pv-place pv-origin", `<span class="pv-pin"><span class="ms">trip_origin</span></span><span><b>${esc(ORIGINS[TARGET_ORIGIN].name)}</b><small>${esc(ORIGINS[TARGET_ORIGIN].addr)}</small></span>`);
     case "dest": {
       const k = S.phone.pendingDest ?? S.form.dest ?? AGENT_PLACE;
       return el("pv-acct pv-place", `<span class="pv-pin"><span class="ms fill">location_on</span></span><span><b>${esc(PLACES[k].name)}</b><small>${esc(PLACES[k].addr)} · ${esc(distText(S.form.origin, k, S.geo))}</small></span>`);
     }
-    case "car": return picked(CAR_TYPES, S.form.car);
+    case "car":
+      return el("pv-accts", Object.entries(CAR_TYPES).map(([k, c]) =>
+        `<div class="${S.form.car === k ? "on" : ""}"><span><b>${esc(c.label)}</b></span><span class="pv-right"><small>예상 ${esc(won0(fareOf({ ...S.form, car: k })))}</small>${S.form.car === k ? PV_CHECK : ""}</span></div>`).join(""));
     case "pay": return picked(PAY, S.form.pay);
     case "coupon":
       return el("pv-evt", `<span class="ms fill">confirmation_number</span><span><b>${esc(COUPON.name)}</b><small>${esc(won0(COUPON.amount))} 할인 · 모든 택시</small></span>`);
@@ -429,7 +431,7 @@ function setChips(options, onPick) {
         b.innerHTML = `<span class="oc-head"><span class="bk-logo sm"><i></i></span><span><b>${esc(o.card.title)}</b><small>${esc(o.card.sub)}</small></span></span><span class="oc-btn">${esc(o.label)}</span>`;
       } else if (isList && !asPill) {
         b.className = "choice chip";
-        b.innerHTML = `<span class="c-main"><b>${esc(o.label)}</b>${o.desc ? `<small>${esc(o.desc)}</small>` : ""}</span><span class="ms c-go">chevron_right</span>`;
+        b.innerHTML = `<span class="c-main"><b>${esc(o.label)}</b>${o.desc ? `<small>${esc(o.desc)}</small>` : ""}</span>${o.price ? `<span class="c-price">${esc(o.price)}</span>` : ""}<span class="ms c-go">chevron_right</span>`;
       } else {
         b.className = `chip ${o.id === "reject" || o.id === "manual" ? "chip-ghost" : ""}`;
         b.textContent = o.label;
@@ -1282,7 +1284,7 @@ async function handleReject(step, c, said) {
         said,
         intents: ["set_origin", "cancel", "other"],
         hint: `사용자가 출발지로 할 장소를 말하면 set_origin이야. ‘${ORIGINS[TARGET_ORIGIN].name}’이면 origin=${TARGET_ORIGIN}, 현재 위치면 origin=current, 그 외 장소면 origin=null로 두고 origin_name에 그 장소 이름을 써. 장소를 말하지 않았으면(잡담, 질문 등) other이고, reply는 짧게 받아준 뒤 출발지를 어디로 할지 다시 묻는 형태로 써.`,
-        fallback: "출발지를 어디로 바꿀까요?",
+        fallback: "출발지를 어디로 할까요?",
         freeOrigin: true,
       });
       logEvent("origin_named", { intent: o.intent, origin: o.origin });

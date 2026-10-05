@@ -191,9 +191,9 @@ function scriptDefaults(cond) {
 
   if (low) {
     add("origin", "출발지 설정", "승인 요청", "출발지를 ‘신분당선 동천역’으로 설정할까요?");
-    add("origin.ask", "출발지 설정", "거부 시", "출발지를 어디로 바꿀까요?");
+    add("origin.ask", "출발지 설정", "거부 시", "출발지를 어디로 할까요?");
     add("origin.confirm", "출발지 설정", "출발지를 말했을 때 (다시 묻지 않고 진행)", "출발지를 ‘{출발지}’(으)로 설정할게요.");
-    add("origin.skip", "출발지 설정", "현재 위치를 말했을 때 (다시 묻지 않고 진행)", "출발지는 현재 위치로 둘게요.");
+    add("origin.skip", "출발지 설정", "현재 위치를 말했을 때 (다시 묻지 않고 진행)", "출발지를 현재 위치로 설정할게요.");
   } else add("origin", "출발지 설정", "안내", "말씀하신 ‘신분당선 동천역’으로 출발지를 설정했어요.");
 
   add("dest.busy", "목적지 설정", "진행 문구 (검색 중)", "목적지를 검색하고 있어요 …");
@@ -255,7 +255,7 @@ function scriptDefaults(cond) {
 
   add("stop.ask", "중지·직접 조작", "중지를 눌렀을 때", "진행을 멈췄어요. 어떻게 바꿀까요?");
   add("stop.ask.reserve", "[세션2 오류] 이용내역 열람 + 예약 호출", "예약 중 중지를 눌렀을 때", "예약을 멈췄어요. 무엇을 수정할까요?");
-  add("change.origin", "중지·직접 조작", "중지 중 출발지를 바꿨을 때", low ? "출발지를 ‘{출발지}’(으)로 바꿀게요." : "출발지를 ‘{출발지}’(으)로 바꿨어요.");
+  add("change.origin", "중지·직접 조작", "중지 중 출발지를 정했을 때", low ? "출발지를 ‘{출발지}’(으)로 설정할게요." : "출발지를 ‘{출발지}’(으)로 설정했어요.");
   add("change.dest", "중지·직접 조작", "중지 중 목적지를 바꿨을 때", low ? "목적지를 ‘{목적지}’으로 바꿀게요." : "목적지를 ‘{목적지}’으로 바꿨어요.");
   if (B) add("change.car", "중지·직접 조작", "중지 중 택시 종류를 바꿨을 때", "택시 종류를 {택시종류}로 바꿨어요.");
   add("change.pay", "중지·직접 조작", "중지 중 결제 방식을 바꿨을 때", "결제 방식을 {결제}로 바꿨어요.");
@@ -426,7 +426,7 @@ function buildSteps(complexity, session = 1) {
       low: {
         messages: msg("car"),
         // 예상 요금은 목적지·쿠폰에 따라 바뀌므로 물을 때마다 새로 계산
-        get options() { return Object.entries(CAR_TYPES).map(([id, c]) => ({ id, label: c.label, desc: `${c.desc} · 예상 ${won0(fareOf({ ...S.form, car: id }))}` })); },
+        get options() { return Object.entries(CAR_TYPES).map(([id, c]) => ({ id, label: c.label, price: `예상 ${won0(fareOf({ ...S.form, car: id }))}` })); },
       },
       high: { messages: (s) => lines("car", s, { car: carTarget(s) }), applyFirst: true },
       pre: async (s) => { s.phone.focus = "car"; renderPhone(); await actSleep(400); },
