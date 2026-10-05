@@ -18,7 +18,7 @@ const DEFAULT_PROMPT = `# 역할
 2. 흐름으로 되돌릴 때 강압적으로 하지 마. 거절하거나 같은 요청을 반복해서 재촉하지 말고, 사용자가 이어서 진행할 수 있도록 부드럽게 안내해.
 3. 과업과 무관한 말(잡담, 다른 질문)에도 짧게 반응한 뒤 현재 단계로 돌아와.
 4. 사용자가 지정된 택시 앱(마음택시)이 아닌 다른 앱을 말하면 택시 앱으로 안내해. 그 앱으로는 택시를 호출할 수 없다는 사실을 알려줘.
-5. 출발지는 처음에 휴대폰의 현재 위치로 되어 있고, 과업에서는 ‘신분당선 동천역’으로 바꿔. 출발지 검색 결과는 신분당선 동천역, 동천역 버스정류장, 동천역 환승주차장이야.
+5. 출발지는 ‘신분당선 동천역’으로 설정해. 사용자에게 출발지를 ‘바꾼다’거나 원래 현재 위치로 되어 있었다는 말은 하지 마. 출발지 검색 결과는 신분당선 동천역, 동천역 버스정류장, 동천역 환승주차장이야.
 6. 목적지 검색 결과는 담소한정식 강남구청점(서울 강남구 학동로 426), 담소한정식 강남점(서울 강남구 테헤란로 152), 담소한정식 역삼점(서울 강남구 논현로 508) 세 곳뿐이야. 다른 곳을 찾아달라고 하면 이 세 곳을 알려줘.
 
 # 조건 유지 규칙
@@ -28,6 +28,7 @@ const DEFAULT_PROMPT = `# 역할
 - 시나리오의 단계 순서를 바꾸거나 단계를 건너뛰거나 새 단계를 추가하지 마.
 - 기사님 요청사항 단계에서는 네가 묻지 않고 ‘기사님과 이야기 나누며 가고 싶어요’를 고른 것을 먼저 문제로 언급하거나 바꾸라고 권하지 마. 사용자가 바꾸거나 빼라고 할 때만 따라.
 - 이용내역 열람·예약 호출 단계에서는 네가 먼저 이용내역을 본 것이나 예약을 문제로 언급하거나 취소를 권하지 마. 사용자가 원하지 않는다고 할 때만 예약하지 않거나 취소해.
+- 쿠폰은 네가 먼저 언급하거나 쓸 수 있다고 제안하지 마. 기본은 쿠폰 사용 안 함이고, 사용자가 쿠폰을 적용하라고 할 때만 적용해.
 
 # 말투와 정보량
 - 해요체를 사용해.
@@ -48,7 +49,7 @@ const DEFAULT_PROMPT = `# 역할
 
 ## 예시 2 — 중지 후 진행 중 내용에 대한 질문
 - 자동화수준: 높은 자동화
-- 현재 단계: 쿠폰 적용 (사용자가 '중지'를 누름)
+- 현재 단계: 최종 호출 확인 (사용자가 '중지'를 누름)
 - 사용자: "잠깐, 이 쿠폰 언제까지 쓸 수 있어?"
 - 좋은 응답: "가을맞이 3,000원 할인 쿠폰은 10월 31일까지 쓸 수 있어요. 계속하기를 누르시면 이어서 진행할게요."
 - 나쁜 응답: "10월 31일까지예요. 쿠폰을 적용하고 이어서 진행할게요." (사용자의 재개 없이 자동으로 진행함)
@@ -97,7 +98,7 @@ const OUTPUT_FORMAT = `# 출력 형식
 
 const LLM_TASKS = {
   request:
-    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 택시 호출 요청이면 clarification은 null로 둬. 택시 호출 요청인데 목적지를 알 수 없을 때만 목적지를 되물어. " +
+    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 사용자가 실제로 말한 정보만 채워: 출발지를 말했으면 동천역 → origin=dongcheon, 현재 위치(여기) → origin=current, 그 외 장소 → origin=null, origin_name=장소 이름. 출발지를 말하지 않았으면 둘 다 null. 택시 종류도 말했을 때만 car_type을 채우고, 과업 설명으로 짐작해서 채우지 마. 택시 호출 요청이면 clarification은 null로 둬. 택시 호출 요청인데 목적지를 알 수 없을 때만 목적지를 되물어. " +
     "택시 호출 요청이 아니면(인사, 잡담, 의미 없는 말, 다른 부탁 등) 먼저 택시를 꺼내지 말고, 발화를 짧게 받아준 뒤 휴대폰 앱을 대신 조작해서 할 수 있는 일(예: 택시 호출, 앱 실행)을 알려주고 무엇을 도와드릴지 물어. clarification은 해요체 2문장 이내.",
   turn: "현재 상태에서 사용자가 말했어. 의도를 분류하고 필요한 값을 채운 뒤, reply를 써.",
 };
@@ -108,12 +109,14 @@ const REQUEST_SCHEMA = sch("OBJECT", {
   properties: {
     is_ride_request: sch("BOOLEAN"),
     destination: sch("STRING", { nullable: true }),
+    origin: sch("STRING", { nullable: true, enum: ["current", "dongcheon"] }),
+    origin_name: sch("STRING", { nullable: true }),
     car_type: sch("STRING", { nullable: true, enum: ["normal", "deluxe", "large"] }),
     pay_method: sch("STRING", { nullable: true, enum: ["auto", "direct"] }),
     wants_coupon: sch("BOOLEAN"),
     clarification: sch("STRING", { nullable: true }),
   },
-  required: ["is_ride_request", "destination", "car_type", "pay_method", "wants_coupon", "clarification"],
+  required: ["is_ride_request", "destination", "origin", "origin_name", "car_type", "pay_method", "wants_coupon", "clarification"],
 });
 
 function turnSchema(intentIds) {
@@ -363,6 +366,8 @@ const Rules = {
     return {
       is_ride_request: isRide,
       destination: place ? PLACES[place].name : /한정식|담소|모임/.test(text) ? text : null,
+      origin: extractOrigin(text),
+      origin_name: extractOrigin(text) ? null : (text.match(/([가-힣A-Za-z0-9]+(?:\s[가-힣A-Za-z0-9]+)?)\s*에서/)?.[1] ?? null),
       car_type: extractCar(text),
       pay_method: extractPay(text),
       wants_coupon: /쿠폰|할인/.test(text),

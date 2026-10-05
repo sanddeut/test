@@ -182,7 +182,6 @@ function taxiOrigin() {
     : "";
   return `<div class="tx-page white">
     <div class="tx-sbar">${mi("arrow_back_ios", "back")}<div class="tx-sinput">${typed ? esc(typed) : '<span class="ph">출발지 검색</span>'}<i class="caret"></i></div></div>
-    <div class="tx-sfrom">${mi("my_location")} 지금 출발지 · ${esc(originLabel(S.form.origin, S.geo))}</div>
     ${show ? `<div class="tx-res-head">검색 결과 ${ORIGIN_RESULTS.length}</div>${rows}` : '<div class="tx-res-empty">출발지를 검색해 주세요</div>'}
   </div>`;
 }

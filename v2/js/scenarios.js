@@ -113,8 +113,11 @@ const PAY = {
 };
 
 const COUPON = { name: "가을맞이 3,000원 할인 쿠폰", amount: 3000 };
-// 쿠폰 적용 단계 사용 여부 (B에만)
+// 쿠폰 (B에만): 앱에 쿠폰이 있고 참가자가 요청하면(중지·최종 확인 거부·직접 조작) 적용할 수 있음
 const USE_COUPON = true;
+// 쿠폰 적용 단계 사용 여부: 에이전트가 먼저 쿠폰을 제시하지 않음 → '쿠폰 사용 안 함'이 기본값으로 진행되고,
+// 참가자가 스스로 중지·거부해 쿠폰을 적용하는지 봄
+const COUPON_STEP = false;
 // 결제 방식 단계 사용 여부 (최종: 결제는 기본값인 자동결제로 미리 하고, 호출 전에 결제 비밀번호를 직접 입력)
 const USE_PAY_STEP = false;
 
@@ -190,11 +193,16 @@ function scriptDefaults(cond) {
   add("taxi_open.opening", "택시 앱 실행", "진행 문구 (앱을 여는 동안)", "택시 앱을 열고 있어요 …");
 
   if (low) {
-    add("origin", "출발지 설정", "승인 요청", "출발지를 ‘신분당선 동천역’으로 설정할까요?");
-    add("origin.ask", "출발지 설정", "거부 시", "출발지를 어디로 바꿀까요?");
+    add("origin", "출발지 설정", "승인 요청 (처음 요청에서 말한 출발지)", "출발지를 ‘{출발지}’(으)로 설정할까요?");
+    add("origin.ask", "출발지 설정", "거부 시 · 처음 요청에 출발지가 없을 때", "출발지를 어디로 할까요?");
     add("origin.confirm", "출발지 설정", "출발지를 말했을 때 (다시 묻지 않고 진행)", "출발지를 ‘{출발지}’(으)로 설정할게요.");
-    add("origin.skip", "출발지 설정", "현재 위치를 말했을 때 (다시 묻지 않고 진행)", "출발지는 현재 위치로 둘게요.");
-  } else add("origin", "출발지 설정", "안내", "말씀하신 ‘신분당선 동천역’으로 출발지를 설정했어요.");
+    add("origin.skip", "출발지 설정", "현재 위치를 말했을 때 (다시 묻지 않고 진행)", "출발지를 현재 위치로 설정할게요.");
+  } else {
+    add("origin", "출발지 설정", "안내 (처음 요청에서 말한 출발지)", "말씀하신 ‘{출발지}’(으)로 출발지를 설정했어요.");
+    add("origin.ask", "출발지 설정", "처음 요청에 출발지가 없을 때", "출발지를 어디로 할까요?");
+    add("origin.confirm", "출발지 설정", "출발지를 말했을 때", "출발지를 ‘{출발지}’(으)로 설정할게요.");
+    add("origin.skip", "출발지 설정", "현재 위치를 말했을 때", "출발지를 현재 위치로 설정할게요.");
+  }
 
   add("dest.busy", "목적지 설정", "진행 문구 (검색 중)", "목적지를 검색하고 있어요 …");
   if (low) {
@@ -208,7 +216,11 @@ function scriptDefaults(cond) {
 
   if (B) {
     if (low) add("car", "택시 종류 변경", "선택 요청", "택시 종류가 3개예요. 어떤 택시로 할까요?");
-    else add("car", "택시 종류 변경", "안내", "말씀하신 {택시종류}로 바꿨어요.");
+    else {
+      add("car", "택시 종류 변경", "안내 (처음 요청에서 말한 택시 종류)", "말씀하신 {택시종류}로 바꿨어요.");
+      add("car.ask", "택시 종류 변경", "처음 요청에 택시 종류가 없을 때", "택시 종류가 3개예요. 어떤 택시로 할까요?");
+      add("car.set", "택시 종류 변경", "택시 종류를 골랐을 때", "{택시종류}로 설정했어요.");
+    }
   }
 
   // 결제 방식 단계 (최종 시나리오에서는 사용 안 함: 모든 조건이 자동결제)
@@ -217,7 +229,7 @@ function scriptDefaults(cond) {
     else add("pay", "결제 방식", "안내", "말씀하신 {결제}로 바꿨어요.");
   }
 
-  if (B && USE_COUPON) {
+  if (B && USE_COUPON && COUPON_STEP) {
     if (low) {
       add("coupon", "쿠폰 적용", "승인 요청", "쓸 수 있는 쿠폰이 있어요. ‘{쿠폰}’을 적용할까요?");
       add("coupon.skip", "쿠폰 적용", "거부 시", "쿠폰은 적용하지 않을게요.");
@@ -255,7 +267,7 @@ function scriptDefaults(cond) {
 
   add("stop.ask", "중지·직접 조작", "중지를 눌렀을 때", "진행을 멈췄어요. 어떻게 바꿀까요?");
   add("stop.ask.reserve", "[세션2 오류] 이용내역 열람 + 예약 호출", "예약 중 중지를 눌렀을 때", "예약을 멈췄어요. 무엇을 수정할까요?");
-  add("change.origin", "중지·직접 조작", "중지 중 출발지를 바꿨을 때", low ? "출발지를 ‘{출발지}’(으)로 바꿀게요." : "출발지를 ‘{출발지}’(으)로 바꿨어요.");
+  add("change.origin", "중지·직접 조작", "중지 중 출발지를 정했을 때", low ? "출발지를 ‘{출발지}’(으)로 설정할게요." : "출발지를 ‘{출발지}’(으)로 설정했어요.");
   add("change.dest", "중지·직접 조작", "중지 중 목적지를 바꿨을 때", low ? "목적지를 ‘{목적지}’으로 바꿀게요." : "목적지를 ‘{목적지}’으로 바꿨어요.");
   if (B) add("change.car", "중지·직접 조작", "중지 중 택시 종류를 바꿨을 때", "택시 종류를 {택시종류}로 바꿨어요.");
   add("change.pay", "중지·직접 조작", "중지 중 결제 방식을 바꿨을 때", "결제 방식을 {결제}로 바꿨어요.");
@@ -305,7 +317,7 @@ function lines(key, s, vars = {}) {
 const line = (key, s, vars) => lines(key, s, vars).join("\n");
 
 // 높은 자동화(B)에서 바꿀 값: 참가자가 이미 직접 바꿨으면 그 값, 아니면 과업의 값
-const carTarget = (s) => (s.userSet?.car ? s.form.car : "deluxe");
+const carTarget = (s) => (s.userSet?.car ? s.form.car : s.req?.car || "deluxe");
 const payTarget = (s) => (s.userSet?.pay ? s.form.pay : s.complexity === "B" ? "direct" : "auto");
 
 // 단계 정의
@@ -339,12 +351,13 @@ function buildSteps(complexity, session = 1) {
     id: "origin",
     label: "출발지 설정",
     guide: "출발지를 휴대폰의 현재 위치에서 ‘신분당선 동천역’으로 바꾸는 단계. 출발지 검색 결과는 신분당선 동천역, 동천역 버스정류장, 동천역 환승주차장이고 택시를 탈 곳은 신분당선 동천역",
-    low: { messages: msg("origin"), options: APPROVE, reject: "origin" },
-    high: { messages: msg("origin"), applyFirst: true },
+    low: { messages: (s) => lines("origin", s, { origin: s.originTarget || TARGET_ORIGIN }), options: APPROVE, reject: "origin" },
+    high: { messages: (s) => lines("origin", s, { origin: s.originTarget || TARGET_ORIGIN }), applyFirst: true },
     // 출발지 칸을 누르고 "동천역"을 입력 → 검색 결과
     pre: async (s) => {
       const p = s.phone;
       if (p.taxiView === "origin" && p.originTyped === ORIGIN_QUERY) return;
+      if (s.originTarget && s.originTarget !== TARGET_ORIGIN) return; // 동천역이 아닌 곳은 검색 화면을 보여주지 않음
       await tap(".tx-from");
       p.taxiView = "origin";
       p.originTyped = "";
@@ -359,6 +372,8 @@ function buildSteps(complexity, session = 1) {
     },
     act: async (s, choice) => {
       const p = s.phone;
+      // 승인(또는 높은 자동화) = 설정할 출발지로: 동천역이 아니면 해당 선택으로 바꿔 처리
+      if (choice !== "reject" && choice !== "custom" && s.originTarget && s.originTarget !== TARGET_ORIGIN) choice = s.originTarget === "current" ? "reject" : "custom";
       if (choice === "reject" || choice === "custom") {
         // 동천역이 아닌 곳: 검색 화면을 닫고 홈으로 (custom이면 말한 곳을 출발지로)
         if (p.taxiView === "origin") await tap(".tx-sbar .back");
@@ -371,7 +386,12 @@ function buildSteps(complexity, session = 1) {
       renderPhone();
       await actSleep(300);
     },
-    apply: (s, choice) => { if (choice === "custom") s.form.origin = "custom"; else if (choice !== "reject") s.form.origin = TARGET_ORIGIN; s.phone.taxiView = "home"; s.phone.focus = null; },
+    apply: (s, choice) => {
+      const k = choice === "custom" ? "custom" : choice === "reject" ? "current" : s.originTarget || TARGET_ORIGIN;
+      s.form.origin = k;
+      s.phone.taxiView = "home";
+      s.phone.focus = null;
+    },
   });
 
   steps.push({
@@ -426,7 +446,7 @@ function buildSteps(complexity, session = 1) {
       low: {
         messages: msg("car"),
         // 예상 요금은 목적지·쿠폰에 따라 바뀌므로 물을 때마다 새로 계산
-        get options() { return Object.entries(CAR_TYPES).map(([id, c]) => ({ id, label: c.label, desc: `${c.desc} · 예상 ${won0(fareOf({ ...S.form, car: id }))}` })); },
+        get options() { return Object.entries(CAR_TYPES).map(([id, c]) => ({ id, label: c.label, price: `예상 ${won0(fareOf({ ...S.form, car: id }))}` })); },
       },
       high: { messages: (s) => lines("car", s, { car: carTarget(s) }), applyFirst: true },
       pre: async (s) => { s.phone.focus = "car"; renderPhone(); await actSleep(400); },
@@ -470,7 +490,7 @@ function buildSteps(complexity, session = 1) {
     });
   }
 
-  if (B && USE_COUPON) {
+  if (B && USE_COUPON && COUPON_STEP) {
     steps.push({
       id: "coupon",
       label: "쿠폰 적용",
