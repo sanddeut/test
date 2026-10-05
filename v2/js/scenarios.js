@@ -115,9 +115,9 @@ const PAY = {
 const COUPON = { name: "가을맞이 2,000원 할인 쿠폰", amount: 2000 };
 // 쿠폰 (B에만): 앱에 쿠폰이 있고 참가자가 요청하면(중지·최종 확인 거부·직접 조작) 적용할 수 있음
 const USE_COUPON = true;
-// 쿠폰 적용 단계 사용 여부: 에이전트가 먼저 쿠폰을 제시하지 않음 → '쿠폰 사용 안 함'이 기본값으로 진행되고,
-// 참가자가 스스로 중지·거부해 쿠폰을 적용하는지 봄
-const COUPON_STEP = false;
+// 쿠폰 단계 사용 여부: 단계는 있지만 기본값은 '적용 안 함' (에이전트가 쿠폰을 쓰자고 권하지 않음)
+// 낮은 자동화: "쿠폰은 적용하지 않고 진행할까요?" → 거부하면 적용 여부를 고름 / 높은 자동화: "쿠폰은 적용하지 않았어요." → 중지해서 적용
+const COUPON_STEP = true;
 // 결제 방식 단계 사용 여부 (최종: 결제는 기본값인 자동결제로 미리 하고, 호출 전에 결제 비밀번호를 직접 입력)
 const USE_PAY_STEP = false;
 
@@ -231,9 +231,11 @@ function scriptDefaults(cond) {
 
   if (B && USE_COUPON && COUPON_STEP) {
     if (low) {
-      add("coupon", "쿠폰 적용", "승인 요청", "쓸 수 있는 쿠폰이 있어요. ‘{쿠폰}’을 적용할까요?");
-      add("coupon.skip", "쿠폰 적용", "거부 시", "쿠폰은 적용하지 않을게요.");
-    } else add("coupon", "쿠폰 적용", "안내", "‘{쿠폰}’을 적용했어요.");
+      add("coupon", "쿠폰 적용", "승인 요청 (기본: 적용 안 함)", "쿠폰은 적용하지 않고 진행할까요?");
+      add("coupon.ask", "쿠폰 적용", "거부 시", "쿠폰을 어떻게 할까요?");
+      add("coupon.on", "쿠폰 적용", "쿠폰을 고른 뒤 (다시 묻지 않고 진행)", "‘{쿠폰}’을 적용할게요.");
+      add("coupon.skip", "쿠폰 적용", "적용 안 함을 고른 뒤", "쿠폰은 적용하지 않을게요.");
+    } else add("coupon", "쿠폰 적용", "안내 (기본: 적용 안 함)", "쿠폰은 적용하지 않았어요.");
   }
 
   if (low) {
@@ -315,6 +317,9 @@ function lines(key, s, vars = {}) {
     .map((t) => t.replace(/([가-힣\w]+)’?\(으\)로/g, (m, w) => (m.includes("’") ? `${euro(w).slice(0, w.length)}’${euro(w).slice(w.length)}` : euro(w))));
 }
 const line = (key, s, vars) => lines(key, s, vars).join("\n");
+
+// 쿠폰 단계의 선택 → 적용 여부 ("on"이면 적용, 선택이 없으면 참가자가 직접 정한 값 또는 기본값 '적용 안 함')
+const couponChoice = (s, choice) => (choice === "on" ? true : choice === "off" ? false : s.userSet?.coupon ? s.form.coupon : false);
 
 // 높은 자동화(B)에서 바꿀 값: 참가자가 이미 직접 바꿨으면 그 값, 아니면 과업의 값
 const carTarget = (s) => (s.userSet?.car ? s.form.car : s.req?.car || "deluxe");
@@ -494,9 +499,10 @@ function buildSteps(complexity, session = 1) {
     steps.push({
       id: "coupon",
       label: "쿠폰 적용",
-      guide: `쿠폰 목록에서 ‘${COUPON.name}’(${won0(COUPON.amount)} 할인)을 적용하는 단계. 쓸 수 있는 쿠폰은 이것 하나`,
+      guide: `쿠폰 적용 단계. 기본은 쿠폰 적용 안 함이고, 쓸 수 있는 쿠폰은 ‘${COUPON.name}’(${won0(COUPON.amount)} 할인) 하나. 에이전트가 먼저 쿠폰을 쓰자고 권하지 않음`,
+      // 선택: "on"=쿠폰 적용 / 그 외(승인·높은 자동화 기본)=적용 안 함. 참가자가 이미 직접 정했으면 그 값 유지
       low: { messages: msg("coupon"), options: APPROVE, reject: "coupon" },
-      high: { messages: msg("coupon"), applyFirst: true },
+      high: { messages: (s) => (s.userSet?.coupon && s.form.coupon ? lines("change.coupon.on", s) : lines("coupon", s)), applyFirst: true },
       pre: async (s) => {
         if (s.phone.sheet === "coupon") return;
         await tap(".tx-coupon");
@@ -505,14 +511,14 @@ function buildSteps(complexity, session = 1) {
         await actSleep(400);
       },
       act: async (s, choice) => {
-        const on = choice !== "reject";
+        const on = couponChoice(s, choice);
         if (s.phone.sheet !== "coupon") { s.phone.sheet = "coupon"; renderPhone(); await actSleep(400); }
         await tap(on ? ".tx-cpn-item" : ".tx-cpn-none");
         s.form.coupon = on;
         s.phone.sheet = null;
         renderPhone();
       },
-      apply: (s, choice) => { s.form.coupon = choice !== "reject"; s.phone.sheet = null; },
+      apply: (s, choice) => { s.form.coupon = couponChoice(s, choice); s.phone.sheet = null; },
     });
   }
 
