@@ -176,6 +176,57 @@ function freezeQuestion() {
 // 단계별 재구성 UI (승인 질문과 함께 진행 카드 안에 표시)
 // 선택지 목록은 누르는 버튼처럼 보이지 않게: 한 상자 안의 목록(스택드 리스트) + 고른 행 오른쪽에 색 체크만
 const PV_CHECK = '<span class="ms pv-check">check</span>';
+const PV_GO = '<span class="ms pv-go">chevron_right</span>';
+
+// 요청사항·쿠폰 미리보기 목록은 대화창 카드에서 바로 고를 수 있게 (파일럿: 거부 → 목록 단계가 번거로움)
+function pickable(box, stepId) {
+  box.querySelectorAll("[data-pick]").forEach((d) => {
+    const go = () => pickFromCard(stepId, d.dataset.pick, (d.querySelector("b") || d).textContent.trim());
+    d.onclick = go;
+    d.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+  });
+  return box;
+}
+
+async function pickFromCard(stepId, k, label) {
+  if (!S || S.finished || stepIdNow() !== stepId || S.manual) return;
+  const cur = stepId === "request" ? S.form.request : S.form.coupon ? "on" : "off";
+  const out = stepId === "request" ? { intent: "set_request", request: k } : { intent: "set_coupon", coupon: k === "on" };
+  if (S.automation === "low") {
+    // 묻고 있는 승인 카드에서 고름: 지금 값과 같으면 승인, 다르면 그 값으로 바꾸고 바로 진행
+    const w = S.waiter;
+    if (!w?.options?.some((o) => o.id === "approve") || S.paused) return;
+    S.waiter = null;
+    setChips([]);
+    appendBubble("user", label);
+    logEvent("user_card_pick", { step: stepId, choice: k });
+    await replyPause();
+    w.resolve(k === cur ? { type: "button", id: "approve", card: true } : { type: "button", id: out.intent, out, card: true });
+    return;
+  }
+  // 높은 자동화: 알림 카드에서 다른 값을 고르면 중지·수정처럼 바로 반영하고 이어서 진행
+  if (k === cur || S.paused) return;
+  S.paused = true;
+  syncControls();
+  appendBubble("user", label);
+  logEvent("user_card_pick", { step: stepId, choice: k });
+  markIntervention("card_pick");
+  await replyPause();
+  if (stepId === "request") {
+    S.requestByUser = true;
+    S.userSet.request = true;
+    logEvent("request_changed", { request: k, via: "card_pick" });
+    await redoRequest(k);
+    await sayKey(k === "none" ? "change.request.none" : "change.request", undefined, { talk: true });
+  } else {
+    setOption("coupon", k === "on", "card_pick");
+    await sayKey(k === "on" ? "change.coupon.on" : "change.coupon.off", undefined, { talk: true });
+  }
+  const old = $("#rc-choices .rc-pv");
+  const pv = stepPreview();
+  if (old && pv) old.replaceWith(pv);
+  resume();
+}
 function stepPreview() {
   const id = S.steps[S.stepIdx]?.id;
   const el = (cls, html) => { const d = document.createElement("div"); d.className = `rc-pv ${cls}`; d.innerHTML = html; return d; };
@@ -198,15 +249,15 @@ function stepPreview() {
         `<div class="${S.form.car === k ? "on" : ""}"><span><b>${esc(c.label)}</b></span><span class="pv-right"><small>예상 ${esc(won0(fareOf({ ...S.form, car: k })))}</small>${S.form.car === k ? PV_CHECK : ""}</span></div>`).join(""));
     case "pay": return picked(PAY, S.form.pay);
     case "coupon":
-      return el("pv-accts", [["off", "적용 안 함"], ["on", COUPON.name]].map(([k, v]) => {
+      return pickable(el("pv-accts pickable", [["off", "적용 안 함"], ["on", COUPON.name]].map(([k, v]) => {
         const cur = S.form.coupon ? "on" : "off";
-        return `<div class="${cur === k ? "on" : ""}"><span><b>${esc(v)}</b></span>${cur === k ? PV_CHECK : ""}</div>`;
-      }).join(""));
+        return `<div class="${cur === k ? "on" : ""}" data-pick="${k}" role="button" tabindex="0"><span><b>${esc(v)}</b></span>${cur === k ? PV_CHECK : PV_GO}</div>`;
+      }).join("")), "coupon");
     case "final": return rideSummary();
     case "request": {
       const cur = S.phone.reqFocus ?? S.form.request;
-      return el("pv-accts pv-req", REQUEST_CHOICES.map((k) => [k, REQUESTS[k]]).map(([k, v]) =>
-        `<div class="${cur === k ? "on" : ""}"><b>${esc(v)}</b>${cur === k ? PV_CHECK : ""}</div>`).join(""));
+      return pickable(el("pv-accts pv-req pickable", REQUEST_CHOICES.map((k) => [k, REQUESTS[k]]).map(([k, v]) =>
+        `<div class="${cur === k ? "on" : ""}" data-pick="${k}" role="button" tabindex="0"><b>${esc(v)}</b>${cur === k ? PV_CHECK : PV_GO}</div>`).join("")), "request");
     }
     case "reserve":
       return el("rc-summary", [["출발", "신분당선 동천역"], ["도착", "담소한정식 강남점"], ["예약 시간", RESERVE.when], ["택시 종류", CAR_TYPES[S.form.car].label]]
@@ -473,7 +524,7 @@ async function askChoice(options, said, extra = [], hint) {
   for (;;) {
     const r = await waitRunnerInput(options);
     if (r.type === "reask") return { id: "__reask", via: "stop" };
-    if (r.type === "button") return { id: r.id, via: r.manual ? "manual" : "button" };
+    if (r.type === "button") return { id: r.id, via: r.card ? "card" : r.manual ? "manual" : "button", out: r.out };
     const ids = options.map((o) => o.id);
     const o = await turn(r.text, { said, intents: [...ids, ...extra, "other"], hint });
     if (ids.includes(o.intent) || extra.includes(o.intent)) return { id: o.intent, via: "text", text: r.text, out: o };
@@ -1331,6 +1382,13 @@ async function handleReject(step, c, said) {
 
   if (type === "coupon") {
     // 기본(적용 안 함)을 거부하면 적용 여부를 고르게 함 → 고른 대로 다시 묻지 않고 진행
+    if (c.id === "set_coupon" && typeof c.out?.coupon === "boolean") {
+      // 카드 목록에서 바로 고른 경우
+      logEvent("coupon_chosen", { coupon: c.out.coupon, via: c.via });
+      await sayKey(c.out.coupon ? "coupon.on" : "coupon.skip", undefined, { talk: true });
+      await doApply(step, c.out.coupon ? "on" : "off", { announced: true });
+      return "done";
+    }
     const ask = line("coupon.ask", S);
     await agentSay(ask);
     const opts = [{ id: "off", label: "적용 안 함" }, { id: "on", label: COUPON.name }];

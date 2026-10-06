@@ -885,3 +885,8 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .big-text .muted { font-size: 16px; }
 .big-text .keypad button { font-size: 25px; font-weight: 600; }
 .big-text .tx-float-od b { font-size: 16px; font-weight: 700; }
+
+/* 대화창 카드에서 바로 고를 수 있는 목록 (요청사항·쿠폰) */
+.pv-accts.pickable div { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.pv-accts.pickable div:active { background: #eef3fd; }
+.pv-accts .pv-go { flex: none; color: #9aa0ab; font-size: 22px; vertical-align: 0; }
