@@ -898,3 +898,10 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .pv-fare .pv-cpn b { display: flex; align-items: center; gap: 4px; }
 .pv-fare .pv-cpn small { color: #6b6f7a; font-weight: 400; }
 .big-text .pv-fare .pv-fare-v { font-size: 19px; }
+
+/* 실험 종료 화면 */
+.end-screen { position: fixed; inset: 0; z-index: 900; background: #0b57d0; color: #fff; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; animation: fadein .6s ease both; }
+.end-screen[hidden] { display: none; }
+.end-screen p { margin: 0; font-size: 30px; font-weight: 700; line-height: 1.6; word-break: keep-all; }
+.big-text .end-screen p { font-size: 34px; }
+.drawer-open .drawer { z-index: 950; } /* 종료 화면 위에서도 연구자 패널이 보이게 */
