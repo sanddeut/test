@@ -894,7 +894,7 @@ function changeIntents() {
 
 // 높은 자동화에서 말한 내용 해석. 수정 요청은 반영하고, 그 외에는 짧게 응답한 뒤 진행 상황을 알리고 계속 진행
 function highIntents() {
-  return [...changeIntents(), "pause", "continue", "cancel", "other"];
+  return [...changeIntents(), "pause", "continue", ...(S.rideDone ? ["cancel_reserve"] : []), "cancel", "other"];
 }
 const HIGH_HINT =
   "높은 자동화에서는 사용자의 답을 기다리지 않고 자동으로 진행해. other/continue이면 reply는 발화를 짧게 받아준 뒤 현재 진행 상황을 알리는 형태로 끝내고, 승인을 묻지 마. " +
@@ -957,7 +957,7 @@ async function handleInterjection(text) {
     S.paused = false;
     return handleStop("text");
   }
-  if (o.intent === "cancel") return cancelRide();
+  if (o.intent === "cancel" || o.intent === "cancel_reserve") { S.m.stops++; markIntervention("stop_text"); logEvent("stop", { via: "text" }); return cancelRide(); }
   await agentSay(o.reply, { talk: true });
   resume();
 }
@@ -1007,12 +1007,12 @@ async function handleStop(via) {
     setChips([]);
     const o = await turn(r, {
       said,
-      intents: [...changeIntents(), "continue", "cancel", "other"],
+      intents: [...changeIntents(), "continue", ...(S.rideDone ? ["cancel_reserve"] : []), "cancel", "other"],
       hint: STOP_HINT,
       fallback: "계속하기를 누르시면 이어서 진행할게요.",
     });
     if (await applyHighChange(o, `stop_${via}`)) { said = S.log.filter((e) => e.type === "agent_message").at(-1)?.text || said; continue; }
-    if (o.intent === "cancel") { S.stopped = false; return cancelRide(); }
+    if (o.intent === "cancel" || o.intent === "cancel_reserve") { S.stopped = false; return cancelRide(); }
     if (o.intent === "continue") break;
     said = o.reply;
     await agentSay(o.reply, { talk: true });

@@ -155,6 +155,7 @@ const INTENT_MEANINGS = {
   pause: "바꿀 값 없이 진행을 멈추라고 하거나 무언가 잘못됐다고 지적함 (멈춰, 기다려, 잘못했잖아, 이상해 등)",
   continue: "바꿀 것 없이 그대로(하던 대로) 진행하라고 함. 예: '그냥 해', '하던 거 해', '괜찮아 계속해', '없어'",
   cancel: "택시 호출 자체를 취소하라고 함",
+  cancel_reserve: "다음 주 택시 예약을 하지 말라고 하거나 취소하라고 함 (예약 취소해줘, 예약하지 마, 예약 필요 없어, 그건 하지 마 등)",
   other: "위 어느 것에도 해당하지 않음 (질문, 잡담, 이해하기 어려운 말 등)",
 };
 
@@ -388,6 +389,9 @@ const Rules = {
     });
     const t = text.replace(/\s+/g, " ").trim();
     const byIntent = (intent, extra) => out(intent, { reply: ctx.fallback_by_intent?.[intent] || out(intent).reply, ...extra });
+
+    // 예약 단계: 예약을 하지 말라거나 취소하라는 말은 예약 취소 (멈춤·호출 취소보다 먼저)
+    if (allowed.has("cancel_reserve") && (/(예약|그거|그건).*(취소|하지\s?마|하지\s?말|말아|필요\s?없|안\s?해|싫)/.test(t) || /^(취소|취소해|취소해\s?줘|하지\s?마|안\s?해|필요\s?없어)/.test(t))) return out("cancel_reserve");
 
     // 앱 이름을 묻는 단계: 지정된 앱이면 approve, 그 외 앱은 모두 unsuitable_app ("전화", "카카오T" 등)
     if (allowed.has("unsuitable_app")) {
