@@ -290,6 +290,7 @@ function showNotice(text) {
   q.hidden = false;
   c.classList.add("notice");
   placeCard();
+  scrollChat(); // 알림 문구가 카드 안에서 화면 밖에 있지 않게 항상 맨 아래로
 }
 
 // 선택지를 넣을 곳: 진행 중에는 진행 카드 안, 그 외에는 대화창 아래
@@ -1626,6 +1627,8 @@ async function runHighStep(step) {
     // "~할게요" → 읽는 시간 → 조작 → 바뀐 화면 잠시 보여주고 다음 단계로
     await say(msgs);
     await read();
+    // 오래 보여줘야 하는 안내(예: 세션2 이용내역·예약 안내)는 추가로 더 머묾. 중지하면 그 자리에서 멈춤
+    for (let t = 0; t < (step.high.hold || 0); t += 250) { await sleep(250 * PACE); await gate(); }
     await gate();
     if (step.high.opening && !manualDone(step)) await say(lines(step.high.opening, S)); // 예: "택시 앱을 열고 있어요 …"
     if (!(step.kind === "error_reserve" && S.reserveCancelled)) {
@@ -1751,7 +1754,27 @@ function finish(status) {
   setCard({ title: "할 일 마무리", status: status === "completed" ? "택시를 호출했어요" : "호출을 취소했어요", thinking: false });
   syncControls();
   saveSession();
+  scheduleEndScreen();
   return false;
+}
+
+// 모든 단계가 끝나면 마지막 문구를 잠시 읽게 한 뒤 전체 화면을 파랗게 덮고 "실험N이 끝났습니다. 수고하셨습니다!"
+// (실행화면의 완료 화면에서 [확인]을 기다리는 중이면 누른 뒤에)
+function scheduleEndScreen() {
+  const sess = S;
+  const tick = () => {
+    if (S !== sess) return;
+    if (S.awaitDoneConfirm || S.pinOpen || S.manual) { setTimeout(tick, 500); return; }
+    setTimeout(() => { if (S === sess) showEndScreen(); }, 3000);
+  };
+  tick();
+}
+function showEndScreen() {
+  const n = S.session;
+  const el = $("#end-screen");
+  el.querySelector("p").innerHTML = `실험${n}${n === 2 ? "가" : "이"} 끝났습니다.<br>수고하셨습니다!`;
+  el.hidden = false;
+  logEvent("end_screen");
 }
 
 function confirmDone() {
@@ -1939,6 +1962,7 @@ function start() {
   const cfg = readSetup();
   store.set("setup", { pid: cfg.pid, name: cfg.name, condition: cfg.condition, session: cfg.session, delay: cfg.delay, showTask: cfg.showTask, pace: cfg.pace });
   S = newSession(cfg);
+  $("#end-screen").hidden = true;
 
   const sit = SITUATION[S.complexity];
   $("#task-card").hidden = !cfg.showTask;
@@ -1967,6 +1991,7 @@ function start() {
 }
 
 function backToSetup() {
+  $("#end-screen").hidden = true;
   if (S && !S.finished && S.log.length > 1) {
     if (!confirm("진행 중인 세션을 종료하고 설정 화면으로 돌아갈까요? (로그는 저장돼요)")) return;
     S.status = "aborted";
@@ -2280,6 +2305,15 @@ function init() {
   $("#btn-researcher").onclick = () => document.body.classList.toggle("drawer-open");
   $("#btn-close-drawer").onclick = () => document.body.classList.remove("drawer-open");
   $("#btn-reset").onclick = backToSetup;
+  // 종료 화면: 연구자는 세 번 연속 탭(또는 Ctrl + .)으로 연구자 패널을 열 수 있음
+  {
+    let taps = [];
+    $("#end-screen").addEventListener("click", () => {
+      const t = Date.now();
+      taps = [...taps.filter((x) => t - x < 800), t];
+      if (taps.length >= 3) { taps = []; document.body.classList.toggle("drawer-open"); }
+    });
+  }
   $("#btn-json").onclick = () => S && download(`${S.sessionId}.json`, JSON.stringify({ summary: summary(), log: S.log }, null, 2), "application/json");
   $("#btn-csv").onclick = () => S && download(`${S.sessionId}_events.csv`, toCSV(S.log), "text/csv");
   $("#btn-all").onclick = () => download(`sessions_summary_${new Date().toISOString().slice(0, 10)}.csv`, toCSV(store.get("sessions", []).map((x) => x.summary)), "text/csv");

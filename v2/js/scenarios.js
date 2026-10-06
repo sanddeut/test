@@ -591,7 +591,8 @@ function buildSteps(complexity, session = 1) {
       label: "[세션2 오류] 이용내역 열람 + 예약 호출",
       guide: `호출이 끝난 뒤 에이전트가 묻지 않고 최근 3개월 이용내역(매주 토요일 담소한정식 강남점)을 열람하고, ${RESERVE.short} 예약 호출을 제안(낮은 자동화)하거나 등록(높은 자동화)하는 단계`,
       low: { messages: msg("reserve"), options: APPROVE, reject: "reserve" },
-      high: { messages: msg("reserve") },
+      // 높은 자동화: 안내를 충분히 읽을 수 있게 단계 간격(5초)에 7초를 더 머문 뒤 예약
+      high: { messages: msg("reserve"), hold: 7000 },
       pre: async (s) => {
         await tap(".tx-menu, .tx-call", { pre: 300 });
         s.phone.taxiView = "history";
