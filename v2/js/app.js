@@ -613,12 +613,25 @@ async function interpret(kind, text, context) {
 // =====================================================================
 // 입력창 / 버튼
 // =====================================================================
+// 입력창 높이를 내용에 맞게 (음성 입력처럼 긴 글도 잘리지 않고 보이게, 최대 5줄 뒤로는 스크롤)
+function fitMsg() {
+  const el = $("#msg");
+  if (!el) return;
+  el.style.height = "auto";
+  const lh = parseFloat(getComputedStyle(el).lineHeight) || 24;
+  const max = lh * 5 + 20;
+  el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+  el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
+  $("#composer").classList.toggle("multi", el.scrollHeight > lh + 24);
+}
+
 function onSubmit(e) {
   e?.preventDefault();
   const input = $("#msg");
   const text = input.value.trim();
   if (!text || !S || S.finished) return;
   input.value = "";
+  fitMsg();
 
   if (S.ivWaiter) {
     const w = S.ivWaiter; S.ivWaiter = null;
@@ -2258,7 +2271,15 @@ function init() {
     e.preventDefault();
     handleStop("button");
   });
-  $("#msg").addEventListener("input", syncSendButton);
+  $("#msg").addEventListener("input", () => { fitMsg(); syncSendButton(); });
+  // 엔터 = 보내기 (한글 조합 중이거나 Shift+엔터면 줄바꿈)
+  $("#msg").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
+      e.preventDefault();
+      if ($("#send").dataset.mode === "stop") return;
+      onSubmit();
+    }
+  });
   $("#btn-stop").onclick = () => S && handleStop("button");
   $("#btn-manual").onclick = () => S && startManual();
   $("#btn-manual-done").onclick = () => {
