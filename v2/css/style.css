@@ -890,3 +890,11 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .pv-accts.pickable div { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .pv-accts.pickable div:active { background: #eef3fd; }
 .pv-accts .pv-go { flex: none; color: #9aa0ab; font-size: 22px; vertical-align: 0; }
+
+/* 예상 금액 확인 카드: 쿠폰 줄을 누르면 적용/해제 */
+.pv-fare .pv-fare-v { font-size: 17px; font-weight: 800; }
+.pv-fare .pv-cpn { cursor: pointer; -webkit-tap-highlight-color: transparent; align-items: center; }
+.pv-fare .pv-cpn:active { background: #eef3fd; }
+.pv-fare .pv-cpn b { display: flex; align-items: center; gap: 4px; }
+.pv-fare .pv-cpn small { color: #6b6f7a; font-weight: 400; }
+.big-text .pv-fare .pv-fare-v { font-size: 19px; }

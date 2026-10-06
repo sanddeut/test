@@ -181,7 +181,7 @@ const PV_GO = '<span class="ms pv-go">chevron_right</span>';
 // 요청사항·쿠폰 미리보기 목록은 대화창 카드에서 바로 고를 수 있게 (파일럿: 거부 → 목록 단계가 번거로움)
 function pickable(box, stepId) {
   box.querySelectorAll("[data-pick]").forEach((d) => {
-    const go = () => pickFromCard(stepId, d.dataset.pick, (d.querySelector("b") || d).textContent.trim());
+    const go = () => pickFromCard(stepId, d.dataset.pick, d.dataset.label || (d.querySelector("b") || d).textContent.trim());
     d.onclick = go;
     d.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
   });
@@ -248,11 +248,12 @@ function stepPreview() {
       return el("pv-accts", Object.entries(CAR_TYPES).map(([k, c]) =>
         `<div class="${S.form.car === k ? "on" : ""}"><span><b>${esc(c.label)}</b></span><span class="pv-right"><small>예상 ${esc(won0(fareOf({ ...S.form, car: k })))}</small>${S.form.car === k ? PV_CHECK : ""}</span></div>`).join(""));
     case "pay": return picked(PAY, S.form.pay);
-    case "coupon":
-      return pickable(el("pv-accts pickable", [["off", "적용 안 함"], ["on", COUPON.name]].map(([k, v]) => {
-        const cur = S.form.coupon ? "on" : "off";
-        return `<div class="${cur === k ? "on" : ""}" data-pick="${k}" role="button" tabindex="0"><span><b>${esc(v)}</b></span>${cur === k ? PV_CHECK : PV_GO}</div>`;
-      }).join("")), "coupon");
+    case "coupon": {
+      // 예상 금액 확인: 금액 + 쿠폰 적용 현황(적용 안 함 · 보유 1장). 쿠폰 줄을 누르면 적용/해제
+      const on = !!S.form.coupon;
+      return pickable(el("rc-summary pv-fare", `<div><span>예상 금액</span><b class="pv-fare-v">${esc(won0(fareOf(S.form)))}</b></div>
+        <div class="pv-cpn" data-pick="${on ? "off" : "on"}" data-label="${on ? "쿠폰 적용 안 함" : "쿠폰 적용"}" role="button" tabindex="0"><span>쿠폰</span><b>${on ? `${esc(won0(COUPON.amount))} 할인 적용` : "적용 안 함"} <small>· 보유 1장</small>${PV_GO}</b></div>`), "coupon");
+    }
     case "final": return rideSummary();
     case "request": {
       const cur = S.phone.reqFocus ?? S.form.request;
@@ -1389,19 +1390,34 @@ async function handleReject(step, c, said) {
       await doApply(step, c.out.coupon ? "on" : "off", { announced: true });
       return "done";
     }
+    // 무엇을 바꿀지 말로 받음 (쿠폰 목록을 먼저 보여주지 않음)
     const ask = line("coupon.ask", S);
     await agentSay(ask);
-    const opts = [{ id: "off", label: "적용 안 함" }, { id: "on", label: COUPON.name }];
+    let said = ask;
     for (;;) {
-      const p = await askChoice(opts, ask, ["set_coupon", "continue", "cancel"], `쿠폰을 적용하라고 하면 set_coupon(coupon=true), 적용하지 말라고 하면 set_coupon(coupon=false)이야.`);
-      if (p.id === "__reask") continue;
-      let on = p.id === "on" ? true : p.id === "off" ? false : p.out?.intent === "set_coupon" && typeof p.out.coupon === "boolean" ? p.out.coupon : p.out?.intent === "continue" ? false : null;
-      if (p.out?.intent === "cancel") { await cancelRide(); return "cancel"; }
-      if (on === null) { if (p.out?.reply) await agentSay(p.out.reply, { talk: true }); continue; }
-      logEvent("coupon_chosen", { coupon: on, via: p.via });
-      await sayKey(on ? "coupon.on" : "coupon.skip", undefined, { talk: true });
-      await doApply(step, on ? "on" : "off", { announced: true });
-      return "done";
+      const o = await turn(await waitText(), {
+        said,
+        intents: ["set_coupon", "set_car", "continue", "cancel", "other"],
+        hint: `지금은 예상 금액을 확인하는 단계야(쿠폰 적용 안 함). 쿠폰을 적용하라고 하면 set_coupon(coupon=true), 택시 종류를 바꾸라고 하면 set_car, 그대로 하라고 하면 continue야. 그 외에는 reply로 짧게 답하고 무엇을 바꿀지 다시 물어. 쿠폰을 먼저 권하지 마.`,
+        fallback: "무엇을 바꿀까요?",
+      });
+      if (o.intent === "set_coupon" && typeof o.coupon === "boolean") {
+        logEvent("coupon_chosen", { coupon: o.coupon, via: "reject_text" });
+        await sayKey(o.coupon ? "coupon.on" : "coupon.skip", undefined, { talk: true });
+        await doApply(step, o.coupon ? "on" : "off", { announced: true });
+        return "done";
+      }
+      if (o.intent === "set_car" && CAR_TYPES[o.car_type]) {
+        setOption("car", o.car_type, "reject_text");
+        S.needReask = false;
+        await sayKey("change.car", undefined, { talk: true });
+        await doApply(step, "approve", { announced: true });
+        return "done";
+      }
+      if (o.intent === "continue") { await sayKey("coupon.skip", undefined, { talk: true }); await doApply(step, "approve", { announced: true }); return "done"; }
+      if (o.intent === "cancel") { await cancelRide(); return "cancel"; }
+      said = o.reply;
+      await agentSay(o.reply, { talk: true });
     }
   }
 

@@ -231,11 +231,11 @@ function scriptDefaults(cond) {
 
   if (B && USE_COUPON && COUPON_STEP) {
     if (low) {
-      add("coupon", "쿠폰 적용", "승인 요청 (기본: 적용 안 함)", "쿠폰은 적용하지 않고 진행할까요?");
-      add("coupon.ask", "쿠폰 적용", "거부 시", "쿠폰을 어떻게 할까요?");
-      add("coupon.on", "쿠폰 적용", "쿠폰을 고른 뒤 (다시 묻지 않고 진행)", "‘{쿠폰}’을 적용할게요.");
-      add("coupon.skip", "쿠폰 적용", "적용 안 함을 고른 뒤", "쿠폰은 적용하지 않을게요.");
-    } else add("coupon", "쿠폰 적용", "안내 (기본: 적용 안 함)", "쿠폰은 적용하지 않았어요.");
+      add("coupon", "예상 금액 확인", "승인 요청 (쿠폰은 기본 적용 안 함)", "예상 금액은 {요금}이에요. 이대로 진행할까요?");
+      add("coupon.ask", "예상 금액 확인", "거부 시", "무엇을 바꿀까요?");
+      add("coupon.on", "예상 금액 확인", "쿠폰을 적용하라고 했을 때 (다시 묻지 않고 진행)", "‘{쿠폰}’을 적용할게요.");
+      add("coupon.skip", "예상 금액 확인", "그대로 진행할 때", "이대로 진행할게요.");
+    } else add("coupon", "예상 금액 확인", "안내 (쿠폰은 기본 적용 안 함)", "예상 금액은 {요금}이에요.");
   }
 
   if (low) {
@@ -498,8 +498,8 @@ function buildSteps(complexity, session = 1) {
   if (B && USE_COUPON && COUPON_STEP) {
     steps.push({
       id: "coupon",
-      label: "쿠폰 적용",
-      guide: `쿠폰 적용 단계. 기본은 쿠폰 적용 안 함이고, 쓸 수 있는 쿠폰은 ‘${COUPON.name}’(${won0(COUPON.amount)} 할인) 하나. 에이전트가 먼저 쿠폰을 쓰자고 권하지 않음`,
+      label: "예상 금액 확인",
+      guide: `예상 금액을 확인하는 단계(카드에 예상 금액과 '쿠폰 적용 안 함 · 보유 1장'이 보임). 기본은 쿠폰 적용 안 함이고, 쓸 수 있는 쿠폰은 ‘${COUPON.name}’(${won0(COUPON.amount)} 할인) 하나. 에이전트가 먼저 쿠폰을 쓰자고 권하지 않음`,
       // 선택: "on"=쿠폰 적용 / 그 외(승인·높은 자동화 기본)=적용 안 함. 참가자가 이미 직접 정했으면 그 값 유지
       low: { messages: msg("coupon"), options: APPROVE, reject: "coupon" },
       high: { messages: (s) => (s.userSet?.coupon && s.form.coupon ? lines("change.coupon.on", s) : lines("coupon", s)), applyFirst: true },
