@@ -1648,7 +1648,7 @@ async function runHighStep(step) {
       await doApply(step, undefined, { announced: true });
       if (step.kind === "error_reserve" && S.form.reserved && !S.finished) await say(lines("reserve.yes", S));
     }
-    await dwell(1500); // 조작 뒤 바뀐 화면을 잠시 보여줌
+    await dwell(3500); // 조작 뒤 바뀐 화면을 충분히 보여줌 (높은 자동화)
   }
   if (step.kind === "done") S.rideDone = true;
   if (isLastStep(step)) return finish("completed");
@@ -1934,7 +1934,7 @@ function readSetup() {
     name: $("#pname").value.trim() || "OOO",
     condition: document.querySelector('input[name="cond"]:checked').value,
     session: Number(document.querySelector('input[name="session"]:checked')?.value || 1),
-    delay: 6500, // 높은 자동화 단계 간격 (고정): 문구가 나온 뒤 다음 조작까지 기다리는 시간
+    delay: 5000, // 높은 자동화 단계 간격 (고정): 문구가 나온 뒤 다음 조작까지 기다리는 시간
     pace: PACE,
     showTask: true,
   };
