@@ -157,7 +157,6 @@ function taxiHome() {
       <div class="tx-from ${S.phone.focus === "origin" ? "hl" : ""}" ${S.manual ? "data-man-from" : ""}>${mi(S.form.origin === "current" ? "my_location" : "trip_origin")}<span><small>출발</small> ${originHtml()}</span>${mi("chevron_right", "tx-from-go")}</div>
       <div class="tx-search ${S.phone.focus === "search" ? "hl" : ""}" ${live}>${mi("search")}<span class="ph">어디로 갈까요?</span></div>
       <div class="tx-quick"><span>${mi("home")}집</span><span>${mi("work")}회사</span><span>${mi("add")}추가</span></div>
-      ${USE_COUPON ? `<div class="tx-banner">${mi("confirmation_number")}<span>쿠폰함에 쓸 수 있는 쿠폰이 있어요</span></div>` : ""}
     </div>
   </div>`;
 }
