@@ -382,7 +382,8 @@ function renderBubble(role, text) {
 function setStatus(text, thinking = false) {
   const el = $("#pv-status");
   if (!el) return;
-  if (text != null) el.textContent = text;
+  // 실행화면 하단 문구에서는 기사님 요청사항 안내의 앞부분("…선택할 수 있어요.")을 빼고 고른 결과만 보여줌
+  if (text != null) el.textContent = text.replace(/기사님 요청사항을 선택할 수 있어요\.\s*/g, "");
   el.classList.toggle("thinking", thinking);
   // 대화창의 진행 카드도 같은 문구로 (진행 중일 때)
   if (!S?.running || S.finished) return;
