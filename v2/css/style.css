@@ -907,3 +907,16 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .end-screen p { margin: 0; font-size: 30px; font-weight: 700; line-height: 1.6; word-break: keep-all; }
 .big-text .end-screen p { font-size: 34px; }
 .drawer-open .drawer { z-index: 950; } /* 종료 화면 위에서도 연구자 패널이 보이게 */
+
+/* 기사님 요청사항: 에이전트가 임의로 고른 항목 표시 */
+.ai-pick { flex: none; display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; background: linear-gradient(135deg, #4c8df6, #a36bf5); color: #fff; font-size: 12.5px; font-weight: 700; line-height: 1.4; white-space: nowrap; }
+.tx-pay-opt span.ai-pick { flex: none; margin-right: 2px; }
+.big-text .ai-pick { font-size: 14px; }
+/* 기사님 요청사항 카드: 다른 선택지는 '더 보기'를 눌러야 펼쳐짐 */
+.pv-req .pv-more-item { display: none !important; }
+.pv-req.expanded .pv-more-item { display: flex !important; }
+.pv-req.expanded .pv-more { display: none !important; }
+.pv-req .pv-more { cursor: pointer; color: #0b57d0; font-size: 15px; font-weight: 600; -webkit-tap-highlight-color: transparent; }
+.pv-req .pv-more .pv-go { color: #0b57d0; }
+.pv-req .pv-more:active { background: #eef3fd; }
+.big-text .pv-req .pv-more { font-size: 17px; }

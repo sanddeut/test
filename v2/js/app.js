@@ -177,6 +177,7 @@ function freezeQuestion() {
 // 선택지 목록은 누르는 버튼처럼 보이지 않게: 한 상자 안의 목록(스택드 리스트) + 고른 행 오른쪽에 색 체크만
 const PV_CHECK = '<span class="ms pv-check">check</span>';
 const PV_GO = '<span class="ms pv-go">chevron_right</span>';
+const PV_AI = '<span class="ai-pick">AI 추천</span>';
 
 // 요청사항·쿠폰 미리보기 목록은 대화창 카드에서 바로 고를 수 있게 (파일럿: 거부 → 목록 단계가 번거로움)
 function pickable(box, stepId) {
@@ -257,8 +258,15 @@ function stepPreview() {
     case "final": return rideSummary();
     case "request": {
       const cur = S.phone.reqFocus ?? S.form.request;
-      return pickable(el("pv-accts pv-req pickable", REQUEST_CHOICES.map((k) => [k, REQUESTS[k]]).map(([k, v]) =>
-        `<div class="${cur === k ? "on" : ""}" data-pick="${k}" role="button" tabindex="0"><b>${esc(v)}</b>${cur === k ? PV_CHECK : PV_GO}</div>`).join("")), "request");
+      // AI가 고른 항목 한 줄만 보여주고, 나머지는 '다른 선택지 더 보기'를 눌러야 펼쳐짐 (카드 안에서)
+      const row = (k) => `<div class="${cur === k ? "on" : "pv-more-item"}" data-pick="${k}" role="button" tabindex="0"><b>${esc(REQUESTS[k])}</b>${cur === k ? (isAgentRequest(S, k) ? PV_AI : PV_CHECK) : PV_GO}</div>`;
+      const box = pickable(el("pv-accts pv-req pickable", [cur, ...REQUEST_CHOICES.filter((k) => k !== cur)].filter((k) => REQUESTS[k]).map(row).join("") +
+        `<div class="pv-more" role="button" tabindex="0"><span>다른 선택지 더 보기</span>${PV_GO}</div>`), "request");
+      const more = box.querySelector(".pv-more");
+      const open = () => { box.classList.add("expanded"); if (S) logEvent("request_more_options"); };
+      more.onclick = open;
+      more.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } };
+      return box;
     }
     case "reserve":
       return el("rc-summary", [["출발", "연세대학교"], ["도착", "담소한정식 강남점"], ["예약 시간", RESERVE.when], ["택시 종류", CAR_TYPES[S.form.car].label]]
