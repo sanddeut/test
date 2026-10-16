@@ -259,7 +259,7 @@ function stepPreview() {
     case "request": {
       const cur = S.phone.reqFocus ?? S.form.request;
       // AI가 고른 항목 한 줄만 보여주고, 나머지는 '다른 선택지 더 보기'를 눌러야 펼쳐짐 (카드 안에서)
-      const row = (k) => `<div class="${cur === k ? "on" : "pv-more-item"}" data-pick="${k}" role="button" tabindex="0"><b>${esc(REQUESTS[k])}</b>${cur === k ? (isAgentRequest(S, k) ? PV_AI : PV_CHECK) : PV_GO}</div>`;
+      const row = (k) => `<div class="${cur === k ? "on" : "pv-more-item"}" data-pick="${k}" role="button" tabindex="0"><b>${esc(REQUESTS[k])}</b>${cur === k ? (isAgentRequest(S, k) ? `<span class="pv-right">${PV_AI}${PV_CHECK}</span>` : PV_CHECK) : PV_GO}</div>`;
       const box = pickable(el("pv-accts pv-req pickable", [cur, ...REQUEST_CHOICES.filter((k) => k !== cur)].filter((k) => REQUESTS[k]).map(row).join("") +
         `<div class="pv-more" role="button" tabindex="0"><span>다른 선택지 더 보기</span>${PV_GO}</div>`), "request");
       const more = box.querySelector(".pv-more");
