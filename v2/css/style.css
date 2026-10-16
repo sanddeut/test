@@ -916,7 +916,7 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .pv-req .pv-more-item { display: none !important; }
 .pv-req.expanded .pv-more-item { display: flex !important; }
 .pv-req.expanded .pv-more { display: none !important; }
-.pv-req .pv-more { cursor: pointer; color: #0b57d0; font-size: 15px; font-weight: 600; -webkit-tap-highlight-color: transparent; }
-.pv-req .pv-more .pv-go { color: #0b57d0; }
+.pv-req .pv-more { cursor: pointer; color: #6b6f7a; font-size: 15px; font-weight: 500; -webkit-tap-highlight-color: transparent; }
+.pv-req .pv-more .pv-go { color: #9aa0ab; }
 .pv-req .pv-more:active { background: #eef3fd; }
 .big-text .pv-req .pv-more { font-size: 17px; }
