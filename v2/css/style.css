@@ -920,3 +920,12 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .pv-req .pv-more .pv-go { color: #9aa0ab; }
 .pv-req .pv-more:active { background: #eef3fd; }
 .big-text .pv-req .pv-more { font-size: 17px; }
+
+/* 택시 종류 확인 카드: '택시 종류 일반택시 · 3종 ›'을 누르면 세 가지가 펼쳐져 바로 고를 수 있음 */
+.pv-car .pv-car-opt { display: none !important; cursor: pointer; -webkit-tap-highlight-color: transparent; align-items: center; }
+.pv-car.expanded .pv-car-opt { display: flex !important; }
+.pv-car.expanded .pv-car-head .pv-go { display: none; }
+.pv-car .pv-car-opt:active { background: #eef3fd; }
+.pv-car .pv-car-opt span { color: #3c4048; }
+.pv-car .pv-car-opt b { display: flex; align-items: center; gap: 6px; font-weight: 500; }
+.pv-car .pv-car-opt.on span, .pv-car .pv-car-opt.on b { color: #1c1d21; font-weight: 700; }

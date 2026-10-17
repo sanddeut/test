@@ -191,8 +191,8 @@ function pickable(box, stepId) {
 
 async function pickFromCard(stepId, k, label) {
   if (!S || S.finished || stepIdNow() !== stepId || S.manual) return;
-  const cur = stepId === "request" ? S.form.request : S.form.coupon ? "on" : "off";
-  const out = stepId === "request" ? { intent: "set_request", request: k } : { intent: "set_coupon", coupon: k === "on" };
+  const cur = stepId === "request" ? S.form.request : stepId === "car" ? carTarget(S) : S.form.coupon ? "on" : "off";
+  const out = stepId === "request" ? { intent: "set_request", request: k } : stepId === "car" ? { intent: "set_car", car_type: k } : { intent: "set_coupon", coupon: k === "on" };
   if (S.automation === "low") {
     // 묻고 있는 승인 카드에서 고름: 지금 값과 같으면 승인, 다르면 그 값으로 바꾸고 바로 진행
     const w = S.waiter;
@@ -219,6 +219,9 @@ async function pickFromCard(stepId, k, label) {
     logEvent("request_changed", { request: k, via: "card_pick" });
     await redoRequest(k);
     await sayKey(k === "none" ? "change.request.none" : "change.request", undefined, { talk: true });
+  } else if (stepId === "car") {
+    setOption("car", k, "card_pick");
+    await sayKey("change.car", undefined, { talk: true });
   } else {
     setOption("coupon", k === "on", "card_pick");
     await sayKey(k === "on" ? "change.coupon.on" : "change.coupon.off", undefined, { talk: true });
@@ -245,9 +248,18 @@ function stepPreview() {
       const k = S.phone.pendingDest ?? S.form.dest ?? AGENT_PLACE;
       return el("pv-acct pv-place", `<span class="pv-pin"><span class="ms fill">location_on</span></span><span><b>${esc(PLACES[k].name)}</b><small>${esc(PLACES[k].addr)} · ${esc(distText(S.form.origin, k, S.geo))}</small></span>`);
     }
-    case "car":
-      return el("pv-accts", Object.entries(CAR_TYPES).map(([k, c]) =>
-        `<div class="${S.form.car === k ? "on" : ""}"><span><b>${esc(c.label)}</b></span><span class="pv-right"><small>예상 ${esc(won0(fareOf({ ...S.form, car: k })))}</small>${S.form.car === k ? PV_CHECK : ""}</span></div>`).join(""));
+    case "car": {
+      // 택시 종류 확인: 지금 택시 종류 한 줄(· 3종 ›)만 보여주고, 누르면 카드 안에서 세 가지가 펼쳐져 고를 수 있음 (쿠폰과 같은 형태)
+      const cur = carTarget(S);
+      const row = (k) => `<div class="pv-car-opt${cur === k ? " on" : ""}" data-pick="${k}" data-label="${esc(CAR_TYPES[k].label)}" role="button" tabindex="0"><span>${esc(CAR_TYPES[k].label)}</span><b>${esc(won0(fareOf({ ...S.form, car: k })))}${cur === k ? PV_CHECK : ""}</b></div>`;
+      const box = pickable(el("rc-summary pv-fare pv-car", `<div class="pv-cpn pv-car-head" role="button" tabindex="0"><span>택시 종류</span><b>${esc(CAR_TYPES[cur].label)} <small>· ${Object.keys(CAR_TYPES).length}종</small>${PV_GO}</b></div>` +
+        Object.keys(CAR_TYPES).map(row).join("")), "car");
+      const head = box.querySelector(".pv-car-head");
+      const open = () => { if (box.classList.contains("expanded")) return; box.classList.add("expanded"); if (S) logEvent("car_more_options"); };
+      head.onclick = open;
+      head.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } };
+      return box;
+    }
     case "pay": return picked(PAY, S.form.pay);
     case "coupon": {
       // 예상 금액 확인: 금액 + 쿠폰 적용 현황(적용 안 함 · 보유 1장). 쿠폰 줄을 누르면 적용/해제
@@ -1270,6 +1282,7 @@ async function sayBusy(step) {
 // 거부 유형별로 선택지 단계에서 바로 받아들일 수 있는 의도
 const REJECT_EXTRA = {
   final: ["set_origin", "set_dest", "set_car", "set_pay", "set_coupon", "cancel"],
+  car: ["set_car"],
 };
 
 async function runLowStep(step) {
@@ -1417,6 +1430,35 @@ async function handleReject(step, c, said) {
     logEvent("reserve_rejected");
     await sayKey("reserve.no");
     return "done";
+  }
+
+  if (type === "car") {
+    // 기본(일반택시)을 거부하면 어떤 택시로 할지 말로 받음 → 말한 대로 다시 묻지 않고 진행 (목록을 먼저 보여주지 않음)
+    const done = async (k, via) => {
+      logEvent("car_chosen", { car: k, via });
+      setOption("car", k, via);
+      S.needReask = false;
+      await sayKey("car.set", { car: k }, { talk: true });
+      await doApply(step, k, { announced: true });
+      return "done";
+    };
+    if (c.id === "set_car" && CAR_TYPES[c.out?.car_type]) return done(c.out.car_type, c.card ? "card_pick" : c.via);
+    const ask = line("car.ask", S);
+    await agentSay(ask);
+    let said = ask;
+    for (;;) {
+      const o = await turn(await waitText(), {
+        said,
+        intents: ["set_car", "continue", "cancel", "other"],
+        hint: `지금은 택시 종류를 확인하는 단계야(지금은 ${CAR_TYPES[carTarget(S)].label}). 택시 종류를 말하면 set_car(일반택시=normal, 모범택시=deluxe, 대형택시=large), 그대로 하라고 하면 continue야. 그 외에는 reply로 짧게 답하고 어떤 택시로 할지 다시 물어. 다른 택시를 먼저 권하지 마.`,
+        fallback: "어떤 택시로 할까요?",
+      });
+      if (o.intent === "set_car" && CAR_TYPES[o.car_type]) return done(o.car_type, "reject_text");
+      if (o.intent === "continue") { await doApply(step, "approve", { announced: true }); return "done"; }
+      if (o.intent === "cancel") { await cancelRide(); return "cancel"; }
+      said = o.reply;
+      await agentSay(o.reply, { talk: true });
+    }
   }
 
   if (type === "coupon") {
@@ -1596,35 +1638,10 @@ async function askOrigin(step, via) {
   }
 }
 
-// 택시 종류(B, 높은 자동화): 처음 요청에서 말하지 않았으면 고르게 함 (말했으면 그대로 설정)
-async function askCarHigh(step) {
-  await gate();
-  const opts = step.low.options;
-  const ask = line("car.ask", S);
-  await agentSay(ask);
-  for (;;) {
-    const c = await askChoice(opts, ask, ["set_car"]);
-    if (c.id === "__reask") continue;
-    const k = CAR_TYPES[c.id] ? c.id : c.out?.car_type;
-    if (k && CAR_TYPES[k]) {
-      S.req.car = k;
-      logEvent("car_named", { car: k, via: c.via });
-      await doPre(step);
-      await doApply(step, k, { announced: true });
-      await sayKey("car.set", { car: k }, { talk: true });
-      await dwell();
-      return true;
-    }
-    if (c.out?.intent === "cancel") return cancelRide();
-    if (c.out?.reply) await agentSay(c.out.reply, { talk: true });
-  }
-}
-
 // ---------- 높은 자동화 ----------
 async function runHighStep(step) {
   if (step.kind === "password") return runPassword(step, step.high);
   if (step.id === "origin") { const r = await prepOrigin(step); if (r !== "go") return r; }
-  if (step.id === "car" && !S.req.car && !S.userSet.car && !manualDone(step)) return askCarHigh(step);
   if (manualDone(step) && step.kind !== "dest") { logEvent("step_done_manually"); return true; }
 
   let msgs = resolveMsgs(step.high.messages);

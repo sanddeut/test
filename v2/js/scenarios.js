@@ -246,11 +246,13 @@ function scriptDefaults(cond) {
   }
 
   if (B) {
-    if (low) add("car", "택시 종류 변경", "선택 요청", "택시 종류가 3개예요. 어떤 택시로 할까요?");
-    else {
-      add("car", "택시 종류 변경", "안내 (처음 요청에서 말한 택시 종류)", "말씀하신 {택시종류}로 바꿨어요.");
-      add("car.ask", "택시 종류 변경", "처음 요청에 택시 종류가 없을 때", "택시 종류가 3개예요. 어떤 택시로 할까요?");
-      add("car.set", "택시 종류 변경", "택시 종류를 골랐을 때", "{택시종류}로 설정했어요.");
+    if (low) {
+      add("car", "택시 종류 확인", "승인 요청 (기본 일반택시 · 처음 요청에서 말했으면 그 택시)", "택시 종류는 {택시종류}예요. 이대로 진행할까요?");
+      add("car.ask", "택시 종류 확인", "거부 시", "어떤 택시로 할까요?");
+      add("car.set", "택시 종류 확인", "택시 종류를 말했을 때 (다시 묻지 않고 진행)", "{택시종류}로 할게요.");
+    } else {
+      add("car", "택시 종류 확인", "안내 (기본 일반택시)", "택시 종류는 {택시종류}예요.");
+      add("car.req", "택시 종류 확인", "안내 (처음 요청에서 말한 택시 종류)", "말씀하신 {택시종류}로 바꿨어요.");
     }
   }
 
@@ -356,8 +358,8 @@ const isAgentRequest = (s, k) => k === AGENT_REQUEST && s.form.request === AGENT
 // 쿠폰 단계의 선택 → 적용 여부 ("on"이면 적용, 선택이 없으면 참가자가 직접 정한 값 또는 기본값 '적용 안 함')
 const couponChoice = (s, choice) => (choice === "on" ? true : choice === "off" ? false : s.userSet?.coupon ? s.form.coupon : false);
 
-// 높은 자동화(B)에서 바꿀 값: 참가자가 이미 직접 바꿨으면 그 값, 아니면 과업의 값
-const carTarget = (s) => (s.userSet?.car ? s.form.car : s.req?.car || "deluxe");
+// 택시 종류: 참가자가 이미 직접 바꿨으면 그 값, 처음 요청에서 말했으면 그 값, 아니면 기본 일반택시
+const carTarget = (s) => (s.userSet?.car ? s.form.car : s.req?.car || "normal");
 const payTarget = (s) => (s.userSet?.pay ? s.form.pay : s.complexity === "B" ? "direct" : "auto");
 
 // 단계 정의
@@ -492,23 +494,20 @@ function buildSteps(complexity, session = 1) {
   if (B) {
     steps.push({
       id: "car",
-      label: "택시 종류 변경",
-      guide: "택시 종류(일반택시 / 모범택시 / 대형택시)를 고르는 단계. 기본은 일반택시",
-      low: {
-        messages: msg("car"),
-        // 예상 요금은 목적지·쿠폰에 따라 바뀌므로 물을 때마다 새로 계산
-        get options() { return Object.entries(CAR_TYPES).map(([id, c]) => ({ id, label: c.label, price: `예상 ${won0(fareOf({ ...S.form, car: id }))}` })); },
-      },
-      high: { messages: (s) => lines("car", s, { car: carTarget(s) }), applyFirst: true },
+      label: "택시 종류 확인",
+      guide: "택시 종류를 확인하는 단계(카드에 '택시 종류 일반택시 · 3종'이 보이고, 누르면 일반택시 / 모범택시 / 대형택시를 고를 수 있음). 기본은 일반택시이고, 에이전트가 먼저 다른 택시를 권하지 않음",
+      // 선택지를 먼저 주지 않음: 기본(일반택시)으로 승인을 받거나 그대로 진행하고, 참가자가 바꾸는지 봄 (쿠폰과 같은 형태)
+      low: { messages: (s) => lines("car", s, { car: carTarget(s) }), options: APPROVE, reject: "car" },
+      high: { messages: (s) => lines(s.req?.car && !s.userSet?.car && s.req.car !== "normal" ? "car.req" : "car", s, { car: carTarget(s) }), applyFirst: true },
       pre: async (s) => { s.phone.focus = "car"; renderPhone(); await actSleep(400); },
       act: async (s, choice) => {
-        const k = choice || carTarget(s);
+        const k = CAR_TYPES[choice] ? choice : carTarget(s);
         await tap(`.tx-car[data-car="${k}"]`);
         s.form.car = k;
         s.phone.focus = null;
         renderPhone();
       },
-      apply: (s, choice) => { s.form.car = choice || carTarget(s); s.phone.focus = null; },
+      apply: (s, choice) => { s.form.car = CAR_TYPES[choice] ? choice : carTarget(s); s.phone.focus = null; },
     });
   }
 
