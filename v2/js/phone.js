@@ -244,7 +244,7 @@ function taxiCalling() {
 
 // 세션2: 이용내역 (최근 3개월)
 function taxiHistory() {
-  const rows = RIDE_HISTORY.map((h) => `<div class="hist-row"><span><b>${esc(h.to)}</b><small>${h.date} ${h.time} · 연세대학교 출발</small></span><b>${won0(h.fare)}</b></div>`).join("");
+  const rows = RIDE_HISTORY.map((h) => `<div class="hist-row"><span><b>${esc(h.to)}</b><small>${h.date} ${h.time} · 신분당선 동천역 출발</small></span><b>${won0(h.fare)}</b></div>`).join("");
   return `<div class="tx-page white"><div class="tx-sbar">${mi("arrow_back_ios", "back")}<b class="tx-htitle">이용내역</b></div>
     <div class="hist-filter"><span class="on">3개월</span><span>1개월</span><span>전체</span></div>
     <div class="hist-list">${rows}</div>
@@ -257,7 +257,7 @@ function taxiReserve(done) {
   return `<div class="tx-page white tx-resv">
     ${done ? `<div class="tx-done-head"><span class="done-check">${mi("check")}</span><span><b>택시를 예약했어요</b><small>출발 30분 전에 배차를 시작해요</small></span></div>` : `<div class="tx-sbar">${mi("arrow_back_ios", "back")}<b class="tx-htitle">예약 호출</b></div>`}
     <div class="done-box">
-      <div><span>출발</span><b>연세대학교</b></div>
+      <div><span>출발</span><b>신분당선 동천역</b></div>
       <div><span>도착</span><b>담소한정식 강남점</b></div>
       <div><span>예약 시간</span><b>${RESERVE.when}</b></div>
       <div><span>택시 종류</span><b>${CAR_TYPES[S.form.car].label}</b></div>
@@ -595,7 +595,7 @@ function refreshMap() {
   LiveMap.layer.clearLayers();
   const current = S.form.origin === "current";
   L.marker([o.lat, o.lng], { icon: pinIcon(current ? "me" : "origin", current ? "<i></i>" : `<span>출발 ${mi("chevron_right")}</span>`) }).addTo(LiveMap.layer);
-  // 경로가 없을 때(출발지 설정 중): 연세대학교로 정한 뒤에는 학교 주변이 보이게 가깝게, 현재 위치는 조금 넓게
+  // 경로가 없을 때(출발지 설정 중): 동천역으로 바꾼 뒤에는 역 주변이 보이게 가깝게, 현재 위치는 조금 넓게
   if (!destKey) {
     map.setView([o.lat, o.lng], current ? 16 : 18, { animate: false });
     map.panBy([0, sheetCover() / 2], { animate: false }); // 출발지 핀이 아래 카드에 가리지 않고 보이는 부분 가운데에 오게

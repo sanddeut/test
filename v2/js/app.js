@@ -269,7 +269,7 @@ function stepPreview() {
       return box;
     }
     case "reserve":
-      return el("rc-summary", [["출발", "연세대학교"], ["도착", "담소한정식 강남점"], ["예약 시간", RESERVE.when], ["택시 종류", CAR_TYPES[S.form.car].label]]
+      return el("rc-summary", [["출발", "신분당선 동천역"], ["도착", "담소한정식 강남점"], ["예약 시간", RESERVE.when], ["택시 종류", CAR_TYPES[S.form.car].label]]
         .map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join(""));
     default: return null;
   }
@@ -1547,7 +1547,7 @@ async function prepOrigin(step) {
   return true;
 }
 
-// 출발지를 어디로 할지 물음 → 말한 곳(연세대학교 / 현재 위치 / 그 외 장소)으로 다시 묻지 않고 바로 설정
+// 출발지를 어디로 할지 물음 → 말한 곳(동천역 / 현재 위치 / 그 외 장소)으로 다시 묻지 않고 바로 설정
 async function askOrigin(step, via) {
   const ask = line("origin.ask", S);
   await agentSay(ask);
@@ -1556,7 +1556,7 @@ async function askOrigin(step, via) {
     const o = await turn(await waitText(), {
       said,
       intents: ["set_origin", "cancel", "other"],
-      hint: `사용자가 출발지로 할 장소를 말하면 set_origin이야. ‘${ORIGINS[TARGET_ORIGIN].name}’(이)면 origin=${TARGET_ORIGIN}, 현재 위치면 origin=current, 그 외 장소면 origin=null로 두고 origin_name에 그 장소 이름을 써. 장소를 말하지 않았으면(잡담, 질문 등) other이고, reply는 짧게 받아준 뒤 출발지를 어디로 할지 다시 묻는 형태로 써.`,
+      hint: `사용자가 출발지로 할 장소를 말하면 set_origin이야. ‘${ORIGINS[TARGET_ORIGIN].name}’이면 origin=${TARGET_ORIGIN}, 현재 위치면 origin=current, 그 외 장소면 origin=null로 두고 origin_name에 그 장소 이름을 써. 장소를 말하지 않았으면(잡담, 질문 등) other이고, reply는 짧게 받아준 뒤 출발지를 어디로 할지 다시 묻는 형태로 써.`,
       fallback: "출발지를 어디로 할까요?",
       freeOrigin: true,
     });
@@ -1567,7 +1567,7 @@ async function askOrigin(step, via) {
       S.originTarget = k;
       logEvent("origin_changed", { origin: k, name: ORIGINS[k].name, via });
       await sayKey(k === "current" ? "origin.skip" : "origin.confirm", { origin: k }, { talk: true });
-      // 연세대학교면 실행화면에서 검색해 고르는 과정을 보여줌
+      // 동천역이면 실행화면에서 검색해 고르는 과정을 보여줌
       if (k === TARGET_ORIGIN && S.phone.taxiView !== "origin") await doPre(step);
       await doApply(step, k === "current" ? "reject" : k === TARGET_ORIGIN ? "approve" : "custom", { announced: true });
       return "done";
