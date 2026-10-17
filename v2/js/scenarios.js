@@ -4,30 +4,42 @@
 
 const TAXI_APP = "마음택시";
 
-// 목적지 검색 결과 (같은 이름의 여러 지점). road: 연세대학교(신촌)에서의 도로 거리(km, 고정값)
+// 목적지 검색 결과 (같은 이름의 여러 지점). road: 신분당선 동천역에서의 도로 거리(km, 고정값)
 const PLACES = {
-  gangnam: { name: "담소한정식 강남점", addr: "서울 강남구 테헤란로 152", lat: 37.50007, lng: 127.03651, road: 14.6 },
-  gucheong: { name: "담소한정식 강남구청점", addr: "서울 강남구 학동로 426", lat: 37.51729, lng: 127.04736, road: 14.9 },
-  yeoksam: { name: "담소한정식 역삼점", addr: "서울 강남구 논현로 508", lat: 37.50375, lng: 127.03983, road: 14.2 },
+  gangnam: { name: "담소한정식 강남점", addr: "서울 강남구 테헤란로 152", lat: 37.50007, lng: 127.03651, road: 21.2 },
+  gucheong: { name: "담소한정식 강남구청점", addr: "서울 강남구 학동로 426", lat: 37.51729, lng: 127.04736, road: 23.5 },
+  yeoksam: { name: "담소한정식 역삼점", addr: "서울 강남구 논현로 508", lat: 37.50375, lng: 127.03983, road: 21.9 },
 };
 
-// 출발지: 기본은 휴대폰 GPS의 현재 위치, 과업에서 ‘연세대학교’(서대문구 신촌)로 설정
+// 출발지: 기본은 휴대폰 GPS의 현재 위치, 과업에서 ‘신분당선 동천역’으로 바꿈
 // (현재 위치 좌표는 세션 시작 때 받아서 S.geo에 둠. 위치를 못 받으면 GEO_FALLBACK)
-const TARGET_ORIGIN = "yonsei";
+const TARGET_ORIGIN = "dongcheon";
 const ORIGINS = {
   current: { name: "현재 위치" },
-  yonsei: { name: "연세대학교", addr: "서울 서대문구 연세로 50", lat: 37.56588, lng: 126.93856 },
+  dongcheon: { name: "신분당선 동천역", addr: "경기 용인시 수지구 동천동", lat: 37.33797, lng: 127.10278 },
 };
-const GEO_FALLBACK = { lat: 37.55517, lng: 126.93693, label: "서울 서대문구 창천동" }; // 신촌역 부근
-const ORIGIN_QUERY = "연세대";
-// 출발지 검색 결과 (연세대학교만 고를 수 있음)
+const GEO_FALLBACK = { lat: 37.39475, lng: 127.11118, label: "경기 성남시 분당구 삼평동" }; // 판교역 부근
+const ORIGIN_QUERY = "동천역";
+// 출발지 검색 결과 (신분당선 동천역만 고를 수 있음)
 const ORIGIN_RESULTS = [
-  { key: "yonsei", name: "연세대학교", addr: "서울 서대문구 연세로 50 · 대학교" },
-  { key: null, name: "연세대학교 정문 버스정류장", addr: "서울 서대문구 연세로" },
-  { key: null, name: "연세대학교 세브란스병원", addr: "서울 서대문구 연세로 50-1" },
+  { key: "dongcheon", name: "신분당선 동천역", addr: "경기 용인시 수지구 동천동 · 지하철역" },
+  { key: null, name: "동천역 버스정류장", addr: "경기 용인시 수지구 동천로" },
+  { key: null, name: "동천역 환승주차장", addr: "경기 용인시 수지구 동천동 876" },
 ];
 
 // 받침이 있으면 "으로", 없으면 "로" (ㄹ 받침은 "로")
+// ‘이름’ 뒤의 조사를 이름에 맞게 (참가자가 말한 장소 이름이 들어가도 자연스럽게): 을/를, 으로/로, 은/는
+function fixJosa(text) {
+  return String(text).replace(/‘([^’]+)’(으로|로|을|를|은|는)(?=[\s.,?!]|$)/g, (m, w, j) => {
+    const c = w.trim().slice(-1).charCodeAt(0);
+    if (c < 0xac00 || c > 0xd7a3) return m;
+    const jong = (c - 0xac00) % 28;
+    const has = jong !== 0;
+    const pick = j === "으로" || j === "로" ? (has && jong !== 8 ? "으로" : "로") : j === "을" || j === "를" ? (has ? "을" : "를") : has ? "은" : "는";
+    return `‘${w}’${pick}`;
+  });
+}
+
 function euro(word) {
   const c = String(word).trim().slice(-1).charCodeAt(0);
   if (c < 0xac00 || c > 0xd7a3) return `${word}으로`;
@@ -47,7 +59,7 @@ function originLabel(key, geo) {
   return g.label ? `현재 위치 · ${g.label}` : "현재 위치";
 }
 
-// 참가자가 말한 출발지(연세대학교·현재 위치 외)를 그대로 출발지로 등록. 좌표는 현재 위치 근처로 두고, 지도 검색이 되면 그 위치로 옮김
+// 참가자가 말한 출발지(동천역·현재 위치 외)를 그대로 출발지로 등록. 좌표는 현재 위치 근처로 두고, 지도 검색이 되면 그 위치로 옮김
 function setCustomOrigin(name, geo) {
   const g = geo || GEO_FALLBACK;
   ORIGINS.custom = { name, addr: "", lat: g.lat, lng: g.lng };
@@ -65,10 +77,29 @@ function setCustomOrigin(name, geo) {
   return "custom";
 }
 
-// 거리(km): 연세대학교에서는 고정값, 현재 위치·참가자가 말한 출발지에서는 직선거리 × 1.35 (도로 거리 근사)
+// 참가자가 말한 목적지(담소한정식 세 지점 외)를 그대로 목적지로 등록 (참가자가 말한 대로 '틀리게' 호출할 수 있게)
+// 좌표는 우선 강남점 근처로 두고, 지도 검색이 되면 그 위치로 옮김
+function setCustomPlace(name) {
+  const base = PLACES[TARGET_PLACE];
+  PLACES.custom = { name, addr: "", lat: base.lat + 0.02, lng: base.lng + 0.015 };
+  try {
+    fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=kr&accept-language=ko&q=${encodeURIComponent(name)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        const hit = j?.[0];
+        if (!hit || PLACES.custom?.name !== name) return;
+        Object.assign(PLACES.custom, { lat: +hit.lat, lng: +hit.lon, addr: (hit.display_name || "").split(",").slice(0, 3).join(",") });
+        if (typeof renderPhone === "function") renderPhone();
+      })
+      .catch(() => {});
+  } catch { /* 좌표는 기본값 그대로 */ }
+  return "custom";
+}
+
+// 거리(km): 동천역에서는 고정값, 현재 위치·참가자가 말한 출발지에서는 직선거리 × 1.35 (도로 거리 근사)
 function distKm(originKey, destKey, geo) {
   const d = PLACES[destKey];
-  if (originKey === TARGET_ORIGIN) return d.road;
+  if (originKey === TARGET_ORIGIN && d.road) return d.road;
   const o = originPoint(originKey, geo);
   const R = 6371, rad = Math.PI / 180;
   const a = Math.sin(((d.lat - o.lat) * rad) / 2) ** 2 + Math.cos(o.lat * rad) * Math.cos(d.lat * rad) * Math.sin(((d.lng - o.lng) * rad) / 2) ** 2;
@@ -99,7 +130,7 @@ const REQUEST_CHOICES = ["chat", "quiet"];
 const RIDE_HISTORY = ["09.26", "09.19", "09.12", "09.05", "08.29", "08.22"].map((d) => ({ date: `2026.${d} (토)`, time: "오후 6:20", to: "담소한정식 강남점", fare: 16000 }));
 const RESERVE = { when: "10월 10일 토요일 오후 6:20", short: "다음 주 토요일(10월 10일) 오후 6시 20분" };
 
-// 예상 요금(연세대학교 → 강남점): 일반택시 16,000원 / 모범택시 18,000원 / 대형택시 20,000원
+// 예상 요금(동천역 → 강남점): 일반택시 16,000원 / 모범택시 18,000원 / 대형택시 20,000원
 // 모범택시에 쿠폰(2,000원)을 적용하면 일반택시와 같은 16,000원
 const CAR_TYPES = {
   normal: { label: "일반택시", desc: "가까운 택시를 빠르게", extra: 0 },
@@ -133,19 +164,19 @@ const SITUATION = {
     situation: [
       "오늘 저녁 7시에 동창회 모임이 있습니다. 모임 장소는 ‘담소한정식 강남점’입니다.",
       "지하철을 타기엔 계단이 많고 다리가 아파서, 편하게 택시를 타고가려 합니다.",
-      "택시는 ‘연세대학교’에서 타려고 합니다.",
+      "택시는 ‘신분당선 동천역’에서 타려고 합니다.",
     ],
-    task: ["AI와 대화를 하며 ‘연세대학교’에서 ‘담소한정식 강남점’까지 가는 택시를 불러주세요."],
+    task: ["AI와 대화를 하며 ‘신분당선 동천역’에서 ‘담소한정식 강남점’까지 가는 택시를 불러주세요."],
   },
   B: {
     situation: [
       "오늘 저녁 7시에 동창회 모임이 있습니다. 모임 장소는 ‘담소한정식 강남점’입니다.",
       "오늘 정장을 입었기 때문에, 편하게 모범택시를 타고 가려고 합니다.",
-      "택시는 ‘연세대학교’에서 타려고 합니다.",
+      "택시는 ‘신분당선 동천역’에서 타려고 합니다.",
       "가지고 계신 할인쿠폰이 1장 있어서, 이걸 사용하려 합니다.",
     ],
     task: [
-      "AI와 대화를 하며 ‘연세대학교’에서 ‘담소한정식 강남점’까지 가는 택시를 불러주세요.",
+      "AI와 대화를 하며 ‘신분당선 동천역’에서 ‘담소한정식 강남점’까지 가는 택시를 불러주세요.",
       "택시종류는 ‘모범택시’로 선택해주세요.",
       "택시비 결제 전에, 할인쿠폰을 적용해주세요.",
     ],
@@ -154,10 +185,10 @@ const SITUATION = {
 
 const won0 = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
 
-// 예상 요금: 거리 요금(기본 4,800원 + 1.6km 이후 km당 요금 → 연세대학교~강남점 14.6km = 16,000원이 되게 맞춤) + 택시 종류 추가 요금 − 쿠폰
+// 예상 요금: 거리 요금(기본 4,800원 + 1.6km 이후 km당 약 571원 → 동천역~강남점 21.2km = 16,000원) + 택시 종류 추가 요금 − 쿠폰
 function fareOf(f, destKey = f.dest) {
   const km = distKm(f.origin || "current", destKey || TARGET_PLACE, typeof S !== "undefined" ? S?.geo : null);
-  const base = 4800 + Math.max(0, km - 1.6) * (11200 / (PLACES.gangnam.road - 1.6));
+  const base = 4800 + Math.max(0, km - 1.6) * (11200 / 19.6);
   const fare = Math.round(base / 100) * 100 + CAR_TYPES[f.car].extra;
   return Math.max(0, fare - (f.coupon ? COUPON.amount : 0));
 }
@@ -314,7 +345,8 @@ function lines(key, s, vars = {}) {
     .map((t) => t.trim())
     .filter(Boolean)
     .map((t) => t.replace(/\{(출발지|목적지|택시종류|결제|쿠폰|요금|요청사항|이름)\}/g, (_, k) => map[k]))
-    .map((t) => t.replace(/([가-힣\w]+)’?\(으\)로/g, (m, w) => (m.includes("’") ? `${euro(w).slice(0, w.length)}’${euro(w).slice(w.length)}` : euro(w))));
+    .map((t) => t.replace(/([가-힣\w]+)’?\(으\)로/g, (m, w) => (m.includes("’") ? `${euro(w).slice(0, w.length)}’${euro(w).slice(w.length)}` : euro(w))))
+    .map(fixJosa);
 }
 const line = (key, s, vars) => lines(key, s, vars).join("\n");
 
@@ -358,14 +390,14 @@ function buildSteps(complexity, session = 1) {
   steps.push({
     id: "origin",
     label: "출발지 설정",
-    guide: "출발지를 ‘연세대학교’(서울 서대문구 연세로 50)로 설정하는 단계. 출발지 검색 결과는 연세대학교, 연세대학교 정문 버스정류장, 연세대학교 세브란스병원이고 택시를 탈 곳은 연세대학교",
+    guide: "출발지를 휴대폰의 현재 위치에서 ‘신분당선 동천역’으로 바꾸는 단계. 출발지 검색 결과는 신분당선 동천역, 동천역 버스정류장, 동천역 환승주차장이고 택시를 탈 곳은 신분당선 동천역",
     low: { messages: (s) => lines("origin", s, { origin: s.originTarget || TARGET_ORIGIN }), options: APPROVE, reject: "origin" },
     high: { messages: (s) => lines("origin", s, { origin: s.originTarget || TARGET_ORIGIN }), applyFirst: true },
-    // 출발지 칸을 누르고 "연세대"를 입력 → 검색 결과
+    // 출발지 칸을 누르고 "동천역"을 입력 → 검색 결과
     pre: async (s) => {
       const p = s.phone;
       if (p.taxiView === "origin" && p.originTyped === ORIGIN_QUERY) return;
-      if (s.originTarget && s.originTarget !== TARGET_ORIGIN) return; // 연세대학교가 아닌 곳은 검색 화면을 보여주지 않음
+      if (s.originTarget && s.originTarget !== TARGET_ORIGIN) return; // 동천역이 아닌 곳은 검색 화면을 보여주지 않음
       await tap(".tx-from");
       p.taxiView = "origin";
       p.originTyped = "";
@@ -380,10 +412,10 @@ function buildSteps(complexity, session = 1) {
     },
     act: async (s, choice) => {
       const p = s.phone;
-      // 승인(또는 높은 자동화) = 설정할 출발지로: 연세대학교가 아니면 해당 선택으로 바꿔 처리
+      // 승인(또는 높은 자동화) = 설정할 출발지로: 동천역이 아니면 해당 선택으로 바꿔 처리
       if (choice !== "reject" && choice !== "custom" && s.originTarget && s.originTarget !== TARGET_ORIGIN) choice = s.originTarget === "current" ? "reject" : "custom";
       if (choice === "reject" || choice === "custom") {
-        // 연세대학교가 아닌 곳: 검색 화면을 닫고 홈으로 (custom이면 말한 곳을 출발지로)
+        // 동천역이 아닌 곳: 검색 화면을 닫고 홈으로 (custom이면 말한 곳을 출발지로)
         if (p.taxiView === "origin") await tap(".tx-sbar .back");
         if (choice === "custom") s.form.origin = "custom";
       } else if (p.taxiView === "origin") {
@@ -419,6 +451,7 @@ function buildSteps(complexity, session = 1) {
     pre: async (s) => {
       const p = s.phone;
       if (p.taxiView === "search" && p.searchTyped === SEARCH_QUERY) return;
+      p.searchList = null;
       await tap(".tx-search");
       p.taxiView = "search";
       p.searchTyped = "";
@@ -433,6 +466,16 @@ function buildSteps(complexity, session = 1) {
     act: async (s, choice) => {
       const k = choice || s.form.dest || AGENT_PLACE;
       const p = s.phone;
+      if (p.taxiView === "search" && k === "custom" && p.searchList?.[0] !== "custom") {
+        // 참가자가 말한 장소: 그 이름으로 다시 검색 → 결과에서 고름
+        p.results = false;
+        p.searchList = ["custom"];
+        await typeText((v) => (p.searchTyped = v), PLACES.custom.name, 150);
+        await actSleep(400);
+        p.results = true;
+        renderPhone();
+        await actSleep(500);
+      }
       if (p.taxiView === "search") {
         await tap(`.tx-res[data-place="${k}"]`);
         p.tappedPlace = k;

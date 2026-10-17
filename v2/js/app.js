@@ -269,7 +269,7 @@ function stepPreview() {
       return box;
     }
     case "reserve":
-      return el("rc-summary", [["출발", "연세대학교"], ["도착", "담소한정식 강남점"], ["예약 시간", RESERVE.when], ["택시 종류", CAR_TYPES[S.form.car].label]]
+      return el("rc-summary", [["출발", "신분당선 동천역"], ["도착", "담소한정식 강남점"], ["예약 시간", RESERVE.when], ["택시 종류", CAR_TYPES[S.form.car].label]]
         .map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join(""));
     default: return null;
   }
@@ -574,7 +574,7 @@ function recentDialog(n = 6) {
 }
 
 // 대화 턴 해석: 의도 분류 + 값 추출 + 스크립트 밖 응답(reply)
-async function turn(text, { said, intents, hint, fallback, fallbackBy, appKeywords, freeOrigin }) {
+async function turn(text, { said, intents, hint, fallback, fallbackBy, appKeywords, freeOrigin, freePlace }) {
   const step = S.steps[S.stepIdx];
   const res = await interpret("turn", text, {
     automation: S.automation === "high" ? "높은 자동화" : "낮은 자동화",
@@ -589,6 +589,7 @@ async function turn(text, { said, intents, hint, fallback, fallbackBy, appKeywor
     fallback_by_intent: fallbackBy || null,
     app_keywords: appKeywords || null,
     free_origin: freeOrigin || null,
+    free_place: freePlace || null,
   });
   return res.output;
 }
@@ -873,6 +874,16 @@ function markIntervention(via) {
 }
 
 
+// 참가자가 말한 출발지·목적지를 키로 (세 지점·동천역·현재 위치가 아니면 말한 이름 그대로 등록)
+function namedDest(o) {
+  if (o?.place && PLACES[o.place] && o.place !== "custom") return o.place;
+  return o?.place_name ? setCustomPlace(o.place_name) : null;
+}
+function namedOrigin(o) {
+  if (o?.origin && ORIGINS[o.origin] && o.origin !== "custom") return o.origin;
+  return o?.origin_name ? setCustomOrigin(o.origin_name, S.geo) : null;
+}
+
 // 목적지 바꾸기 (오류 단계 전이면 미리 정정한 값으로 기억, 낮은 자동화면 다시 물음)
 function setDest(k) {
   if (S.automation === "low" && S.stepIdx === S.destIdx && S.form.dest == null) {
@@ -931,16 +942,17 @@ async function applyHighChange(o, via) {
     await sayKey(o.request === "none" ? "change.request.none" : "change.request");
     return true;
   }
-  if (o.intent === "set_origin" && ORIGINS[o.origin]) {
-    setOption("origin", o.origin, via);
+  if (o.intent === "set_origin" && namedOrigin(o)) {
+    setOption("origin", namedOrigin(o), via);
     await sayKey("change.origin");
     return true;
   }
-  if (o.intent === "set_dest" && PLACES[o.place]) {
-    setDest(o.place);
-    logEvent("dest_changed", { dest: o.place, via });
-    await redoDest(o.place);
-    await sayKey("change.dest", { dest: o.place });
+  if (o.intent === "set_dest" && namedDest(o)) {
+    const k = namedDest(o);
+    setDest(k);
+    logEvent("dest_changed", { dest: k, name: PLACES[k].name, via });
+    await redoDest(k);
+    await sayKey("change.dest", { dest: k });
     return true;
   }
   if (o.intent === "set_car" && CAR_TYPES[o.car_type]) {
@@ -968,7 +980,7 @@ async function handleInterjection(text) {
   showTyping(false);
   syncControls();
   const said = S.log.filter((e) => e.type === "agent_message").at(-1)?.text || "";
-  const o = await turn(text, { said, intents: highIntents(), hint: HIGH_HINT, fallback: "네, 택시 호출을 이어서 진행할게요." });
+  const o = await turn(text, { said, intents: highIntents(), hint: HIGH_HINT, fallback: "네, 택시 호출을 이어서 진행할게요.", freePlace: "any" });
   if (changeIntents().includes(o.intent)) {
     S.m.stops++;
     markIntervention("stop_text");
@@ -1032,6 +1044,7 @@ async function handleStop(via) {
       intents: [...changeIntents(), "continue", ...(S.rideDone ? ["cancel_reserve"] : []), "cancel", "other"],
       hint: STOP_HINT,
       fallback: "계속하기를 누르시면 이어서 진행할게요.",
+      freePlace: "any",
     });
     if (await applyHighChange(o, `stop_${via}`)) { said = S.log.filter((e) => e.type === "agent_message").at(-1)?.text || said; continue; }
     if (o.intent === "cancel" || o.intent === "cancel_reserve") { S.stopped = false; return cancelRide(); }
@@ -1166,6 +1179,8 @@ async function run() {
     if (o.origin && ORIGINS[o.origin]) S.req.origin = o.origin;
     else if (o.origin_name) { S.req.origin = null; S.req.originName = o.origin_name; }
     if (o.car_type && CAR_TYPES[o.car_type]) S.req.car = o.car_type;
+    // 처음 요청에서 말한 목적지: 강남점이면 그대로(에이전트가 찾음), 다른 지점이나 다른 곳이면 그곳으로
+    { const k = namedDest(o); if (k && k !== AGENT_PLACE) S.userDest = k; }
     if (o.is_ride_request && !(o.destination == null && o.clarification)) {
       S.m.request = { text, ...o };
       showTyping(true);
@@ -1449,6 +1464,7 @@ async function handleReject(step, c, said) {
     if (!o) await agentSay(ask);
     if (!o) {
       o = await turn(await waitText(), {
+        freePlace: "any",
         said: ask,
         intents: [...changeIntents(), "continue", "cancel", "other"],
         hint: "바꿀 수 있는 것은 출발지, 목적지" + (USE_PAY_STEP ? ", 결제 방식" : "") + (S.complexity === "B" ? ", 택시 종류" + (USE_COUPON ? ", 쿠폰" : "") : "") + "이야. 그 외 요청이면 짧게 답하고 최종 확인 단계로 자연스럽게 돌아와.",
@@ -1461,13 +1477,14 @@ async function handleReject(step, c, said) {
       await doApply(step, "approve", { announced: true });
       return "done";
     };
-    if (o.intent === "set_dest" && PLACES[o.place]) {
-      setDest(o.place);
-      logEvent("dest_changed", { dest: o.place, via: "final" });
-      await redoDest(o.place);
-      return proceed("change.dest", { dest: o.place });
+    if (o.intent === "set_dest" && namedDest(o)) {
+      const k = namedDest(o);
+      setDest(k);
+      logEvent("dest_changed", { dest: k, name: PLACES[k].name, via: "final" });
+      await redoDest(k);
+      return proceed("change.dest", { dest: k });
     }
-    if (o.intent === "set_origin" && ORIGINS[o.origin]) { setOption("origin", o.origin, "final"); return proceed("change.origin"); }
+    if (o.intent === "set_origin" && namedOrigin(o)) { setOption("origin", namedOrigin(o), "final"); return proceed("change.origin"); }
     if (o.intent === "set_car" && CAR_TYPES[o.car_type]) { setOption("car", o.car_type, "final"); return proceed("change.car"); }
     if (o.intent === "set_pay" && PAY[o.pay_method]) { setOption("pay", o.pay_method, "final"); return proceed("change.pay"); }
     if (o.intent === "set_coupon" && typeof o.coupon === "boolean") { setOption("coupon", o.coupon, "final"); return proceed(o.coupon ? "change.coupon.on" : "change.coupon.off"); }
@@ -1505,16 +1522,17 @@ async function runLowDest(step) {
     logEvent("decision", { choice: c.id, via: c.via, pending_dest: pending });
     if (c.id === "approve") break;
     let o = c.id === "set_dest" ? c.out : null;
-    if (!o || !PLACES[o.place]) {
+    if (!o || !(PLACES[o.place] || o.place_name)) {
       await agentSay(corr.lowAsk(S));
       o = await turn(await waitText(), {
         said: corr.lowAsk(S),
         intents: ["set_dest", "continue", "cancel", "other"],
-        hint: `목적지를 말하지 않았으면(잡담, 감정 표현, 목적지 외 요청 등) reply는 발화를 짧게 받아준 뒤 "‘${PLACES[pending].name}’으로 갈까요? 다른 곳이면 말씀해주세요."처럼 현재 목적지로 갈지 묻는 형태로 끝내. 시나리오에 없는 개념을 만들어내지 마.`,
+        freePlace: "dest",
+        hint: `목적지로 할 장소를 말하면 set_dest야. 담소한정식 세 지점이면 place를, 그 외 장소면 place=null로 두고 place_name에 그 장소 이름을 써(말한 대로 그 장소로 감). 목적지를 말하지 않았으면(잡담, 감정 표현, 목적지 외 요청 등) reply는 발화를 짧게 받아준 뒤 "‘${PLACES[pending].name}’으로 갈까요? 다른 곳이면 말씀해주세요."처럼 현재 목적지로 갈지 묻는 형태로 끝내. 시나리오에 없는 개념을 만들어내지 마.`,
       });
     }
-    if (o.intent === "set_dest" && PLACES[o.place]) {
-      pending = o.place;
+    if (o.intent === "set_dest" && namedDest(o)) {
+      pending = namedDest(o);
       S.phone.pendingDest = pending;
       renderPhone();
       logEvent("dest_changed", { dest: pending, via: "reject_text" });
@@ -1547,7 +1565,7 @@ async function prepOrigin(step) {
   return true;
 }
 
-// 출발지를 어디로 할지 물음 → 말한 곳(연세대학교 / 현재 위치 / 그 외 장소)으로 다시 묻지 않고 바로 설정
+// 출발지를 어디로 할지 물음 → 말한 곳(동천역 / 현재 위치 / 그 외 장소)으로 다시 묻지 않고 바로 설정
 async function askOrigin(step, via) {
   const ask = line("origin.ask", S);
   await agentSay(ask);
@@ -1556,7 +1574,7 @@ async function askOrigin(step, via) {
     const o = await turn(await waitText(), {
       said,
       intents: ["set_origin", "cancel", "other"],
-      hint: `사용자가 출발지로 할 장소를 말하면 set_origin이야. ‘${ORIGINS[TARGET_ORIGIN].name}’(이)면 origin=${TARGET_ORIGIN}, 현재 위치면 origin=current, 그 외 장소면 origin=null로 두고 origin_name에 그 장소 이름을 써. 장소를 말하지 않았으면(잡담, 질문 등) other이고, reply는 짧게 받아준 뒤 출발지를 어디로 할지 다시 묻는 형태로 써.`,
+      hint: `사용자가 출발지로 할 장소를 말하면 set_origin이야. ‘${ORIGINS[TARGET_ORIGIN].name}’이면 origin=${TARGET_ORIGIN}, 현재 위치면 origin=current, 그 외 장소면 origin=null로 두고 origin_name에 그 장소 이름을 써. 장소를 말하지 않았으면(잡담, 질문 등) other이고, reply는 짧게 받아준 뒤 출발지를 어디로 할지 다시 묻는 형태로 써.`,
       fallback: "출발지를 어디로 할까요?",
       freeOrigin: true,
     });
@@ -1567,7 +1585,7 @@ async function askOrigin(step, via) {
       S.originTarget = k;
       logEvent("origin_changed", { origin: k, name: ORIGINS[k].name, via });
       await sayKey(k === "current" ? "origin.skip" : "origin.confirm", { origin: k }, { talk: true });
-      // 연세대학교면 실행화면에서 검색해 고르는 과정을 보여줌
+      // 동천역이면 실행화면에서 검색해 고르는 과정을 보여줌
       if (k === TARGET_ORIGIN && S.phone.taxiView !== "origin") await doPre(step);
       await doApply(step, k === "current" ? "reject" : k === TARGET_ORIGIN ? "approve" : "custom", { announced: true });
       return "done";
@@ -1615,7 +1633,7 @@ async function runHighStep(step) {
 
   if (step.kind === "dest") {
     await gate();
-    S.form.dest = S.userDest ?? AGENT_PLACE;
+    S.form.dest = S.form.dest ?? S.userDest ?? AGENT_PLACE;
     msgs = resolveMsgs(step.high.messages);
   }
 
@@ -1643,6 +1661,7 @@ async function runHighStep(step) {
     // 조작 → "~했어요" → 읽는 시간
     await gate();
     await doApply(step, step.kind === "dest" ? S.form.dest : undefined);
+    if (step.kind === "dest") msgs = resolveMsgs(step.high.messages); // 조작 중 중지하고 목적지를 바꾼 경우 반영
     await say(msgs);
     if (!isLastStep(step)) await read();
   } else {
