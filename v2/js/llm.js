@@ -19,7 +19,7 @@ const DEFAULT_PROMPT = `# 역할
 3. 과업과 무관한 말(잡담, 다른 질문)에도 짧게 반응한 뒤 현재 단계로 돌아와.
 4. 사용자가 지정된 택시 앱(마음택시)이 아닌 다른 앱을 말하면 택시 앱으로 안내해. 그 앱으로는 택시를 호출할 수 없다는 사실을 알려줘.
 5. 출발지는 ‘신분당선 동천역’으로 설정해. 사용자에게 출발지를 ‘바꾼다’거나 원래 현재 위치로 되어 있었다는 말은 하지 마. 출발지 검색 결과는 신분당선 동천역, 동천역 버스정류장, 동천역 환승주차장이야.
-6. 목적지 검색 결과는 담소한정식 강남구청점(서울 강남구 학동로 426), 담소한정식 강남점(서울 강남구 테헤란로 152), 담소한정식 역삼점(서울 강남구 논현로 508) 세 곳뿐이야. 다른 곳을 찾아달라고 하면 이 세 곳을 알려줘.
+6. '담소한정식'을 검색하면 담소한정식 강남구청점(서울 강남구 학동로 426), 담소한정식 강남점(서울 강남구 테헤란로 152), 담소한정식 역삼점(서울 강남구 논현로 508) 세 곳이 나와. 사용자가 이 세 곳이 아닌 다른 장소를 출발지나 목적지로 말하면, 틀린 장소라도 지적하지 말고 사용자가 말한 그 장소로 그대로 설정해.
 
 # 조건 유지 규칙
 - 낮은 자동화: 현재 단계로 돌아올 때 사용자에게 승인을 묻는 형태로 끝내.
@@ -91,6 +91,7 @@ const OUTPUT_FORMAT = `# 출력 형식
 - origin: 사용자가 말한 출발지. 동천역 → dongcheon, 현재 위치(여기, 지금 있는 곳) → current. 그 외는 null.
 - origin_name: 사용자가 동천역·현재 위치가 아닌 다른 장소를 출발지로 말했으면 그 장소 이름(조사·서술어 빼고, 예: "판교역으로 해줘" → "판교역"). 아니면 null.
 - place: 사용자가 말한 목적지 지점. 강남점 → gangnam, 강남구청점 → gucheong, 역삼점 → yeoksam. 구어체, 맞춤법 오류, 음성인식 오류(예: "강남 구청점", "강남쩜")는 너그럽게 해석해. 세 곳이 아니면 null.
+- place_name: 사용자가 담소한정식 세 지점이 아닌 다른 장소를 목적지로 말했으면 그 장소 이름(조사·서술어 빼고, 예: "롯데월드로 가줘" → "롯데월드"). 아니면 null.
 - car_type: 일반택시 → normal, 모범택시 → deluxe, 대형택시 → large.
 - pay_method: 자동결제(카드) → auto, 직접결제(현금·기사님께) → direct.
 - coupon: 쿠폰을 적용하라고 하면 true, 빼라고 하면 false.
@@ -98,7 +99,7 @@ const OUTPUT_FORMAT = `# 출력 형식
 
 const LLM_TASKS = {
   request:
-    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 사용자가 실제로 말한 정보만 채워: 출발지를 말했으면 동천역 → origin=dongcheon, 현재 위치(여기) → origin=current, 그 외 장소 → origin=null, origin_name=장소 이름. 출발지를 말하지 않았으면 둘 다 null. 택시 종류도 말했을 때만 car_type을 채우고, 과업 설명으로 짐작해서 채우지 마. 택시 호출 요청이면 clarification은 null로 둬. 택시 호출 요청인데 목적지를 알 수 없을 때만 목적지를 되물어. " +
+    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 목적지를 말했으면 담소한정식 강남점 → place=gangnam, 강남구청점 → gucheong, 역삼점 → yeoksam, 그 외 장소면 place=null, place_name=장소 이름(틀린 장소라도 말한 그대로). 사용자가 실제로 말한 정보만 채워: 출발지를 말했으면 동천역 → origin=dongcheon, 현재 위치(여기) → origin=current, 그 외 장소 → origin=null, origin_name=장소 이름. 출발지를 말하지 않았으면 둘 다 null. 택시 종류도 말했을 때만 car_type을 채우고, 과업 설명으로 짐작해서 채우지 마. 택시 호출 요청이면 clarification은 null로 둬. 택시 호출 요청인데 목적지를 알 수 없을 때만 목적지를 되물어. " +
     "택시 호출 요청이 아니면(인사, 잡담, 의미 없는 말, 다른 부탁 등) 먼저 택시를 꺼내지 말고, 발화를 짧게 받아준 뒤 휴대폰 앱을 대신 조작해서 할 수 있는 일(예: 택시 호출, 앱 실행)을 알려주고 무엇을 도와드릴지 물어. clarification은 해요체 2문장 이내.",
   turn: "현재 상태에서 사용자가 말했어. 의도를 분류하고 필요한 값을 채운 뒤, reply를 써.",
 };
@@ -111,12 +112,14 @@ const REQUEST_SCHEMA = sch("OBJECT", {
     destination: sch("STRING", { nullable: true }),
     origin: sch("STRING", { nullable: true, enum: ["current", "dongcheon"] }),
     origin_name: sch("STRING", { nullable: true }),
+    place: sch("STRING", { nullable: true, enum: PLACE_ENUM }),
+    place_name: sch("STRING", { nullable: true }),
     car_type: sch("STRING", { nullable: true, enum: ["normal", "deluxe", "large"] }),
     pay_method: sch("STRING", { nullable: true, enum: ["auto", "direct"] }),
     wants_coupon: sch("BOOLEAN"),
     clarification: sch("STRING", { nullable: true }),
   },
-  required: ["is_ride_request", "destination", "origin", "origin_name", "car_type", "pay_method", "wants_coupon", "clarification"],
+  required: ["is_ride_request", "destination", "origin", "origin_name", "place", "place_name", "car_type", "pay_method", "wants_coupon", "clarification"],
 });
 
 function turnSchema(intentIds) {
@@ -127,12 +130,13 @@ function turnSchema(intentIds) {
       origin: sch("STRING", { nullable: true, enum: ["current", "dongcheon"] }),
       origin_name: sch("STRING", { nullable: true }),
       place: sch("STRING", { nullable: true, enum: PLACE_ENUM }),
+      place_name: sch("STRING", { nullable: true }),
       car_type: sch("STRING", { nullable: true, enum: ["normal", "deluxe", "large"] }),
       pay_method: sch("STRING", { nullable: true, enum: ["auto", "direct"] }),
       coupon: sch("BOOLEAN", { nullable: true }),
       reply: sch("STRING"),
     },
-    required: ["intent", "request", "origin", "origin_name", "place", "car_type", "pay_method", "coupon", "reply"],
+    required: ["intent", "request", "origin", "origin_name", "place", "place_name", "car_type", "pay_method", "coupon", "reply"],
   });
 }
 
@@ -145,9 +149,9 @@ const INTENT_MEANINGS = {
   large: "대형택시를 고름",
   auto: "자동결제(등록된 카드)를 고름",
   direct: "직접결제(내릴 때 기사님께)를 고름",
-  set_origin: "출발지를 바꾸라고 함 (origin 채움)",
+  set_origin: "출발지를 바꾸라고 함 (동천역·현재 위치면 origin, 그 외 장소면 origin_name 채움)",
   set_request: "기사님 요청사항을 바꾸거나 빼라고 함 (request 채움: 없음 → none, 대화·이야기 → chat, 조용히 → quiet)",
-  set_dest: "목적지를 특정 지점으로 바꾸라고 함 (place 채움)",
+  set_dest: "목적지를 바꾸라고 함 (담소한정식 세 지점이면 place, 그 외 장소면 place_name 채움)",
   set_car: "택시 종류를 바꾸라고 함 (car_type 채움)",
   set_pay: "결제 방식을 바꾸라고 함 (pay_method 채움)",
   set_coupon: "쿠폰을 적용하거나 빼라고 함 (coupon 채움)",
@@ -196,7 +200,7 @@ const LLM = {
   // 반환: { output, source: "gemini"|"rules", model, latency_ms, error? }
   async interpret(kind, text, context = {}) {
     const started = performance.now();
-    const { fallback_reply, fallback_by_intent, app_keywords, free_origin, ...llmContext } = context;
+    const { fallback_reply, fallback_by_intent, app_keywords, free_origin, free_place, ...llmContext } = context;
     if (this.enabled) {
       try {
         let schema = REQUEST_SCHEMA;
@@ -345,12 +349,21 @@ function extractFreePlace(t) {
   return n.length >= 2 && n.length <= 25 ? n : null;
 }
 
+// 목적지로 말한 장소 이름: "롯데월드 가는 택시 불러줘" → "롯데월드", "동천역에서 서울역으로 가줘" → "서울역"
+function extractDestName(text) {
+  const t = String(text).replace(/^.*?에서\s*/, "");
+  const m = t.match(/([가-힣A-Za-z0-9]+(?:\s[가-힣A-Za-z0-9]+){0,2}?)\s*(?:으로|로|까지)?\s*(?:가는|가자|가\s?줘|가\s?주세요|가고|갈래|갈게|가야|데려다|태워)/);
+  const n = m?.[1]?.trim().replace(/(으로|로|까지)$/, "");
+  if (!n || /^(택시|빨리|지금|얼른|그냥|어디|거기|여기)$/.test(n) || /택시/.test(n)) return null;
+  return n.length >= 2 && n.length <= 25 ? n : null;
+}
+
 // 목적지 지점: "강남구청" → gucheong, "역삼" → yeoksam, "강남(점)" → gangnam
 function extractPlace(text) {
   const t = text.replace(/\s+/g, "");
   if (/구청/.test(t)) return "gucheong";
   if (/역삼/.test(t)) return "yeoksam";
-  if (/강남/.test(t)) return "gangnam";
+  if (/강남/.test(t) && !/강남역/.test(t)) return "gangnam"; // '강남역'은 다른 장소
   return null;
 }
 const extractCar = (t) => (/모범/.test(t) ? "deluxe" : /대형|큰\s?차|밴/.test(t) ? "large" : /일반/.test(t) ? "normal" : null);
@@ -363,17 +376,20 @@ const QUESTION = /(\?|뭐|왜|어떻게|무슨|언제|얼마|어디)/;
 const Rules = {
   request(text) {
     const place = extractPlace(text);
-    const isRide = /(택시|호출|불러|잡아|타고|가고\s?싶|데려다)/.test(text) || place != null;
+    const placeName = place || /한정식|담소|모임/.test(text) ? null : extractDestName(text);
+    const isRide = /(택시|호출|불러|잡아|타고|가고\s?싶|데려다)/.test(text) || place != null || placeName != null;
     return {
       is_ride_request: isRide,
-      destination: place ? PLACES[place].name : /한정식|담소|모임/.test(text) ? text : null,
+      place: place && place !== "custom" ? place : null,
+      place_name: placeName,
+      destination: place ? PLACES[place].name : placeName || (/한정식|담소|모임/.test(text) ? text : null),
       origin: extractOrigin(text),
       origin_name: extractOrigin(text) ? null : (text.match(/([가-힣A-Za-z0-9]+(?:\s[가-힣A-Za-z0-9]+)?)\s*에서/)?.[1] ?? null),
       car_type: extractCar(text),
       pay_method: extractPay(text),
       wants_coupon: /쿠폰|할인/.test(text),
       clarification: isRide
-        ? (place == null && !/한정식|담소|모임/.test(text) ? "어디로 갈까요?" : null)
+        ? (place == null && !placeName && !/한정식|담소|모임/.test(text) ? "어디로 갈까요?" : null)
         : "저는 휴대폰 앱을 대신 조작해서 택시 호출 같은 일을 도와드릴 수 있어요. 어떤 일을 도와드릴까요?",
     };
   },
@@ -381,7 +397,7 @@ const Rules = {
   turn(text, ctx) {
     const allowed = new Set(ctx.intents);
     const out = (intent, extra = {}) => ({
-      intent, request: null, origin: null, origin_name: null, place: null, car_type: null, pay_method: null, coupon: null,
+      intent, request: null, origin: null, origin_name: null, place: null, place_name: null, car_type: null, pay_method: null, coupon: null,
       reply: ctx.fallback_reply || (QUESTION.test(text)
         ? "궁금하신 점은 호출을 마친 뒤에 도와드릴게요. 지금 단계부터 이어서 진행할게요."
         : "제가 잘 이해하지 못했어요. 화면의 버튼을 누르시거나 다시 말씀해주세요."),
@@ -419,6 +435,21 @@ const Rules = {
     }
 
     if (place && allowed.has("set_dest")) return out("set_dest", { place });
+    // 수정 요청 중(최종 확인 거부·중지·말 걸기): "출발지는 ○○으로" / "○○으로 가줘·목적지 ○○" 처럼 다른 장소를 말하면 그 이름 그대로
+    if (ctx.free_place === "any" && !place && !origin) {
+      if (allowed.has("set_origin") && /출발/.test(t)) {
+        const n = extractFreePlace(t.replace(/출발지?\s*(를|을|는|은|도)?\s*/, ""));
+        if (n) return out("set_origin", { origin_name: n });
+      } else if (allowed.has("set_dest") && /(목적지|도착|가\s?줘|가자|가주세요|가는|가야)/.test(t)) {
+        const n = extractDestName(t) || extractFreePlace(t.replace(/(목적지|도착지?)\s*(를|을|는|은|도)?\s*/, ""));
+        if (n) return out("set_dest", { place_name: n });
+      }
+    }
+    // 목적지를 묻는 중: 담소한정식 세 지점 외의 장소를 말하면 그 이름 그대로
+    if (ctx.free_place === "dest" && allowed.has("set_dest") && !place) {
+      const name = extractDestName(t) || extractFreePlace(t);
+      if (name) return out("set_dest", { place_name: name });
+    }
     // 값 없이 "목적지가 잘못됐어" → 어디로 바꿀지 되물음
     if (!place && allowed.has("set_dest") && /(목적지|도착|장소|지점|가게|식당)/.test(t) && !QUESTION.test(t.replace(/어디/, ""))) return out("other", { reply: "목적지를 어디로 바꿀까요?" });
     if (car && allowed.has(car)) return out(car);

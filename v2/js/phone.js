@@ -193,8 +193,9 @@ function taxiSearch() {
   const showResults = S.manual || p.results;
   const pick = p.tappedPlace ?? null;
   const pending = p.pendingDest;
+  const list = !S.manual && p.searchList ? p.searchList : SEARCH_ORDER; // 참가자가 말한 장소를 검색한 경우 그 장소만
   const rows = showResults
-    ? SEARCH_ORDER.map((k) => {
+    ? list.map((k) => {
         const pl = PLACES[k];
         const cls = [k === pick ? "tapped" : "", !S.manual && k === pending && pick == null ? "hl" : ""].join(" ");
         return `<div class="tx-res ${cls}" data-place="${k}" ${S.manual ? `data-man-place="${k}"` : ""}>${mi("location_on", "fill tx-res-ic")}
@@ -204,7 +205,7 @@ function taxiSearch() {
   return `<div class="tx-page white">
     <div class="tx-sbar">${mi("arrow_back_ios", "back")}<div class="tx-sinput">${typed ? esc(typed) : '<span class="ph">장소, 주소 검색</span>'}<i class="caret"></i></div></div>
     <div class="tx-sfrom">${mi("my_location")} 출발 · ${esc(originLabel(S.form.origin, S.geo))}</div>
-    ${showResults ? `<div class="tx-res-head">검색 결과 ${SEARCH_ORDER.length}</div>${rows}` : '<div class="tx-res-empty">최근 검색 기록이 없어요</div>'}
+    ${showResults ? `<div class="tx-res-head">검색 결과 ${list.length}</div>${rows}` : '<div class="tx-res-empty">최근 검색 기록이 없어요</div>'}
   </div>`;
 }
 
@@ -532,7 +533,8 @@ async function redoDest(k) {
   if (sheet) { p.sheet = null; renderPhone(); await actSleep(400); }
   await tap(".tx-dest");
   p.taxiView = "search";
-  p.searchTyped = SEARCH_QUERY;
+  p.searchTyped = k === "custom" ? PLACES.custom.name : SEARCH_QUERY;
+  p.searchList = k === "custom" ? ["custom"] : null;
   p.results = true;
   p.tappedPlace = null;
   renderPhone();

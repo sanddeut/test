@@ -28,6 +28,18 @@ const ORIGIN_RESULTS = [
 ];
 
 // 받침이 있으면 "으로", 없으면 "로" (ㄹ 받침은 "로")
+// ‘이름’ 뒤의 조사를 이름에 맞게 (참가자가 말한 장소 이름이 들어가도 자연스럽게): 을/를, 으로/로, 은/는
+function fixJosa(text) {
+  return String(text).replace(/‘([^’]+)’(으로|로|을|를|은|는)(?=[\s.,?!]|$)/g, (m, w, j) => {
+    const c = w.trim().slice(-1).charCodeAt(0);
+    if (c < 0xac00 || c > 0xd7a3) return m;
+    const jong = (c - 0xac00) % 28;
+    const has = jong !== 0;
+    const pick = j === "으로" || j === "로" ? (has && jong !== 8 ? "으로" : "로") : j === "을" || j === "를" ? (has ? "을" : "를") : has ? "은" : "는";
+    return `‘${w}’${pick}`;
+  });
+}
+
 function euro(word) {
   const c = String(word).trim().slice(-1).charCodeAt(0);
   if (c < 0xac00 || c > 0xd7a3) return `${word}으로`;
@@ -65,10 +77,29 @@ function setCustomOrigin(name, geo) {
   return "custom";
 }
 
+// 참가자가 말한 목적지(담소한정식 세 지점 외)를 그대로 목적지로 등록 (참가자가 말한 대로 '틀리게' 호출할 수 있게)
+// 좌표는 우선 강남점 근처로 두고, 지도 검색이 되면 그 위치로 옮김
+function setCustomPlace(name) {
+  const base = PLACES[TARGET_PLACE];
+  PLACES.custom = { name, addr: "", lat: base.lat + 0.02, lng: base.lng + 0.015 };
+  try {
+    fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=kr&accept-language=ko&q=${encodeURIComponent(name)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        const hit = j?.[0];
+        if (!hit || PLACES.custom?.name !== name) return;
+        Object.assign(PLACES.custom, { lat: +hit.lat, lng: +hit.lon, addr: (hit.display_name || "").split(",").slice(0, 3).join(",") });
+        if (typeof renderPhone === "function") renderPhone();
+      })
+      .catch(() => {});
+  } catch { /* 좌표는 기본값 그대로 */ }
+  return "custom";
+}
+
 // 거리(km): 동천역에서는 고정값, 현재 위치·참가자가 말한 출발지에서는 직선거리 × 1.35 (도로 거리 근사)
 function distKm(originKey, destKey, geo) {
   const d = PLACES[destKey];
-  if (originKey === TARGET_ORIGIN) return d.road;
+  if (originKey === TARGET_ORIGIN && d.road) return d.road;
   const o = originPoint(originKey, geo);
   const R = 6371, rad = Math.PI / 180;
   const a = Math.sin(((d.lat - o.lat) * rad) / 2) ** 2 + Math.cos(o.lat * rad) * Math.cos(d.lat * rad) * Math.sin(((d.lng - o.lng) * rad) / 2) ** 2;
@@ -96,7 +127,7 @@ const AGENT_REQUEST = "chat";
 // 참가자에게 보여주는 선택지 ("요청사항 없음"은 기본값이라 목록에는 넣지 않음)
 const REQUEST_CHOICES = ["chat", "quiet"];
 // 세션2: 최근 3개월 이용내역 (매주 토요일 담소한정식 강남점)
-const RIDE_HISTORY = ["09.26", "09.19", "09.12", "09.05", "08.29", "08.22"].map((d) => ({ date: `2026.${d} (토)`, time: "오후 6:20", to: "담소한정식 강남점", fare: 19700 }));
+const RIDE_HISTORY = ["09.26", "09.19", "09.12", "09.05", "08.29", "08.22"].map((d) => ({ date: `2026.${d} (토)`, time: "오후 6:20", to: "담소한정식 강남점", fare: 16000 }));
 const RESERVE = { when: "10월 10일 토요일 오후 6:20", short: "다음 주 토요일(10월 10일) 오후 6시 20분" };
 
 // 예상 요금(동천역 → 강남점): 일반택시 16,000원 / 모범택시 18,000원 / 대형택시 20,000원
@@ -314,7 +345,8 @@ function lines(key, s, vars = {}) {
     .map((t) => t.trim())
     .filter(Boolean)
     .map((t) => t.replace(/\{(출발지|목적지|택시종류|결제|쿠폰|요금|요청사항|이름)\}/g, (_, k) => map[k]))
-    .map((t) => t.replace(/([가-힣\w]+)’?\(으\)로/g, (m, w) => (m.includes("’") ? `${euro(w).slice(0, w.length)}’${euro(w).slice(w.length)}` : euro(w))));
+    .map((t) => t.replace(/([가-힣\w]+)’?\(으\)로/g, (m, w) => (m.includes("’") ? `${euro(w).slice(0, w.length)}’${euro(w).slice(w.length)}` : euro(w))))
+    .map(fixJosa);
 }
 const line = (key, s, vars) => lines(key, s, vars).join("\n");
 
@@ -419,6 +451,7 @@ function buildSteps(complexity, session = 1) {
     pre: async (s) => {
       const p = s.phone;
       if (p.taxiView === "search" && p.searchTyped === SEARCH_QUERY) return;
+      p.searchList = null;
       await tap(".tx-search");
       p.taxiView = "search";
       p.searchTyped = "";
@@ -433,6 +466,16 @@ function buildSteps(complexity, session = 1) {
     act: async (s, choice) => {
       const k = choice || s.form.dest || AGENT_PLACE;
       const p = s.phone;
+      if (p.taxiView === "search" && k === "custom" && p.searchList?.[0] !== "custom") {
+        // 참가자가 말한 장소: 그 이름으로 다시 검색 → 결과에서 고름
+        p.results = false;
+        p.searchList = ["custom"];
+        await typeText((v) => (p.searchTyped = v), PLACES.custom.name, 150);
+        await actSleep(400);
+        p.results = true;
+        renderPhone();
+        await actSleep(500);
+      }
       if (p.taxiView === "search") {
         await tap(`.tx-res[data-place="${k}"]`);
         p.tappedPlace = k;
