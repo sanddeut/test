@@ -352,7 +352,7 @@ function lines(key, s, vars = {}) {
 }
 const line = (key, s, vars) => lines(key, s, vars).join("\n");
 
-// 기사님 요청사항: 에이전트가 임의로 고른 값이 아직 그대로인지 (그 행에는 체크 대신 'AI 추천' 배지)
+// 기사님 요청사항: 에이전트가 임의로 고른 값이 아직 그대로인지 (그 행에는 체크 대신 'AI가 선택' 배지)
 const isAgentRequest = (s, k) => k === AGENT_REQUEST && s.form.request === AGENT_REQUEST && !s.requestByUser && !s.userSet?.request;
 
 // 쿠폰 단계의 선택 → 적용 여부 ("on"이면 적용, 선택이 없으면 참가자가 직접 정한 값 또는 기본값 '적용 안 함')
