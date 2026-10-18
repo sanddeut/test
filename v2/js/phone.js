@@ -330,7 +330,7 @@ function taxiOverlay() {
   if (p.sheet === "request") {
     return `<div class="dim" ${closer}><div class="sheet" onclick="event.stopPropagation()"><h3>기사님 요청사항</h3>
       ${REQUEST_CHOICES.map((k) => [k, REQUESTS[k]]).map(([k, v]) => `<div class="tx-pay-opt tx-reqopt ${(f.request || "none") === k ? "on" : ""} ${p.reqFocus === k ? "hl" : ""}" data-req="${k}" ${man ? `data-man-reqopt="${k}"` : ""}>
-        <span><b>${esc(v)}</b></span>${(f.request || "none") === k && isAgentRequest(S, k) ? '<span class="ai-pick">AI 추천</span>' : ""}${mi((f.request || "none") === k ? "radio_button_checked" : "radio_button_unchecked", "radio")}</div>`).join("")}
+        <span><b>${esc(v)}</b></span>${(f.request || "none") === k && isAgentRequest(S, k) ? '<span class="ai-pick">AI가 선택</span>' : ""}${mi((f.request || "none") === k ? "radio_button_checked" : "radio_button_unchecked", "radio")}</div>`).join("")}
       <div class="tx-call tx-req-ok" ${man ? "data-man-reqok" : ""}>확인</div>
     </div></div>`;
   }
