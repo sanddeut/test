@@ -9,7 +9,7 @@
 ![원안 첫 화면](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-first-0a-chat.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![첫 화면](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-inputs-0a-chat.webp)
 </column>
@@ -62,7 +62,7 @@
 ![원안: 전달 표시 없음](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B1s1-05-chat.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![보낸 말풍선 옆 체크](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-queue-q1.webp)
 </column>
@@ -120,7 +120,7 @@
 ![원안 실행화면](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B2s1-03-run.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![움직이는 테두리](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-04-run.webp)
 </column>
@@ -154,7 +154,7 @@
 ![원안: 설정한 뒤 알림](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B2s1-03-chat.webp)
 </column>
 <column ratio="24">
-**→ 개선안**
+**개선안**
 
 ![출발지 확인](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-04-chat.webp)
 </column>
@@ -191,7 +191,7 @@
 ![원안 실행화면](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B1s1-05-run.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![AI가 앱 조작 중](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-04-run.webp)
 </column>
@@ -231,7 +231,7 @@
 ![원안: "승인"만 남음](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B1s1-05-chat.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![확인 / 출발지 설정](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-06-chat.webp)
 </column>
@@ -250,7 +250,7 @@
 ![원안](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B1s1-18-chat.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![현재 단계가 맨 위](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-15-chat.webp)
 </column>
@@ -269,7 +269,7 @@
 ![원안](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B2s1-05-chat.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![기다릴 때](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-02-chat.webp)
 </column>
@@ -299,7 +299,7 @@
 ![원안 진행 카드](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B1s1-09-chat.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![질문만 남김](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-08-chat.webp)
 </column>
@@ -315,7 +315,7 @@
 ![원안 결과 카드](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B2s1-04-chat.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![개선안 결과 카드](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-10-chat.webp)
 </column>
@@ -333,7 +333,7 @@
 ![원안: 빠르게 넘어감](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B2s1-06-chat.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![알림 뒤 더 머묾](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-10-chat.webp)
 </column>
@@ -354,7 +354,7 @@
 ![원안 중지 버튼](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B2s1-05-chat.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![멈추기 버튼](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-02-chat.webp)
 </column>
@@ -370,7 +370,7 @@
 ![원안 실행화면](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B2s1-03-run.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![아래 버튼 칸](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-coach-k0.webp)
 </column>
@@ -400,7 +400,7 @@
 ![원안 직접 조작 버튼](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B1s1-05-run.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![내가 조작하기](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-manual-m0-chat.webp)
 </column>
@@ -450,7 +450,7 @@
 ![원안: 정한 뒤 알림](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B2s1-07-chat.webp)
 </column>
 <column ratio="24">
-**→ 개선안**
+**개선안**
 
 ![목적지 확인](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-06-chat.webp)
 </column>
@@ -475,7 +475,7 @@
 ![원안: 거부 후 다시 고르기](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B1s1-15-chat.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![출발지 수정](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-t17-c1-chat.webp)
 </column>
@@ -525,7 +525,7 @@
 ![원안: 말로 다시 고르기](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B1s1-15-chat.webp)
 </column>
 <column ratio="24">
-**→ 개선안**
+**개선안**
 
 ![출발지 수정](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-t17-c1-chat.webp)
 </column>
@@ -548,7 +548,7 @@
 ![원안 낮은 자동화: 앱 실행도 승인](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B1s1-03-chat.webp)
 </column>
 <column ratio="24">
-**→ 개선안**
+**개선안**
 
 ![택시 앱 실행](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-02-chat.webp)
 </column>
@@ -581,7 +581,7 @@
 ![원안 높은 자동화: 묻지 않고 예약](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B2s2-04-chat.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![예약 묻기](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s2-20-chat.webp)
 </column>
@@ -600,7 +600,7 @@
 ![원안: 승인/거부](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B1s1-18-chat.webp)
 </column>
 <column ratio="18">
-**→ 개선안**
+**개선안**
 
 ![수정/확인](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-06-chat.webp)
 </column>
@@ -634,7 +634,7 @@
 ![원안 높은 자동화](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B2s1-07-chat.webp)
 </column>
 <column ratio="24">
-**→ 개선안**
+**개선안**
 
 ![먼저 물음](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-12-chat.webp)
 </column>
@@ -651,7 +651,7 @@
 ![원안: 일반택시로 정해 둠](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B1s1-09-chat.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![택시 종류 묻기](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-08-chat.webp)
 </column>
@@ -681,7 +681,7 @@
 ![원안: 이미 이용내역을 봄](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B1s2-04-chat.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![이유와 함께 묻기](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s2-17-chat.webp)
 </column>
@@ -715,7 +715,7 @@
 ![원안 실행화면](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B1s1-05-run.webp)
 </column>
 <column ratio="26">
-**→ 개선안**
+**개선안**
 
 ![실행화면](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-04-run.webp)
 </column>
@@ -744,7 +744,7 @@
 ![원안 실행화면](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v2-B1s1-05-run.webp)
 </column>
 <column ratio="24">
-**→ 개선안**
+**개선안**
 
 ![흰 덮개](https://raw.githubusercontent.com/sanddeut/test/a44bd7ddaaf50eb67f4e005071241bdcd43f89cc/research-tools/pages/%EC%97%B0%EA%B5%AC2_%EA%B0%80%EC%9D%B4%EB%93%9C%EB%9D%BC%EC%9D%B8_%EC%A0%81%EC%9A%A9/img/v4-B1s1-04-run.webp)
 </column>

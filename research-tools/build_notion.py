@@ -89,9 +89,9 @@ for cat, subs in tree:
                 cols = []
                 n = sum(len(f) for _, f in it["groups"])
                 w = min(IMG_W, 72 // n)
-                for gi, (label, figs) in enumerate(it["groups"]):
+                for label, figs in it["groups"]:
                     for fi, (src, cap) in enumerate(figs):
-                        head = "**" + ("→ " if label == "개선안" and gi > 0 else "") + label + "**" if fi == 0 else "<p />"
+                        head = f"**{label}**" if fi == 0 else "<p />"
                         cols.append(f'<column ratio="{w}">\n{head}\n\n{img(src, cap)}\n</column>')
                 cols.append(f'<column ratio="{100 - w * n}">\n' + "\n".join(f"- {b}" for b in bullets) + "\n</column>")
                 body.append("<columns>\n" + "\n".join(cols) + "\n</columns>")
