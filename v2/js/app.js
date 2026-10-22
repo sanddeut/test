@@ -1413,7 +1413,7 @@ async function handleReject(step, c, said) {
         S.userSet.request = true;
         S.phone.reqFocus = null;
         await redoRequest(o.request);
-        // 고른 뒤 다시 묻지 않고 "이렇게 호출할게요." → 호출
+        // 고른 뒤 다시 묻지 않고 알린 뒤 → 다음 단계(최종 호출 확인)
         await sayKey(S.form.request === "none" ? "request.none.confirm" : "request.confirm", undefined, { talk: true });
         await doApply(step, "approve", { announced: true });
         return "done";
