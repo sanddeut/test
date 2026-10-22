@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """올린 가이드라인 적용 페이지(index.html)를 노션용 마크다운으로 → pages/연구2_가이드라인_적용/notion.md
 
-범주는 제목1, 소제목은 제목3, 가이드라인은 제목4 토글. 토글 안에는 항목마다 원안 캡처 → 개선안 캡처, 설명 불릿을 열로 나란히.
+범주는 제목2, 소제목은 제목3, 가이드라인은 제목4 토글. 토글 안에는 항목마다 원안 캡처 → 개선안 캡처, 설명 불릿을 열로 나란히.
 캡처는 깃허브에 올린 이미지 주소(raw)를 씀. 페이지에서 '문구 편집'으로 고친 내용은 edits 폴더(아티팩트 db를 내려받은 것)가 있으면 덮어씀.
 사용: python3 build_notion.py [edits 폴더]
 """
@@ -79,7 +79,7 @@ def block(tag, title, children, attrs=""):
 
 out = []
 for cat, subs in tree:
-    out.append(f"# {cat}")
+    out.append(f"## {cat}")
     for sub, rules in subs:
         out.append(f"### {sub}")
         for rule, items in rules:
