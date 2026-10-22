@@ -4,7 +4,7 @@
 // =====================================================================
 // [입력 방법] 첫 화면은 입력 방법(상호작용 시작 방법)을 명시적으로 보여 줘야 한다
 // - 첫 인사 아래 안내 카드
-// - 맨 처음에는 입력창 대신 「눌러서 시작하기」 버튼 하나 → 누르면 「말로 하기」「글자로 하기」로 갈라짐
+// - 맨 처음에는 입력창 대신 「눌러서 시작하기」 버튼 하나 → 누르면 「말로 하기」「글로 하기」로 갈라짐
 // - 고른 뒤에는 고른 방식만 보여주고, 입력창 위 작은 버튼으로 다른 방식으로 바꿈
 // - 보내기 버튼은 화살표 대신 '보내기' 글자
 // =====================================================================
@@ -16,7 +16,7 @@ function setInputMode(mode) {
   $(".phone").dataset.input = mode;
   const fab = $("#mode-fab");
   if (fab) fab.innerHTML = mode === "voice"
-    ? '<span class="ms">swap_horiz</span>글자로 하기'
+    ? '<span class="ms">swap_horiz</span>글로 하기'
     : '<span class="ms">swap_horiz</span>말로 하기';
   if (S) logEvent("input_mode", { mode });
 }
@@ -29,7 +29,7 @@ function setupInputMode() {
   start.className = "start-wrap only-chat";
   start.innerHTML = `<button type="button" id="start-btn" class="start-btn">눌러서 대화 시작</button>
     <button type="button" id="pick-voice" class="pick-btn"><span class="ms fill">mic</span>말로 하기</button>
-    <button type="button" id="pick-text" class="pick-btn"><span class="ms">keyboard</span>글자로 하기</button>`;
+    <button type="button" id="pick-text" class="pick-btn"><span class="ms">keyboard</span>글로 하기</button>`;
   form.before(start);
   $("#start-btn").onclick = () => setInputMode("pick");
   $("#pick-text").onclick = () => {
@@ -64,7 +64,7 @@ function setupInputMode() {
   hint.textContent = "보내기를 눌러야 전달돼요";
   form.appendChild(hint);
 
-  // 입력창 위 오른쪽 작은 버튼: 말로 하기 ↔ 글자로 하기
+  // 입력창 위 오른쪽 작은 버튼: 말로 하기 ↔ 글로 하기
   const fab = document.createElement("button");
   fab.type = "button";
   fab.id = "mode-fab";
@@ -122,7 +122,7 @@ function watchUnsent() {
 }
 
 // 보내기 버튼: 화살표 대신 '보내기' 글자 (작업 중 중지 버튼은 원안 그대로)
-// 글자로 하기 입력칸 안내 문구: '말하기'가 아니라 글자로 적는 곳임을 알 수 있게
+// 글로 하기 입력칸 안내 문구: '말하기'가 아니라 글자로 적는 곳임을 알 수 있게
 const _syncControlsPh = syncControls;
 syncControls = function () {
   _syncControlsPh();
@@ -154,7 +154,7 @@ function renderStartGuide() {
     <b class="guide-title"><span class="ms">info</span>이렇게 대화를 시작해보세요</b>
     <ol>
       <li>아래 「눌러서 대화 시작」을 눌러요</li>
-      <li>말로 할지, 글자로 할지 골라요</li>
+      <li>말로 할지, 글로 할지 골라요</li>
     </ol>
   </div>`);
   scrollChat();
