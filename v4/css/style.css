@@ -1115,11 +1115,26 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 /* 대화창: 흰 배경, AI 말풍선과 진행 카드는 회색, 사용자 말풍선은 파란색. 카드 안의 카드는 흰색, 「실행화면 보기」는 약하게 */
 .phone[data-view="chat"] { background: #fff; }
 .phone[data-view="chat"] .chat-head { background: #fff; }
-.bubble.agent { background: #f0f1f4; box-shadow: none; }
+.bubble.agent { background: #f5f6f8; box-shadow: none; }
 .bubble.agent .guide-box { background: #fff; }
-.run-card .rc-body, .open-card { background: #f0f1f4; box-shadow: none; }
+.run-card .rc-body, .open-card { background: #f5f6f8; box-shadow: none; }
 .rc-body .rc-pv, .rc-body .rc-summary, .rc-body .choice-list, .rc-body .choice { background: #fff; }
 .rc-body .rc-pv, .rc-body .rc-summary, .rc-body .choice-list { box-shadow: none; }
 .rc-body .rc-open { background: rgba(255,255,255,.55); color: #3c4048; box-shadow: none; font-weight: 500; }
 .rc-body .rc-open .ms { color: #6b6f7a; }
 .phone[data-view="chat"] .composer { box-shadow: 0 0 0 1px #e3e6ea, 0 2px 10px rgba(0,0,0,.06); }
+
+/* 진행 카드 강조: 발화 문장이 주인공(굵게), 카드 안의 카드는 한 단계 작게(보조 정보) */
+.rc-body .rc-q, .big-text .rc-body .rc-q { font-weight: 600; }
+.rc-body .pv-app, .rc-body .pv-acct, .rc-body .pv-evt { padding: 9px 12px; gap: 10px; }
+.rc-body .pv-app b, .rc-body .pv-acct b, .rc-body .pv-evt b { font-size: 14.5px; }
+.rc-body .pv-app small, .rc-body .pv-acct small, .rc-body .pv-evt small { font-size: 12.5px; }
+.rc-body .pv-icon, .rc-body .pv-pin, .rc-body .pv-acct .bk-logo { width: 32px; height: 32px; border-radius: 10px; }
+.rc-body .pv-pin { border-radius: 50%; }
+.rc-body .pv-icon .ms, .rc-body .pv-pin .ms { font-size: 18px; }
+.rc-body .choice { padding: 11px 14px; font-size: 15px; }
+.rc-body .choice-list .choice.chip { min-height: 50px; }
+.rc-body .choice .c-main small { font-size: 12.5px; }
+.rc-body .rc-summary { padding: 4px 12px; }
+.rc-body .rc-summary div { padding: 6px 0; font-size: 13.5px; }
+.rc-body .rc-summary b { font-weight: 500; }
