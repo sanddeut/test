@@ -1,6 +1,6 @@
 # 사용자 입력
-## 입력 방법
-<toggle>1\. 첫 화면은 입력 방법(상호작용 시작 방법)을 명시적으로 보여 줘야 한다.
+### 입력 방법
+<toggle heading="h4">1\. 첫 화면은 입력 방법(상호작용 시작 방법)을 명시적으로 보여 줘야 한다.
 
 <columns>
 <column ratio="26">
@@ -52,8 +52,8 @@
 </column>
 </columns>
 </toggle>
-## 입력 피드백
-<toggle>2\. 시스템은 사용자의 입력이 오류 없이 전달되었는지를 즉시 알려야 한다.
+### 입력 피드백
+<toggle heading="h4">2\. 시스템은 사용자의 입력이 오류 없이 전달되었는지를 즉시 알려야 한다.
 
 <columns>
 <column ratio="26">
@@ -98,7 +98,7 @@
 </column>
 </columns>
 </toggle>
-<toggle>3\. 시스템은 사용자의 요청이 수행되지 않았을 때 그 이유와 대안을 알려야 한다.
+<toggle heading="h4">3\. 시스템은 사용자의 요청이 수행되지 않았을 때 그 이유와 대안을 알려야 한다.
 
 <columns>
 <column ratio="26">
@@ -111,7 +111,7 @@
 </column>
 </columns>
 </toggle>
-<toggle>4\. 시스템은 사용자가 알아야 할 내용을 확실히 인지할 수 있도록 두드러지게 전해야 한다.
+<toggle heading="h4">4\. 시스템은 사용자가 알아야 할 내용을 확실히 인지할 수 있도록 두드러지게 전해야 한다.
 
 <columns>
 <column ratio="26">
@@ -145,7 +145,7 @@
 </column>
 </columns>
 </toggle>
-<toggle>5\. AI는 사용자의 입력을 실행하기 전에, 무엇을 하려는지 먼저 알려야 한다.
+<toggle heading="h4">5\. AI는 사용자의 입력을 실행하기 전에, 무엇을 하려는지 먼저 알려야 한다.
 
 <columns>
 <column ratio="24">
@@ -181,8 +181,8 @@
 </columns>
 </toggle>
 # 에이전트 활동 설명
-## 주체 구분
-<toggle>6\. 화면은 지금 AI와 사용자 중 조작권이 누구에게 있는지 보여 줘야 한다.
+### 주체 구분
+<toggle heading="h4">6\. 화면은 지금 AI와 사용자 중 조작권이 누구에게 있는지 보여 줘야 한다.
 
 <columns>
 <column ratio="26">
@@ -222,7 +222,7 @@
 </column>
 </columns>
 </toggle>
-<toggle>7\. 화면은 AI가 대신 정한 내용을 사용자가 한 것과 구분되도록 분명히 표시해야 한다.
+<toggle heading="h4">7\. 화면은 AI가 대신 정한 내용을 사용자가 한 것과 구분되도록 분명히 표시해야 한다.
 
 <columns>
 <column ratio="26">
@@ -240,8 +240,8 @@
 </column>
 </columns>
 </toggle>
-## 진행 현황
-<toggle>8\. 화면은 지금 진행 중인 단계가 무엇인지 분명히 알려야 한다.
+### 진행 현황
+<toggle heading="h4">8\. 화면은 지금 진행 중인 단계가 무엇인지 분명히 알려야 한다.
 
 <columns>
 <column ratio="26">
@@ -260,7 +260,7 @@
 </column>
 </columns>
 </toggle>
-<toggle>9\. 화면은 사용자가 지금 행동해야 하는지 기다려야 하는지를 명확히 보여 줘야 한다.
+<toggle heading="h4">9\. 화면은 사용자가 지금 행동해야 하는지 기다려야 하는지를 명확히 보여 줘야 한다.
 
 <columns>
 <column ratio="26">
@@ -289,8 +289,8 @@
 </column>
 </columns>
 </toggle>
-## 정보 제시
-<toggle>10\. 화면은 핵심 정보만 간결하게 보여 주고, 부가 정보는 사용자가 원할 때 확인할 수 있게 해야 한다.
+### 정보 제시
+<toggle heading="h4">10\. 화면은 핵심 정보만 간결하게 보여 주고, 부가 정보는 사용자가 원할 때 확인할 수 있게 해야 한다.
 
 <columns>
 <column ratio="26">
@@ -324,7 +324,7 @@
 </column>
 </columns>
 </toggle>
-<toggle>11\. 시스템은 사용자가 읽고 확인할 시간을 충분히 제공해야 한다.
+<toggle heading="h4">11\. 시스템은 사용자가 읽고 확인할 시간을 충분히 제공해야 한다.
 
 <columns>
 <column ratio="26">
@@ -344,8 +344,8 @@
 </columns>
 </toggle>
 # 사용자 통제
-## 중지 수단
-<toggle>12\. 화면은 중지 수단의 위치와 기능을 한눈에 알아볼 수 있게 보여 줘야 한다.
+### 중지 수단
+<toggle heading="h4">12\. 화면은 중지 수단의 위치와 기능을 한눈에 알아볼 수 있게 보여 줘야 한다.
 
 <columns>
 <column ratio="26">
@@ -390,8 +390,8 @@
 </column>
 </columns>
 </toggle>
-## 실행 중 개입
-<toggle>13\. 화면은 사용자가 AI로부터 조작권을 언제든 회수할 수 있음을 드러내야 한다.
+### 실행 중 개입
+<toggle heading="h4">13\. 화면은 사용자가 AI로부터 조작권을 언제든 회수할 수 있음을 드러내야 한다.
 
 <columns>
 <column ratio="26">
@@ -441,7 +441,7 @@
 </column>
 </columns>
 </toggle>
-<toggle>14\. 시스템은 결과가 확정되기 전에 사용자가 개입할 시점을 보장해야 한다.
+<toggle heading="h4">14\. 시스템은 결과가 확정되기 전에 사용자가 개입할 시점을 보장해야 한다.
 
 <columns>
 <column ratio="24">
@@ -465,8 +465,8 @@
 </column>
 </columns>
 </toggle>
-## 수정과 되돌리기
-<toggle>15\. 시스템은 사용자가 AI의 결정을 수정하는 방법을 알고 쉽게 수정할 수 있도록 해야 한다.
+### 수정과 되돌리기
+<toggle heading="h4">15\. 시스템은 사용자가 AI의 결정을 수정하는 방법을 알고 쉽게 수정할 수 있도록 해야 한다.
 
 <columns>
 <column ratio="26">
@@ -496,7 +496,7 @@
 </column>
 </columns>
 </toggle>
-<toggle>16\. 시스템은 결과가 확정된 뒤에도 사용자가 되돌릴 수 있게 해야 한다.
+<toggle heading="h4">16\. 시스템은 결과가 확정된 뒤에도 사용자가 되돌릴 수 있게 해야 한다.
 
 <columns>
 <column ratio="26">
@@ -515,8 +515,8 @@
 </column>
 </columns>
 </toggle>
-## 승인과 위임 범위
-<toggle>17\. 시스템은 AI의 제안을 사용자가 쉽게 거절할 수 있게 해야 한다.
+### 승인과 위임 범위
+<toggle heading="h4">17\. 시스템은 AI의 제안을 사용자가 쉽게 거절할 수 있게 해야 한다.
 
 <columns>
 <column ratio="24">
@@ -539,7 +539,7 @@
 </column>
 </columns>
 </toggle>
-<toggle>18\. AI는 비가역적이거나 요청 외의 행동은 반드시 실행 전에 확인을 받고, 사소한 단계의 확인은 줄여야 한다.
+<toggle heading="h4">18\. AI는 비가역적이거나 요청 외의 행동은 반드시 실행 전에 확인을 받고, 사소한 단계의 확인은 줄여야 한다.
 
 <columns>
 <column ratio="24">
@@ -591,7 +591,7 @@
 </column>
 </columns>
 </toggle>
-<toggle>19\. AI는 결정의 중요도에 맞는 표현으로 확인을 요청해야 한다.
+<toggle heading="h4">19\. AI는 결정의 중요도에 맞는 표현으로 확인을 요청해야 한다.
 
 <columns>
 <column ratio="18">
@@ -620,7 +620,7 @@
 </column>
 </columns>
 </toggle>
-<toggle>20\. AI는 사용자의 선호가 필요한 결정을 임의로 내리지 않고, 사용자에게 먼저 물어야 한다.
+<toggle heading="h4">20\. AI는 사용자의 선호가 필요한 결정을 임의로 내리지 않고, 사용자에게 먼저 물어야 한다.
 
 <columns>
 <column ratio="24">
@@ -660,8 +660,8 @@
 </column>
 </columns>
 </toggle>
-## 정보 접근
-<toggle>21\. AI는 어떤 정보에 접근해 무엇에 쓰는지 투명하게 공개해야 한다.
+### 정보 접근
+<toggle heading="h4">21\. AI는 어떤 정보에 접근해 무엇에 쓰는지 투명하게 공개해야 한다.
 
 <columns>
 <column ratio="26">
@@ -691,7 +691,7 @@
 </column>
 </columns>
 </toggle>
-<toggle>22\. 시스템은 사용자가 AI의 정보 접근을 제한하거나 기록을 지울 수 있게 해야 한다.
+<toggle heading="h4">22\. 시스템은 사용자가 AI의 정보 접근을 제한하거나 기록을 지울 수 있게 해야 한다.
 
 <columns>
 <column ratio="26">
@@ -705,8 +705,8 @@
 </columns>
 </toggle>
 # 사용자 멘탈모델/기대
-## 화면 이해
-<toggle>23\. 화면은 실행 화면이 AI가 지금 내 앱을 대리조작하는 실시간 화면임을 명시적으로 알려야 한다.
+### 화면 이해
+<toggle heading="h4">23\. 화면은 실행 화면이 AI가 지금 내 앱을 대리조작하는 실시간 화면임을 명시적으로 알려야 한다.
 
 <columns>
 <column ratio="26">
@@ -735,7 +735,7 @@
 </column>
 </columns>
 </toggle>
-<toggle>24\. 화면의 누를 수 있는 요소와 없는 요소는 명확히 구분되어야 한다.
+<toggle heading="h4">24\. 화면의 누를 수 있는 요소와 없는 요소는 명확히 구분되어야 한다.
 
 <columns>
 <column ratio="24">
@@ -775,8 +775,8 @@
 </column>
 </columns>
 </toggle>
-## 기대에 맞는 통제 방식
-<toggle>25\. 시스템은 사용자가 대화나 익숙한 방식(취소, 뒤로 가기 등)으로도 작업을 통제할 수 있게 해야 한다.
+### 기대에 맞는 통제 방식
+<toggle heading="h4">25\. 시스템은 사용자가 대화나 익숙한 방식(취소, 뒤로 가기 등)으로도 작업을 통제할 수 있게 해야 한다.
 
 <columns>
 <column ratio="26">

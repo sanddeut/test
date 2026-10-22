@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """올린 가이드라인 적용 페이지(index.html)를 노션용 마크다운으로 → pages/연구2_가이드라인_적용/notion.md
 
-범주는 제목1, 소제목은 제목2, 가이드라인은 토글. 토글 안에는 항목마다 원안 캡처 → 개선안 캡처, 설명 불릿을 열로 나란히.
+범주는 제목1, 소제목은 제목3, 가이드라인은 제목4 토글. 토글 안에는 항목마다 원안 캡처 → 개선안 캡처, 설명 불릿을 열로 나란히.
 캡처는 깃허브에 올린 이미지 주소(raw)를 씀. 페이지에서 '문구 편집'으로 고친 내용은 edits 폴더(아티팩트 db를 내려받은 것)가 있으면 덮어씀.
 사용: python3 build_notion.py [edits 폴더]
 """
@@ -81,7 +81,7 @@ out = []
 for cat, subs in tree:
     out.append(f"# {cat}")
     for sub, rules in subs:
-        out.append(f"## {sub}")
+        out.append(f"### {sub}")
         for rule, items in rules:
             body = []
             for it in items:
@@ -95,7 +95,7 @@ for cat, subs in tree:
                         cols.append(f'<column ratio="{w}">\n{head}\n\n{img(src, cap)}\n</column>')
                 cols.append(f'<column ratio="{100 - w * n}">\n' + "\n".join(f"- {b}" for b in bullets) + "\n</column>")
                 body.append("<columns>\n" + "\n".join(cols) + "\n</columns>")
-            out.append(block("toggle", re.sub(r"^(\d+)\.", r"\1\\.", rule), body))  # "1."이 번호 목록으로 읽히지 않게
+            out.append(block("toggle", re.sub(r"^(\d+)\.", r"\1\\.", rule), body, ' heading="h4"'))  # "1."이 번호 목록으로 읽히지 않게
 
 open(f"{PAGE}/notion.md", "w").write("\n".join(out) + "\n")
 print("가이드라인", sum(len(r) for _, s in tree for _, r in s), "항목", sum(len(i) for _, s in tree for _, r in s for _, i in r))
