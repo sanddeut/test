@@ -5,13 +5,16 @@
 캡처는 깃허브에 올린 이미지 주소(raw)를 씀. 페이지에서 '문구 편집'으로 고친 내용은 edits 폴더(아티팩트 db를 내려받은 것)가 있으면 덮어씀.
 사용: python3 build_notion.py [edits 폴더]
 """
-import html, json, os, re, sys
+import html, json, os, re, subprocess, sys
 from html.parser import HTMLParser
 from urllib.parse import quote
 
 SP = os.path.dirname(os.path.abspath(__file__))
 PAGE = f"{SP}/pages/연구2_가이드라인_적용"
-RAW = "https://raw.githubusercontent.com/sanddeut/test/claude/inspiring-pascal-si7315/" + quote("research-tools/pages/연구2_가이드라인_적용/")
+IMG_W = 26  # 캡처 한 칸의 최대 너비(%). 캡처가 많으면 좁혀서 설명 칸을 남김
+# 브랜치가 바뀌거나 지워져도 이미지가 깨지지 않도록 커밋 번호로 고정 (이미지를 바꾸면 푸시한 뒤 다시 만들어야 함)
+SHA = subprocess.check_output(["git", "log", "-1", "--format=%H", "--", "pages/연구2_가이드라인_적용/img"], cwd=SP, text=True).strip()
+RAW = f"https://raw.githubusercontent.com/sanddeut/test/{SHA}/" + quote("research-tools/pages/연구2_가이드라인_적용/")
 
 
 class P(HTMLParser):
@@ -70,8 +73,9 @@ for t in p.out:
 def img(src, cap):
     return f"![{cap}]({RAW}{quote(src)})"
 
-def ind(text, n):
-    return "\n".join("\t" * n + l if l else l for l in text.split("\n"))
+def block(tag, title, children, attrs=""):
+    """노션 컨테이너 블록: 제목은 여는 태그 바로 뒤, 자식은 빈 줄 다음"""
+    return f"<{tag}{attrs}>{title}\n\n" + "\n\n".join(children) + f"\n</{tag}>"
 
 out = []
 for cat, subs in tree:
@@ -83,13 +87,15 @@ for cat, subs in tree:
             for it in items:
                 bullets = lists.get(it["key"], it["bullets"])
                 cols = []
+                n = sum(len(f) for _, f in it["groups"])
+                w = min(IMG_W, 72 // n)
                 for gi, (label, figs) in enumerate(it["groups"]):
                     for fi, (src, cap) in enumerate(figs):
-                        head = "**" + ("→ " if label == "개선안" and gi > 0 else "") + label + "**" if fi == 0 else "<empty-block/>"
-                        cols.append(f"{head}\n{img(src, cap)}")
-                cols.append("\n".join(f"- {b}" for b in bullets))
-                body.append("<columns>\n" + "\n".join(f"\t<column>\n{ind(c, 2)}\n\t</column>" for c in cols) + "\n</columns>")
-            out.append(f"<details>\n<summary>{rule}</summary>\n{ind(chr(10).join(body), 1)}\n</details>")
+                        head = "**" + ("→ " if label == "개선안" and gi > 0 else "") + label + "**" if fi == 0 else "<p />"
+                        cols.append(f'<column ratio="{w}">\n{head}\n\n{img(src, cap)}\n</column>')
+                cols.append(f'<column ratio="{100 - w * n}">\n' + "\n".join(f"- {b}" for b in bullets) + "\n</column>")
+                body.append("<columns>\n" + "\n".join(cols) + "\n</columns>")
+            out.append(block("toggle", re.sub(r"^(\d+)\.", r"\1\\.", rule), body))  # "1."이 번호 목록으로 읽히지 않게
 
 open(f"{PAGE}/notion.md", "w").write("\n".join(out) + "\n")
 print("가이드라인", sum(len(r) for _, s in tree for _, r in s), "항목", sum(len(i) for _, s in tree for _, r in s for _, i in r))
