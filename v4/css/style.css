@@ -1145,7 +1145,7 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 /* 진행 카드: [발화 + 카드]와 [사용자 버튼]을 두 묶음으로. 발화와 카드 사이 넉넉히, 버튼 위 옅은 구분선, 버튼은 조금 작게 */
 .rc-body .rc-q { margin-bottom: 10px; }
 .rc-body { padding-bottom: 16px; }
-.rc-choices:has(> .chip:not(.choice))::before { content: ""; order: 1; flex: 0 0 calc(100% - 8px); height: 1px; margin: 14px 4px; background: #e3e6ea; }
+.rc-choices:has(> .chip:not(.choice))::before { content: ""; order: 1; flex: 0 0 calc(100% - 8px); height: 1px; margin: 20px 4px; background: #e3e6ea; }
 .rc-choices > :not(.chip) { order: 0; }
 .rc-choices > .chip:not(.choice) { order: 2; padding: 10px 10px; font-size: 15.5px; }
 .rc-choices > .chip:not(.choice):first-of-type { margin-left: 14px; }
