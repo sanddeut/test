@@ -207,11 +207,20 @@ function setupBackDialog() {
       <button type="button" class="bd-undo">방금 한 일 취소</button>
       <hr>
       <button type="button" class="bd-quit">앱 종료</button>
+    </div>
+    <div class="bd-card bd-confirm" role="dialog" aria-modal="true" aria-labelledby="bd-q-title" hidden>
+      <b id="bd-q-title">앱을 종료할까요?</b>
+      <p>지금까지 한 일이 모두 취소돼요.</p>
+      <button type="button" class="bd-quit-yes">종료하기</button>
+      <button type="button" class="bd-quit-no">돌아가기</button>
     </div>`;
   $(".phone").appendChild(d);
   d.querySelector(".bd-go").onclick = () => closeBackDialog("continue");
   d.querySelector(".bd-undo").onclick = () => closeBackDialog("undo");
-  d.querySelector(".bd-quit").onclick = () => closeBackDialog("quit");
+  // 앱 종료는 한 번 더 확인
+  d.querySelector(".bd-quit").onclick = () => showQuitConfirm(true);
+  d.querySelector(".bd-quit-no").onclick = () => showQuitConfirm(false);
+  d.querySelector(".bd-quit-yes").onclick = () => closeBackDialog("quit");
   window.addEventListener("popstate", () => {
     if (!S || S.finished || !S.running) return;
     history.pushState({ v4: 1 }, ""); // 페이지에 머묾
@@ -219,11 +228,19 @@ function setupBackDialog() {
   });
 }
 
+function showQuitConfirm(on) {
+  const d = $("#back-dlg");
+  d.querySelector(".bd-card:not(.bd-confirm)").hidden = on;
+  d.querySelector(".bd-confirm").hidden = !on;
+  if (S) logEvent(on ? "quit_confirm" : "quit_back");
+}
+
 function openBackDialog() {
   if (!$("#back-dlg").hidden) return;
   S.backPaused = !S.paused;
   if (S.backPaused) { S.paused = true; syncControls(); }
   logEvent("back_button");
+  showQuitConfirm(false);
   $("#back-dlg").hidden = false;
 }
 
@@ -243,5 +260,23 @@ start = function () {
   return _start();
 };
 
+// =====================================================================
+// [사용자 역할] 화면은 실행 화면이 AI가 지금 내 앱을 대리조작하는 실시간 화면임을 명시적으로 알려야 한다
+// - 실행화면 테두리에 여러 색 그라데이션이 돌아가고, 위 가운데에 'AI가 앱 조작 중' 칩
+// - 직접 조작 버튼을 화면 바로 아래로 옮겨 한 흐름에서 이해할 수 있게
+// =====================================================================
+function setupRunFrame() {
+  const box = $(".screen-box");
+  const chip = document.createElement("div");
+  chip.className = "ai-live-chip";
+  chip.innerHTML = '<span class="ms fill">auto_awesome</span>AI가 앱 조작 중';
+  box.insertBefore(chip, box.firstChild);
+  const btn = $("#btn-manual");
+  btn.classList.add("frame-manual");
+  btn.innerHTML = '<span class="ms">back_hand</span>직접 조작';
+  box.appendChild(btn);
+}
+
 document.addEventListener("DOMContentLoaded", setupInputMode);
+document.addEventListener("DOMContentLoaded", setupRunFrame);
 document.addEventListener("DOMContentLoaded", setupBackDialog);
