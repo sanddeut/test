@@ -1004,3 +1004,5 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .voice-btn { background: #dce8fc; color: #0b57d0; box-shadow: none; }
 .voice-btn.on { background: #fbe0de; color: #b3261e; box-shadow: none; }
 .voice-btn.said { background: #fff; }
+.guide-title { display: flex; align-items: center; gap: 5px; }
+.guide-title .ms { font-size: 18px; vertical-align: 0; color: #5f6470; font-weight: 400; }
