@@ -96,7 +96,7 @@ function renderVoice() {
 
 // =====================================================================
 // [입력 피드백] 시스템은 사용자의 입력이 오류 없이 전달되었는지를 즉시 알려야 한다
-// - 내 말풍선 옆에 작은 회색 글씨로 '전달됨' (메신저의 '읽음'처럼)
+// - 내 말풍선 옆에 작은 회색 체크(✓)로 전달됐음을 표시 (메신저의 '읽음'처럼)
 // - 글자를 적어 두고 보내지 않으면 보내기 버튼을 깜빡이며 '보내기를 눌러야 전달돼요'
 // =====================================================================
 const _renderBubble = renderBubble;
@@ -104,7 +104,7 @@ renderBubble = function (role, text) {
   _renderBubble(role, text);
   if (role !== "user") return;
   const b = [...chat().querySelectorAll(".bubble.user")].at(-1);
-  if (b && !b.querySelector(".receipt")) b.insertAdjacentHTML("beforeend", '<span class="receipt">전달됨</span>');
+  if (b && !b.querySelector(".receipt")) b.insertAdjacentHTML("beforeend", '<span class="receipt" title="전달됨" aria-label="전달됨"><span class="ms">done</span></span>');
 };
 
 const UNSENT_MS = 4000;
