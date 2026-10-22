@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""올린 가이드라인 적용 페이지(index.html)를 노션용 마크다운으로 → pages/연구2_가이드라인_적용/notion.md
+
+범주는 제목1, 소제목은 제목2, 가이드라인은 토글. 토글 안에는 항목마다 원안 캡처 → 개선안 캡처, 설명 불릿을 열로 나란히.
+캡처는 깃허브에 올린 이미지 주소(raw)를 씀. 페이지에서 '문구 편집'으로 고친 내용은 edits 폴더(아티팩트 db를 내려받은 것)가 있으면 덮어씀.
+사용: python3 build_notion.py [edits 폴더]
+"""
+import html, json, os, re, sys
+from html.parser import HTMLParser
+from urllib.parse import quote
+
+SP = os.path.dirname(os.path.abspath(__file__))
+PAGE = f"{SP}/pages/연구2_가이드라인_적용"
+RAW = "https://raw.githubusercontent.com/sanddeut/test/claude/inspiring-pascal-si7315/" + quote("research-tools/pages/연구2_가이드라인_적용/")
+
+
+class P(HTMLParser):
+    """필요한 요소만 차례대로 뽑음: 범주, 소제목, 가이드라인, 항목, 묶음 라벨, 이미지, 캡션, 불릿"""
+    def __init__(self):
+        super().__init__()
+        self.out, self.cur, self.buf = [], None, ""
+
+    def handle_starttag(self, tag, a):
+        a = dict(a)
+        cls = a.get("class", "")
+        kind = {"cat": "cat", "subcat": "sub", "rule": "rule", "grp-t": "grp"}.get(cls)
+        if tag == "li" and cls == "item": self.out.append(("item",))
+        elif tag == "img" and a.get("src", "").startswith("img/"): self.out.append(("img", a["src"]))
+        elif tag == "figcaption": kind = "cap"
+        elif tag == "li" and "data-key" in a: kind = "bullet"
+        if kind: self.cur, self.buf, self.key = kind, "", a.get("data-key")
+
+    def handle_data(self, d):
+        if self.cur: self.buf += d
+
+    def handle_endtag(self, tag):
+        if self.cur and tag in ("h2", "h3", "p", "figcaption", "li"):
+            self.out.append((self.cur, self.buf.strip(), self.key))
+            self.cur = None
+
+
+p = P()
+p.feed(open(f"{PAGE}/index.html").read())
+
+# 페이지에서 고친 문구
+edits, lists = {}, {}
+if len(sys.argv) > 1:
+    for f in os.listdir(sys.argv[1]):
+        d = json.load(open(os.path.join(sys.argv[1], f)))
+        k = f[:-5]
+        if k.endswith("-list"): lists[k[:-5]] = d["items"]
+        elif "text" in d: edits[k] = d["text"]
+
+# 구조로 묶기
+tree = []  # [(범주, [(소제목, [(가이드라인, [항목])])])]
+for t in p.out:
+    if t[0] == "cat": tree.append((t[1], []))
+    elif t[0] == "sub": tree[-1][1].append((t[1], []))
+    elif t[0] == "rule": tree[-1][1][-1][1].append((t[1], []))
+    elif t[0] == "item": tree[-1][1][-1][1][-1][1].append({"groups": [], "bullets": [], "key": None})
+    else:
+        it = tree[-1][1][-1][1][-1][1][-1]
+        if t[0] == "grp": it["groups"].append((t[1], []))
+        elif t[0] == "img": it["groups"][-1][1].append([t[1], ""])
+        elif t[0] == "cap": it["groups"][-1][1][-1][1] = edits.get(t[2], t[1])
+        elif t[0] == "bullet":
+            it["key"] = re.sub(r"-s\d+$", "", t[2])
+            it["bullets"].append(edits.get(t[2], t[1]))
+
+def img(src, cap):
+    return f"![{cap}]({RAW}{quote(src)})"
+
+def ind(text, n):
+    return "\n".join("\t" * n + l if l else l for l in text.split("\n"))
+
+out = []
+for cat, subs in tree:
+    out.append(f"# {cat}")
+    for sub, rules in subs:
+        out.append(f"## {sub}")
+        for rule, items in rules:
+            body = []
+            for it in items:
+                bullets = lists.get(it["key"], it["bullets"])
+                cols = []
+                for gi, (label, figs) in enumerate(it["groups"]):
+                    for fi, (src, cap) in enumerate(figs):
+                        head = "**" + ("→ " if label == "개선안" and gi > 0 else "") + label + "**" if fi == 0 else "<empty-block/>"
+                        cols.append(f"{head}\n{img(src, cap)}")
+                cols.append("\n".join(f"- {b}" for b in bullets))
+                body.append("<columns>\n" + "\n".join(f"\t<column>\n{ind(c, 2)}\n\t</column>" for c in cols) + "\n</columns>")
+            out.append(f"<details>\n<summary>{rule}</summary>\n{ind(chr(10).join(body), 1)}\n</details>")
+
+open(f"{PAGE}/notion.md", "w").write("\n".join(out) + "\n")
+print("가이드라인", sum(len(r) for _, s in tree for _, r in s), "항목", sum(len(i) for _, s in tree for _, r in s for _, i in r))
