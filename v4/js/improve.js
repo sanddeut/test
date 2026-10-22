@@ -144,7 +144,6 @@ function renderStartGuide() {
   if (!greet) return;
   greet.classList.add("with-guide");
   greet.insertAdjacentHTML("beforeend", `<div class="guide-box">
-    <span class="guide-label"><span class="ms">info</span>안내</span>
     <b>이렇게 대화를 시작해보세요</b>
     <ol>
       <li>아래 「눌러서 시작하기」를 눌러요</li>
