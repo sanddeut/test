@@ -18,6 +18,8 @@
 </column>
 </columns>
 
+---
+
 <columns>
 <column ratio="26">
 **개선안**
@@ -28,6 +30,8 @@
 - 입력 가능한 방식을 명시적으로 제시하고, 두 방법 중 하나를 직접 고를 수 있게함
 </column>
 </columns>
+
+---
 
 <columns>
 <column ratio="26">
@@ -40,6 +44,8 @@
 - 원안의 플레이스 홀더는 반드시 말(음성)로 해야하는 것으로 오해의 여지가 있어, "여기에 적어 주세요"로 바꿈
 </column>
 </columns>
+
+---
 
 <columns>
 <column ratio="26">
@@ -71,6 +77,8 @@
 </column>
 </columns>
 
+---
+
 <columns>
 <column ratio="26">
 **개선안**
@@ -81,6 +89,8 @@
 - 글만 쓰고 보내지 않아 전달되지 않는 일을 막도록, 잠시 뒤 "보내기를 눌러야 전달돼요"라고 알림
 </column>
 </columns>
+
+---
 
 <columns>
 <column ratio="26">
@@ -129,6 +139,8 @@
 </column>
 </columns>
 
+---
+
 <columns>
 <column ratio="26">
 **개선안**
@@ -169,6 +181,8 @@
 </column>
 </columns>
 
+---
+
 <columns>
 <column ratio="26">
 **개선안**
@@ -200,6 +214,8 @@
 </column>
 </columns>
 
+---
+
 <columns>
 <column ratio="26">
 **개선안**
@@ -210,6 +226,8 @@
 - 내가 조작할 때는 헤더를 연한 빨강으로 바꿔 AI가 조작할 때와 확실히 구분함
 </column>
 </columns>
+
+---
 
 <columns>
 <column ratio="26">
@@ -278,6 +296,8 @@
 </column>
 </columns>
 
+---
+
 <columns>
 <column ratio="26">
 **개선안**
@@ -307,6 +327,8 @@
 - 읽을 것이 너무 많아 무엇을 봐야 할지 몰랐던 문제를 줄이려고, "할 일 처리하는 중", "확인이 필요해요" 같은 반복되는 줄을 지움
 </column>
 </columns>
+
+---
 
 <columns>
 <column ratio="26">
@@ -363,6 +385,8 @@
 </column>
 </columns>
 
+---
+
 <columns>
 <column ratio="26">
 **원안**
@@ -378,6 +402,8 @@
 - 개입할 수 있는 버튼을 찾기 쉽도록, 실행화면 바로 아래 한 칸에 '멈추기'와 '내가 조작하기'를 모음
 </column>
 </columns>
+
+---
 
 <columns>
 <column ratio="26">
@@ -409,6 +435,8 @@
 </column>
 </columns>
 
+---
+
 <columns>
 <column ratio="24">
 **개선안**
@@ -429,6 +457,8 @@
 - 누른 뒤 조작권이 넘어왔다는 것을 알 수 있도록 화면 전환 과정을 보여 줌
 </column>
 </columns>
+
+---
 
 <columns>
 <column ratio="26">
@@ -484,6 +514,8 @@
 - 수정을 누르면 고를 수 있는 선택지를 바로 보여 줌
 </column>
 </columns>
+
+---
 
 <columns>
 <column ratio="26">
@@ -563,6 +595,8 @@
 </column>
 </columns>
 
+---
+
 <columns>
 <column ratio="26">
 **개선안**
@@ -573,6 +607,8 @@
 - 되돌리기 어렵거나 비용이 드는 결정(출발지, 목적지, 최종 호출)은 반드시 확인함
 </column>
 </columns>
+
+---
 
 <columns>
 <column ratio="26">
@@ -644,6 +680,8 @@
 </column>
 </columns>
 
+---
+
 <columns>
 <column ratio="26">
 **원안**
@@ -673,6 +711,8 @@
 - 내 정보가 어디에 쓰이는지 몰라 불안했던 문제를 줄이려고, 시작할 때 무엇에 접근해 무엇에 쓰는지 알리고 허용을 받음
 </column>
 </columns>
+
+---
 
 <columns>
 <column ratio="26">
@@ -724,6 +764,8 @@
 </column>
 </columns>
 
+---
+
 <columns>
 <column ratio="26">
 **개선안**
@@ -759,6 +801,8 @@
 </column>
 </columns>
 
+---
+
 <columns>
 <column ratio="26">
 **개선안**
@@ -788,6 +832,8 @@
 - 익숙한 뒤로 가기로도 통제할 수 있도록, 누르면 AI를 멈추고 계속하기, 방금 한 일 취소, 앱 종료 중에서 고르게 함
 </column>
 </columns>
+
+---
 
 <columns>
 <column ratio="26">

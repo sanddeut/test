@@ -74,8 +74,8 @@ def img(src, cap):
     return f"![{cap}]({RAW}{quote(src)})"
 
 def block(tag, title, children, attrs=""):
-    """노션 컨테이너 블록: 제목은 여는 태그 바로 뒤, 자식은 빈 줄 다음"""
-    return f"<{tag}{attrs}>{title}\n\n" + "\n\n".join(children) + f"\n</{tag}>"
+    """노션 컨테이너 블록: 제목은 여는 태그 바로 뒤, 자식은 빈 줄 다음. 자식(항목) 사이는 구분선"""
+    return f"<{tag}{attrs}>{title}\n\n" + "\n\n---\n\n".join(children) + f"\n</{tag}>"
 
 out = []
 for cat, subs in tree:
