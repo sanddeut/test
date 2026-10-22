@@ -1067,8 +1067,6 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 @keyframes bounce-in { 0% { transform: scale(.94); opacity: .6; } 60% { transform: scale(1.015); opacity: 1; } 100% { transform: scale(1); } }
 /* 진행 현황: 지나간 대화는 흐리게(아래쪽으로 오면 진하게), 지나간 AI 말풍선에 작게 '완료' */
 #chat-spacer { flex: none; }
-.chat > .past { opacity: .4; transition: opacity .3s; }
-.chat > .past.near { opacity: 1; }
 .bd-quit { color: #6b6f7a !important; }
 /* 다이얼로그: 구분선 없이 요소 간 세로 간격을 넓게 */
 .bd-card { gap: 14px; padding: 28px 20px 14px; }
@@ -1089,3 +1087,27 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 /* 진행 카드: 확인 질문이 뜨면 위쪽 상태 줄을 없애고 질문만 */
 .run-card.asking .rc-head { display: none; }
 .run-card.asking .rc-q { margin-top: 0; padding-top: 4px; border-top: 0; }
+
+/* 말로/글로를 고른 뒤에는 안내 상자 숨김 */
+.phone[data-input="text"] .guide-box, .phone[data-input="voice"] .guide-box { display: none; }
+
+/* 현재 단계는 맨 위에, 그 위 지나간 대화는 위쪽 가장자리에서 그라데이션으로 흐려짐 (스크롤하면 원래대로 보임) */
+.phone[data-view="chat"] #chat.scrolled { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 56px); mask-image: linear-gradient(to bottom, transparent 0, #000 56px); }
+
+/* 직접 조작 중: 헤더를 연한 붉은색으로, 칩은 흰 바탕에 붉은 글씨 */
+.direct-bar { background: #fdecea; border-bottom-color: #f7d4d0; }
+.direct-bar .db-tag { background: #fff; color: #d93025; box-shadow: 0 0 0 1px #f3c4bf; }
+
+/* 진행 카드: AI 말풍선처럼 흰 바탕 */
+.run-card, .open-card { background: #fff; box-shadow: 0 0 0 1px #e6e9ee; }
+
+/* 진행 카드: 점은 카드 바깥, 카드는 그 아래에 이어서 */
+.run-card { background: transparent; box-shadow: none; padding: 0; gap: 10px; }
+.run-card .rc-head { padding: 2px 4px; }
+.rc-body { background: #fff; box-shadow: 0 0 0 1px #e6e9ee; border-radius: 20px; padding: 16px 16px 10px; display: flex; flex-direction: column; gap: 12px; }
+.rc-body:has(> #rc-q[hidden]):has(> #rc-choices:empty) { display: none; }
+.rc-body .rc-q { margin-top: 0; padding-top: 0; border-top: 0; }
+.rc-body.enter { animation: rcin .35s ease-out .25s both; }
+@keyframes rcin { from { opacity: 0; transform: translateY(8px); } }
+/* 카드 안의 카드는 아주 옅은 회색 */
+.rc-body .rc-pv, .rc-body .rc-summary, .rc-body .choice-list, .rc-body .choice { background: #f8f9fb; }

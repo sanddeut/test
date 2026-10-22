@@ -262,9 +262,27 @@ setCard = function (opts = {}) {
   const title = c.querySelector("#rc-title");
   title.hidden = title.textContent === "할 일 처리하는 중";
   const st = c.querySelector("#rc-status");
-  const working = !c.classList.contains("asking") && !S?.finished && (st.textContent === "작업 중이에요" || (!st.textContent.trim() && st.classList.contains("thinking")));
+  // 진행 문장은 대화에 이미 있으니, 작업 중에는 점만 보여 줌
+  const working = Boolean(S?.running) && !S.finished && !S.stopped && !c.classList.contains("asking");
   if (working) st.innerHTML = '<span class="dots" aria-label="작업 중"><i></i><i></i><i></i></span>';
   c.classList.toggle("working", working);
+};
+
+// [진행 카드] 아이콘과 움직이는 점은 카드 바깥 위에, 결과와 질문은 그 아래 흰 카드에 (점 다음에 카드가 차례로 나타남)
+const _ensureRunCard = ensureRunCard;
+ensureRunCard = function () {
+  const c = _ensureRunCard();
+  if (!c.querySelector(".rc-body")) {
+    const body = document.createElement("div");
+    body.className = "rc-body";
+    [...c.children].filter((el) => !el.classList.contains("rc-head")).forEach((el) => body.appendChild(el));
+    c.appendChild(body);
+    // 카드 내용이 바뀔 때마다 다시 나타나는 효과
+    const replay = () => { body.classList.remove("enter"); void body.offsetWidth; body.classList.add("enter"); };
+    new MutationObserver(replay).observe(c.querySelector("#rc-q"), { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ["hidden"] });
+    replay();
+  }
+  return c;
 };
 
 // 새 세션을 시작할 때마다 처음 상태(눌러서 시작하기)로
@@ -347,6 +365,7 @@ function queueFocus() {
   requestAnimationFrame(() => requestAnimationFrame(() => { focusQueued = false; applyFocus(); }));
 }
 
+const FADE = 56;
 function applyFocus() {
   const c = chat();
   if (!c || !S) return;
@@ -354,29 +373,24 @@ function applyFocus() {
   if (!spacer) { spacer = document.createElement("div"); spacer.id = "chat-spacer"; }
   if (spacer.nextSibling || spacer.parentNode !== c) c.appendChild(spacer);
   const cur = currentItem();
-  // 지나간 대화 표시
-  c.querySelectorAll(":scope > .bubble, :scope > #run-card").forEach((el) => {
-    const past = Boolean(cur) && el !== cur && el.id !== "typing" && (el.compareDocumentPosition(cur) & Node.DOCUMENT_POSITION_FOLLOWING);
-    el.classList.toggle("past", past);
-    if (past) pastObserver.observe(el);
-  });
   // 현재 대화가 맨 위에 오도록 아래 빈 공간
   if (cur) {
     const top = cur.offsetTop - c.offsetTop;
     const contentEnd = spacer.offsetTop - c.offsetTop;
-    const need = c.clientHeight - (contentEnd - top) - 24;
+    // 위쪽 흐림 띠(FADE) 아래에 현재 대화가 오도록
+    const need = c.clientHeight - (contentEnd - top) - FADE;
     spacer.style.height = `${Math.max(0, need)}px`;
-    c.scrollTop = Math.max(0, top - 12);
+    c.scrollTop = Math.max(0, top - FADE);
+    c.classList.toggle("scrolled", c.scrollTop > 4);
   }
 }
 
-// 지나간 대화가 화면 아래쪽(아래 45%)에 오면 진하게
-const pastObserver = new IntersectionObserver((entries) => {
-  entries.forEach((e) => e.target.classList.toggle("near", e.isIntersecting));
-}, { root: null, rootMargin: "-55% 0px 0px 0px" });
 
 function setupFocus() {
   const c = chat();
+  // 위에 지나간 대화가 있을 때만 위쪽 흐림
+  const markScrolled = () => c.classList.toggle("scrolled", c.scrollTop > 4);
+  c.addEventListener("scroll", markScrolled, { passive: true });
   new MutationObserver((ms) => { if (ms.some((m) => [...m.addedNodes, ...m.removedNodes].some((n) => n.id !== "chat-spacer"))) queueFocus(); })
     .observe(c, { childList: true });
   const card = () => $("#run-card");
