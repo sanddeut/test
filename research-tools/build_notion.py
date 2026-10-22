@@ -81,7 +81,7 @@ out = []
 for cat, subs in tree:
     out.append(f"## {cat}")
     for sub, rules in subs:
-        out.append(f"### {sub}")
+        out.append(f"### \\[{sub}\\]")
         for rule, items in rules:
             body = []
             for it in items:
