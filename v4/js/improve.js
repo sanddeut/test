@@ -55,6 +55,13 @@ function setupInputMode() {
   renderVoice();
   new MutationObserver(renderVoice).observe($("#mic"), { attributes: true, attributeFilter: ["class"] });
   $("#msg").addEventListener("input", renderVoice);
+  $("#msg").addEventListener("input", watchUnsent);
+  form.addEventListener("submit", () => { clearTimeout(unsentTimer); form.classList.remove("unsent"); });
+  $("#send").addEventListener("click", () => { clearTimeout(unsentTimer); form.classList.remove("unsent"); });
+  const hint = document.createElement("span");
+  hint.className = "unsent-hint";
+  hint.textContent = "보내기를 눌러야 전달돼요";
+  form.appendChild(hint);
 
   // 입력창 위 오른쪽 작은 버튼: 말로 하기 ↔ 글자로 하기
   const fab = document.createElement("button");
@@ -78,11 +85,40 @@ function renderVoice() {
   if (!v) return;
   const said = $("#msg").value.trim();
   v.classList.toggle("on", listening());
+  // 말로 하기: 텍스트 필드 없이 [눌러서 말하기 | 보내기]. 듣는 중에는 '듣고 있어요 …', 말한 뒤에는 받아 적은 말
+  v.classList.toggle("on", listening());
+  v.classList.toggle("said", !listening() && Boolean(said));
   v.innerHTML = listening()
-    ? `<span class="ms fill">graphic_eq</span><span>${said ? esc(said) : "듣고 있어요"}</span>`
+    ? `<span>듣고 있어요 …</span>`
     : said
-      ? `<span class="ms fill">mic</span><span>${esc(said)}</span>`
-      : `<span class="ms fill">mic</span><span>눌러서 말하기</span>`;
+      ? `<span>${esc(said)}</span>`
+      : `<span>눌러서 말하기</span>`;
+}
+
+// =====================================================================
+// [입력 피드백] 시스템은 사용자의 입력이 오류 없이 전달되었는지를 즉시 알려야 한다
+// - 내 말풍선 옆에 작은 회색 글씨로 '전달됨' (메신저의 '읽음'처럼)
+// - 글자를 적어 두고 보내지 않으면 보내기 버튼을 깜빡이며 '보내기를 눌러야 전달돼요'
+// =====================================================================
+const _renderBubble = renderBubble;
+renderBubble = function (role, text) {
+  _renderBubble(role, text);
+  if (role !== "user") return;
+  const b = [...chat().querySelectorAll(".bubble.user")].at(-1);
+  if (b && !b.querySelector(".receipt")) b.insertAdjacentHTML("beforeend", '<span class="receipt">전달됨</span>');
+};
+
+const UNSENT_MS = 4000;
+let unsentTimer = null;
+function watchUnsent() {
+  clearTimeout(unsentTimer);
+  $("#composer").classList.remove("unsent");
+  if (!$("#msg").value.trim()) return;
+  unsentTimer = setTimeout(() => {
+    if (!$("#msg").value.trim() || $("#send").dataset.mode !== "send") return;
+    $("#composer").classList.add("unsent");
+    if (S) logEvent("unsent_hint");
+  }, UNSENT_MS);
 }
 
 // 보내기 버튼: 화살표 대신 '보내기' 글자 (작업 중 중지 버튼은 원안 그대로)

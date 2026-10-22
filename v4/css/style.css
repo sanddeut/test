@@ -968,3 +968,28 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .guide-card b { font-size: 16.5px; }
 .guide-card ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 16px; line-height: 1.5; }
 .phone[data-input="text"] .start-wrap, .phone[data-input="voice"] .start-wrap, .phone:not([data-view="chat"]) .start-wrap { display: none !important; }
+/* 말로 하기: 마이크 버튼은 크고 진하게, 듣지 않을 때는 회색 글씨로 */
+.phone[data-input="voice"] .composer .mic { width: 48px; height: 48px; background: #0b57d0; color: #fff; border-radius: 50%; border: 0; flex: none; }
+.phone[data-input="voice"] .composer .mic .ms { font-size: 26px; font-variation-settings: "FILL" 1; }
+.phone[data-input="voice"] .composer .mic.rec { background: #b3261e; animation: blink 1s infinite; }
+.voice-btn.off { color: #80868b; font-weight: 500; }
+/* 전달됨: 말풍선 왼쪽 아래 작은 회색 글씨 */
+.bubble.user { position: relative; }
+.bubble.user .receipt { position: absolute; right: calc(100% + 6px); bottom: 2px; font-size: 11.5px; color: #8a8f99; white-space: nowrap; font-weight: 400; }
+/* 보내지 않은 글: 보내기 버튼을 깜빡이며 안내 */
+.unsent-hint { display: none; position: absolute; right: 0; bottom: calc(100% + 8px); background: #1c1d21; color: #fff; font-size: 13.5px; font-weight: 600; border-radius: 10px; padding: 7px 12px; white-space: nowrap; z-index: 2; }
+.unsent-hint::after { content: ""; position: absolute; right: 26px; top: 100%; border: 6px solid transparent; border-top-color: #1c1d21; }
+.composer.unsent .unsent-hint { display: block; }
+.composer.unsent .mode-fab { visibility: hidden; }
+.composer.unsent .send { animation: unsentpulse 1s ease-in-out infinite; }
+@keyframes unsentpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(11,87,208,.5); } 50% { box-shadow: 0 0 0 7px rgba(11,87,208,0); } }
+.voice-btn { background: transparent; padding: 6px 4px; }
+.voice-btn span:last-child { white-space: normal; overflow: visible; line-height: 1.35; word-break: keep-all; }
+.voice-btn.off { font-size: 15px; }
+/* 말로 하기: [눌러서 말하기 | 보내기] 두 버튼 */
+.phone[data-input="voice"] .composer { background: transparent !important; box-shadow: none; padding: 0; gap: 8px; }
+.voice-btn { justify-content: center; height: 52px; padding: 0 14px; border-radius: 999px; background: #fff; color: #0b57d0; box-shadow: 0 0 0 1.5px #0b57d0, 0 2px 10px rgba(0,0,0,.06); font-size: 17px; font-weight: 700; }
+.voice-btn.on { background: #fff; color: #b3261e; box-shadow: 0 0 0 1.5px #b3261e, 0 2px 10px rgba(0,0,0,.06); }
+.voice-btn.said { justify-content: flex-start; color: #1c1d21; font-weight: 500; font-size: 16px; box-shadow: 0 0 0 1px #d6dce6, 0 2px 10px rgba(0,0,0,.06); }
+.voice-btn span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.phone[data-input="voice"] .composer .send.send-text { height: 52px; padding: 0 20px; font-size: 17px; }
