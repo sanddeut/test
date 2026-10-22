@@ -665,7 +665,7 @@ async function askCar(step) {
 
 // 세션2: 이용내역을 보기 전에 이유와 함께 묻고(가이드라인 21), 예약도 먼저 물음(가이드라인 18)
 async function askReserve(step) {
-  const why = "다음에도 쉽게 부를 수 있게 자주 가는 곳을 찾아 드리려고 해요. 최근 3개월 택시 이용내역을 확인해도 될까요?";
+  const why = "사용자님의 지난 택시 이용내역을 바탕으로, 다음에 또 이용하실 것 같은 날에 미리 택시 예약을 제안드리고 싶어요. 최근 3개월 택시 이용내역을 확인해도 될까요?";
   promote(); // 호출 완료 안내는 먼저 대화 기록으로 (질문과 섞이지 않게)
   await agentSay(why);
   S.consentAsk = true;
