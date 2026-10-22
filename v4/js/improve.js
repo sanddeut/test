@@ -822,7 +822,12 @@ function openCoach() {
     // 말풍선: 짚은 곳 위(실행화면은 화면 안쪽 가운데), 꼬리는 짚은 곳 가운데를 가리킴
     tip.classList.remove("up", "down", "inside");
     tip.style.top = ""; tip.style.bottom = "";
-    if (i === 0) { tip.classList.add("inside"); tip.style.top = `${r.top - pr.top + r.height * 0.42}px`; }
+    if (i === 0) {
+      // 실행화면: 버튼 칸 아래에 두고 꼬리가 위(실행화면)를 가리킴
+      const fr = (t.closest(".run-frame") || t).getBoundingClientRect();
+      tip.classList.add("up");
+      tip.style.top = `${fr.bottom - pr.top + 16}px`;
+    }
     else { tip.classList.add("down"); tip.style.bottom = `${pr.bottom - r.top + 16}px`; }
     const cx = r.left - pr.left + r.width / 2;
     tip.style.setProperty("--tail-x", `${Math.max(24, Math.min(pr.width - 24, cx)) - 20}px`);

@@ -1265,3 +1265,4 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .coach-next { background: #fff; color: #1c1d21; }
 /* 권한 다이얼로그: 확인 버튼 하나, 위 여백 넓게 */
 .perm-btns { margin-top: 16px; }
+.coach-tip.up::after { content: ""; position: absolute; top: -8px; left: var(--tail-x, 50%); width: 16px; height: 16px; background: #fff; transform: rotate(45deg); border-radius: 2px; }
