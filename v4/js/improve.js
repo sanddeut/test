@@ -251,6 +251,22 @@ function closeBackDialog(choice) {
   if (S.backPaused) resume();
 }
 
+// =====================================================================
+// [진행 카드] 읽을 것을 줄임: '할 일 처리하는 중' 제목을 빼고, AI가 작업 중일 때는 움직이는 점(…)으로 알림
+// =====================================================================
+const _setCard = setCard;
+setCard = function (opts = {}) {
+  _setCard(opts);
+  const c = $("#run-card");
+  if (!c) return;
+  const title = c.querySelector("#rc-title");
+  title.hidden = title.textContent === "할 일 처리하는 중";
+  const st = c.querySelector("#rc-status");
+  const working = !c.classList.contains("asking") && !S?.finished && (st.textContent === "작업 중이에요" || (!st.textContent.trim() && st.classList.contains("thinking")));
+  if (working) st.innerHTML = '<span class="dots" aria-label="작업 중"><i></i><i></i><i></i></span>';
+  c.classList.toggle("working", working);
+};
+
 // 새 세션을 시작할 때마다 처음 상태(눌러서 시작하기)로
 const _start = start;
 start = function () {
