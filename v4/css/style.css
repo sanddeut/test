@@ -1111,3 +1111,15 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 @keyframes rcin { from { opacity: 0; transform: translateY(8px); } }
 /* 카드 안의 카드는 아주 옅은 회색 */
 .rc-body .rc-pv, .rc-body .rc-summary, .rc-body .choice-list, .rc-body .choice { background: #f8f9fb; }
+
+/* 대화창: 흰 배경, AI 말풍선과 진행 카드는 회색, 사용자 말풍선은 파란색. 카드 안의 카드는 흰색, 「실행화면 보기」는 약하게 */
+.phone[data-view="chat"] { background: #fff; }
+.phone[data-view="chat"] .chat-head { background: #fff; }
+.bubble.agent { background: #f0f1f4; box-shadow: none; }
+.bubble.agent .guide-box { background: #fff; }
+.run-card .rc-body, .open-card { background: #f0f1f4; box-shadow: none; }
+.rc-body .rc-pv, .rc-body .rc-summary, .rc-body .choice-list, .rc-body .choice { background: #fff; }
+.rc-body .rc-pv, .rc-body .rc-summary, .rc-body .choice-list { box-shadow: none; }
+.rc-body .rc-open { background: rgba(255,255,255,.55); color: #3c4048; box-shadow: none; font-weight: 500; }
+.rc-body .rc-open .ms { color: #6b6f7a; }
+.phone[data-view="chat"] .composer { box-shadow: 0 0 0 1px #e3e6ea, 0 2px 10px rgba(0,0,0,.06); }
