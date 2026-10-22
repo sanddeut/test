@@ -20,13 +20,15 @@ await p.check('input[name="cond"][value="B1"]');
 await p.evaluate(() => { PACE = 0.5; });
 
 // marks: [selector, 번호, 상자 여백]
+const RECTS = {}; // 피그마에서 다시 그릴 수 있게 장면마다 번호 상자 위치(CSS px, 화면 390x780)를 남김
 async function shot(name, marks) {
-  const miss = await p.evaluate((marks) => {
+  await p.screenshot({ path: `${OUT}/${name}-clean.png` }); // 번호 없는 원본
+  const [miss, boxes] = await p.evaluate((marks) => {
     document.querySelector("#fig-ov")?.remove();
     const ov = document.createElement("div");
     ov.id = "fig-ov";
     ov.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:2147483647";
-    const miss = [];
+    const miss = [], boxes = [];
     for (const [sel, n, pad = 4] of marks) {
       const uni = sel.startsWith("union:"); // 여러 요소를 한 상자로 묶어 표시
       const all = [...document.querySelectorAll(uni ? sel.slice(6) : sel)].filter((e) => e.getClientRects().length);
@@ -43,10 +45,13 @@ async function shot(name, marks) {
       const bx = Math.min(Math.max(2, L - 11), innerWidth - 26), by = Math.min(Math.max(2, T - 11), innerHeight - 26);
       badge.style.cssText = `position:absolute;left:${bx}px;top:${by}px;width:24px;height:24px;border-radius:12px;background:#F26B1D;color:#fff;font:700 13px/24px system-ui,sans-serif;text-align:center;box-shadow:0 0 0 2px #fff`;
       ov.append(box, badge);
+      boxes.push({ n, x: L, y: T, w: W, h: H });
     }
     document.body.appendChild(ov);
-    return miss;
+    return [miss, boxes];
   }, marks);
+  RECTS[name] = boxes;
+  fs.writeFileSync(`${OUT}/rects.json`, JSON.stringify(RECTS, null, 1));
   if (miss.length) console.log("MISSING", name, miss);
   await p.screenshot({ path: `${OUT}/${name}.png` });
   await p.evaluate(() => document.querySelector("#fig-ov")?.remove());
