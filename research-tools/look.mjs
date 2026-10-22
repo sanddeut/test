@@ -1,0 +1,12 @@
+import { createRequire } from "module";
+const require = createRequire("/opt/node-tools/node_modules/");
+const { chromium } = require("playwright");
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1200, height: 900 } });
+await p.goto("file://" + process.cwd() + "/site2/index.html");
+await p.waitForTimeout(1500);
+await p.screenshot({ path: "look3.png" });
+await p.evaluate(() => document.querySelector("#v2-high").scrollIntoView());
+await p.waitForTimeout(500);
+await p.screenshot({ path: "look4.png" });
+await b.close();

@@ -1,0 +1,294 @@
+<title>연구2 가이드라인 적용</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* 가이드라인 번호 순서의 세로 목록. 한 항목 = 원칙 문장, 적용 내용, 원안/개선안 캡처 */
+:root {
+  --bg: #f5f6f8; --card: #ffffff; --fg: #1c1d21; --muted: #6b6f7a; --line: #e2e5ea; --accent: #0b57d0; --accent-soft: #e8effc; --line-soft: #f0f1f4;
+  --sans: "Noto Sans KR", system-ui, -apple-system, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #15171b; --card: #1e2127; --fg: #eceef2; --muted: #9aa0ab; --line: #30343c; --accent: #8ab4ff; --accent-soft: #24304a; --line-soft: #262a31; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #15171b; --card: #1e2127; --fg: #eceef2; --muted: #9aa0ab; --line: #30343c; --accent: #8ab4ff; --accent-soft: #24304a; --line-soft: #262a31; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 80px; }
+h1 { font-size: 28px; margin: 0 0 6px; text-wrap: balance; }
+h2.cat { font-size: 13px; letter-spacing: .06em; color: var(--muted); margin: 36px 0 10px; font-weight: 500; }
+.g { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 10px; scroll-margin-top: 16px; }
+.g header { display: flex; align-items: baseline; gap: 10px; }
+.n { font-family: var(--mono); font-size: 20px; color: var(--accent); }
+.sub { font-size: 13px; color: var(--muted); }
+.rule { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.5; text-wrap: balance; max-width: 60ch; }
+.how { margin: 0; padding-left: 18px; color: var(--fg); max-width: 75ch; display: flex; flex-direction: column; gap: 4px; }
+.how li::marker { color: var(--muted); }
+.cmp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px; margin-top: 6px; }
+.col { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.col-t { margin: 0; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+.col.new .col-t { color: var(--accent); }
+.figs { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+figure { margin: 0; width: 120px; display: flex; flex-direction: column; gap: 4px; }
+figcaption { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.zoom { border: 1px solid var(--line); border-radius: 10px; padding: 0; background: none; cursor: zoom-in; overflow: hidden; display: block; }
+.zoom:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.zoom img { display: block; width: 100%; height: auto; }
+.none { margin: 0; color: var(--muted); font-size: 13px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 8px; }
+.lb { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: grid; place-items: center; z-index: 20; padding: 24px; }
+.lb[hidden] { display: none; }
+.lb img { max-height: 92vh; width: auto; border-radius: 12px; }
+@media (max-width: 640px) { .cmp { grid-template-columns: minmax(0, 1fr); } figure { width: calc(50% - 5px); } }
+.items { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; }
+.item { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: 16px; padding-block: 14px; border-top: 1px solid var(--line); }
+.what { margin: 0; font-size: 15px; line-height: 1.55; }
+.shots { display: flex; flex-wrap: wrap; gap: 18px; min-width: 0; }
+.grp { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.grp-t { margin: 0; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+.grp.new .grp-t { color: var(--accent); }
+@media (max-width: 640px) { .item { grid-template-columns: minmax(0, 1fr); gap: 8px; } }
+h2.cat { font-size: 24px; font-weight: 700; color: var(--fg); letter-spacing: 0; margin: 48px 0 4px; }
+h3.subcat { font-size: 17px; font-weight: 700; color: var(--muted); margin: 22px 0 10px; }
+/* 접고 펴기 */
+details > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .2s; flex: none; margin-right: 2px; }
+details[open] > summary::before { transform: rotate(45deg); }
+details > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+details.cat > summary h2, details.sub > summary h3 { margin: 0; }
+details.cat { margin-top: 40px; }
+details.sub { margin: 18px 0 0 4px; }
+.cards { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+.g { margin-bottom: 0; }
+/* 전체 글씨 한 단계 작게, 자간 1px 좁게 */
+body { font-size: 14px; letter-spacing: -1px; }
+h1 { font-size: 26px; }
+h2.cat { font-size: 22px; }
+h3.subcat { font-size: 16px; }
+.rule { font-size: 16px; }
+.what { font-size: 14px; }
+.n { font-size: 18px; }
+.grp-t { font-size: 11px; letter-spacing: -1px; }
+figcaption { font-size: 11px; }
+@media (prefers-reduced-motion: reduce) { details > summary::before { transition: none; } }
+.catblock { margin-top: 40px; }
+h2.cat { margin: 0; }
+/* 굵은 글씨는 한 단계 가늘게 */
+h1, h2.cat, h3.subcat, .rule, .grp-t { font-weight: 600; }
+/* 한 줄: 원안 → 개선안, 그 오른쪽에 넓게 설명 (문장마다 불릿) */
+.item { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 20px; }
+.item .shots { flex: none; display: flex; align-items: center; gap: 12px; max-width: 100%; flex-wrap: wrap; }
+.arrow { font-size: 22px; color: var(--muted); align-self: center; padding-top: 18px; }
+.item .what { flex: 1 1 320px; min-width: 0; margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.6; }
+.item .what li::marker { color: var(--muted); }
+.item .what { list-style: disc; }
+.item .shots { min-width: min(100%, 300px); }
+/* 문구 편집 */
+.edit-toggle { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 15; border: 0; border-radius: 999px; background: var(--accent); color: var(--card); padding: 10px 18px; font: 600 14px var(--sans); box-shadow: 0 4px 14px rgba(0,0,0,.2); cursor: pointer; }
+.edit-toggle[aria-pressed="true"] { background: var(--fg); }
+body.editing [data-key] { outline: 1px dashed var(--accent); outline-offset: 2px; border-radius: 3px; cursor: text; }
+body.editing [data-key]:focus { outline: 2px solid var(--accent); background: var(--accent-soft); }
+[data-key].saved { background: var(--accent-soft); transition: background .6s; }
+/* 가이드라인마다 접고 펴기 (처음엔 모두 접힘) */
+section.sub { margin: 18px 0 0; }
+h3.subcat { margin: 0; }
+.cards { gap: 8px; margin-top: 10px; }
+details.g { padding: 0; gap: 0; }
+details.g > summary { padding: 14px 18px; }
+details.g > summary .rule { margin: 0; flex: 1; }
+details.g > summary::before { margin-top: 1px; }
+details.g[open] > summary { border-bottom: 1px solid var(--line); }
+details.g .items { padding: 0 18px 8px; margin: 0; }
+details.g .item:first-child { border-top: 0; }
+/* 같은 소제목의 가이드라인은 카드 하나로 묶고 구분선으로 나눔, 쉐브론은 오른쪽 끝 */
+.cards { gap: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+details.g { background: none; border: 0; border-radius: 0; margin: 0; }
+details.g + details.g { border-top: 1px solid var(--line); }
+details.g > summary::before { content: none; }
+details.g > summary::after { content: ""; flex: none; width: 7px; height: 7px; margin-left: 12px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .2s; }
+details.g[open] > summary::after { transform: rotate(45deg); }
+details.g > summary:hover { background: var(--bg); }
+details.g > summary .rule { max-width: none; font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { details.g > summary::after { transition: none; } }
+/* 펼친 가이드라인 안의 구분선은 더 옅게, 위아래 여백 넉넉히 */
+details.g .item { border-top-color: var(--line-soft); padding-block: 22px; }
+</style>
+<div class="wrap">
+  <h1>연구2 가이드라인 적용</h1>
+  <section class="catblock"><h2 class="cat">사용자 입력</h2><section class="sub"><h3 class="subcat">입력 방법</h3><div class="cards"><details class="g" id="g1">
+  <summary><p class="rule">1. 첫 화면은 입력 방법(상호작용 시작 방법)을 명시적으로 보여 줘야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-first-0a-chat.webp" aria-label="원안 첫 화면 크게 보기"><img src="img/v2-first-0a-chat.webp" alt="원안 첫 화면" loading="lazy" width="351" height="702"></button><figcaption data-key="g1-i0-o-c0">원안 첫 화면</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-inputs-0a-chat.webp" aria-label="첫 화면 크게 보기"><img src="img/v4-inputs-0a-chat.webp" alt="첫 화면" loading="lazy" width="351" height="702"></button><figcaption data-key="g1-i0-n-c0">첫 화면</figcaption></figure></div></div></div><ul class="what" data-item="g1-i0"><li data-key="g1-i0-s0">어떻게 시작해야 하는지 바로 알 수 있도록, CTA를 &#x27;눌러서 대화 시작&#x27; 버튼 하나로 통합하고 안내를 추가함</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-inputs-0b-chat.webp" aria-label="말로/글로 고르기 크게 보기"><img src="img/v4-inputs-0b-chat.webp" alt="말로/글로 고르기" loading="lazy" width="351" height="702"></button><figcaption data-key="g1-i1-n-c0">말로/글로 고르기</figcaption></figure></div></div></div><ul class="what" data-item="g1-i1"><li data-key="g1-i1-s0">입력 가능한 방식을 명시적으로 제시하고, 두 방법 중 하나를 직접 고를 수 있게함</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-inputs-0c-chat.webp" aria-label="글로 하기 크게 보기"><img src="img/v4-inputs-0c-chat.webp" alt="글로 하기" loading="lazy" width="351" height="702"></button><figcaption data-key="g1-i2-n-c0">글로 하기</figcaption></figure></div></div></div><ul class="what" data-item="g1-i2"><li data-key="g1-i2-s0">&#x27;글로 하기&#x27;를 고르면 바로 키보드가 올라오게 함.</li><li data-key="g1-i2-s1">원안의 플레이스 홀더는 반드시 말(음성)로 해야하는 것으로 오해의 여지가 있어, &quot;여기에 적어 주세요&quot;로 바꿈</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-inputs-0e-chat.webp" aria-label="말로 하기 크게 보기"><img src="img/v4-inputs-0e-chat.webp" alt="말로 하기" loading="lazy" width="351" height="702"></button><figcaption data-key="g1-i3-n-c0">말로 하기</figcaption></figure></div></div></div><ul class="what" data-item="g1-i3"><li data-key="g1-i3-s0">말로 입력하는 방법을 보다 직관적으로 변경 (마이크 아이콘 버튼 ➞ [눌러서 말하기] 텍스트 버튼)</li></ul></li></ol>
+</details></div></section><section class="sub"><h3 class="subcat">입력 피드백</h3><div class="cards"><details class="g" id="g2">
+  <summary><p class="rule">2. 시스템은 사용자의 입력이 오류 없이 전달되었는지를 즉시 알려야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s1-05-chat.webp" aria-label="원안: 전달 표시 없음 크게 보기"><img src="img/v2-B1s1-05-chat.webp" alt="원안: 전달 표시 없음" loading="lazy" width="351" height="702"></button><figcaption data-key="g2-i0-o-c0">원안: 전달 표시 없음</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-queue-q1.webp" aria-label="보낸 말풍선 옆 체크 크게 보기"><img src="img/v4-queue-q1.webp" alt="보낸 말풍선 옆 체크" loading="lazy" width="351" height="702"></button><figcaption data-key="g2-i0-n-c0">보낸 말풍선 옆 체크</figcaption></figure></div></div></div><ul class="what" data-item="g2-i0"><li data-key="g2-i0-s0">원안에는 입력이 전달됐는지 알 수 있는 표시가 없어, 보낸 순간 말풍선 옆에 체크를 잠깐 보여 줌</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-inputs-0f-chat.webp" aria-label="보내기 안 누름 크게 보기"><img src="img/v4-inputs-0f-chat.webp" alt="보내기 안 누름" loading="lazy" width="351" height="702"></button><figcaption data-key="g2-i1-n-c0">보내기 안 누름</figcaption></figure></div></div></div><ul class="what" data-item="g2-i1"><li data-key="g2-i1-s0">글만 쓰고 보내지 않아 전달되지 않는 일을 막도록, 잠시 뒤 &quot;보내기를 눌러야 전달돼요&quot;라고 알림</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-inputs-0d-chat.webp" aria-label="듣는 중 크게 보기"><img src="img/v4-inputs-0d-chat.webp" alt="듣는 중" loading="lazy" width="351" height="702"></button><figcaption data-key="g2-i2-n-c0">듣는 중</figcaption></figure><figure><button type="button" class="zoom" data-src="img/v4-inputs-0g-chat.webp" aria-label="받아 적는 중 크게 보기"><img src="img/v4-inputs-0g-chat.webp" alt="받아 적는 중" loading="lazy" width="351" height="702"></button><figcaption data-key="g2-i2-n-c1">받아 적는 중</figcaption></figure></div></div></div><ul class="what" data-item="g2-i2"><li data-key="g2-i2-s0">말이 제대로 들어가고 있는지 알 수 있도록, 듣는 중 표시와 받아 적는 내용을 바로 보여 줌</li></ul></li></ol>
+</details><details class="g" id="g3">
+  <summary><p class="rule">3. 시스템은 사용자의 요청이 수행되지 않았을 때 그 이유와 대안을 알려야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-queue-q1.webp" aria-label="이유와 대안 안내 크게 보기"><img src="img/v4-queue-q1.webp" alt="이유와 대안 안내" loading="lazy" width="351" height="702"></button><figcaption data-key="g3-i0-n-c0">이유와 대안 안내</figcaption></figure></div></div></div><ul class="what" data-item="g3-i0"><li data-key="g3-i0-s0">원안에서는 진행 중에 한 요청이 아무 반응 없이 무시되어, 지금 바로 할 수 없는 이유와 언제 반영하는지 알리고 실제로 반영함</li></ul></li></ol>
+</details><details class="g" id="g4">
+  <summary><p class="rule">4. 시스템은 사용자가 알아야 할 내용을 확실히 인지할 수 있도록 두드러지게 전해야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B2s1-03-run.webp" aria-label="원안 실행화면 크게 보기"><img src="img/v2-B2s1-03-run.webp" alt="원안 실행화면" loading="lazy" width="351" height="702"></button><figcaption data-key="g4-i0-o-c0">원안 실행화면</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-04-run.webp" aria-label="움직이는 테두리 크게 보기"><img src="img/v4-B1s1-04-run.webp" alt="움직이는 테두리" loading="lazy" width="351" height="702"></button><figcaption data-key="g4-i0-n-c0">움직이는 테두리</figcaption></figure></div></div></div><ul class="what" data-item="g4-i0"><li data-key="g4-i0-s0">AI가 일하고 있다는 것을 글을 읽지 않아도 알아차리도록, 실행화면 테두리를 움직이는 그라데이션으로 바꿈</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-manual-m1-chat.webp" aria-label="화면이 커짐 크게 보기"><img src="img/v4-manual-m1-chat.webp" alt="화면이 커짐" loading="lazy" width="351" height="702"></button><figcaption data-key="g4-i1-n-c0">화면이 커짐</figcaption></figure><figure><button type="button" class="zoom" data-src="img/v4-manual-m2-chat.webp" aria-label="로딩 크게 보기"><img src="img/v4-manual-m2-chat.webp" alt="로딩" loading="lazy" width="351" height="702"></button><figcaption data-key="g4-i1-n-c1">로딩</figcaption></figure></div></div></div><ul class="what" data-item="g4-i1"><li data-key="g4-i1-s0">조작권이 나에게 넘어왔다는 것을 놓치지 않도록, 화면이 커지고 로딩을 거쳐 전환되는 모션을 더함</li></ul></li></ol>
+</details><details class="g" id="g5">
+  <summary><p class="rule">5. AI는 사용자의 입력을 실행하기 전에, 무엇을 하려는지 먼저 알려야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B2s1-03-chat.webp" aria-label="원안: 설정한 뒤 알림 크게 보기"><img src="img/v2-B2s1-03-chat.webp" alt="원안: 설정한 뒤 알림" loading="lazy" width="351" height="702"></button><figcaption data-key="g5-i0-o-c0">원안: 설정한 뒤 알림</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-04-chat.webp" aria-label="출발지 확인 크게 보기"><img src="img/v4-B1s1-04-chat.webp" alt="출발지 확인" loading="lazy" width="351" height="702"></button><figcaption data-key="g5-i0-n-c0">출발지 확인</figcaption></figure><figure><button type="button" class="zoom" data-src="img/v4-B1s1-06-chat.webp" aria-label="목적지 확인 크게 보기"><img src="img/v4-B1s1-06-chat.webp" alt="목적지 확인" loading="lazy" width="351" height="702"></button><figcaption data-key="g5-i0-n-c1">목적지 확인</figcaption></figure></div></div></div><ul class="what" data-item="g5-i0"><li data-key="g5-i0-s0">원안 높은 자동화는 설정한 뒤에야 알려서, 사용자가 잘못 말했거나 AI가 잘못 알아들어도 그대로 진행됨</li><li data-key="g5-i0-s1">실행하기 전에 &quot;여기가 맞나요?&quot;라고 먼저 확인함</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-02-chat.webp" aria-label="택시 앱을 실행할게요 크게 보기"><img src="img/v4-B1s1-02-chat.webp" alt="택시 앱을 실행할게요" loading="lazy" width="351" height="702"></button><figcaption data-key="g5-i1-n-c0">택시 앱을 실행할게요</figcaption></figure></div></div></div><ul class="what" data-item="g5-i1"><li data-key="g5-i1-s0">알아서 하는 단계도 결과만 알리지 않고 &quot;~할게요&quot;라고 먼저 알림</li></ul></li></ol>
+</details></div></section></section>
+<section class="catblock"><h2 class="cat">에이전트 활동 설명</h2><section class="sub"><h3 class="subcat">주체 구분</h3><div class="cards"><details class="g" id="g6">
+  <summary><p class="rule">6. 화면은 지금 AI와 사용자 중 조작권이 누구에게 있는지 보여 줘야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s1-05-run.webp" aria-label="원안 실행화면 크게 보기"><img src="img/v2-B1s1-05-run.webp" alt="원안 실행화면" loading="lazy" width="351" height="702"></button><figcaption data-key="g6-i0-o-c0">원안 실행화면</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-04-run.webp" aria-label="AI가 앱 조작 중 크게 보기"><img src="img/v4-B1s1-04-run.webp" alt="AI가 앱 조작 중" loading="lazy" width="351" height="702"></button><figcaption data-key="g6-i0-n-c0">AI가 앱 조작 중</figcaption></figure></div></div></div><ul class="what" data-item="g6-i0"><li data-key="g6-i0-s0">지금 누가 조작하는지 바로 알 수 있도록, AI가 조작할 때는 실행화면 위에 &quot;AI가 앱 조작 중&quot; 칩과 흰 덮개를 보여 줌</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-manual-m4-chat.webp" aria-label="직접 조작 중 크게 보기"><img src="img/v4-manual-m4-chat.webp" alt="직접 조작 중" loading="lazy" width="351" height="702"></button><figcaption data-key="g6-i1-n-c0">직접 조작 중</figcaption></figure></div></div></div><ul class="what" data-item="g6-i1"><li data-key="g6-i1-s0">내가 조작할 때는 헤더를 연한 빨강으로 바꿔 AI가 조작할 때와 확실히 구분함</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-02-chat.webp" aria-label="대화창 작업 중 표시 크게 보기"><img src="img/v4-B1s1-02-chat.webp" alt="대화창 작업 중 표시" loading="lazy" width="351" height="702"></button><figcaption data-key="g6-i2-n-c0">대화창 작업 중 표시</figcaption></figure></div></div></div><ul class="what" data-item="g6-i2"><li data-key="g6-i2-s0">대화창에서도 AI가 조작 중임을 알 수 있도록, 작업 중 표시 위에 &quot;AI가 앱 조작 중&quot;을 작게 적음</li></ul></li></ol>
+</details><details class="g" id="g7">
+  <summary><p class="rule">7. 화면은 AI가 대신 정한 내용을 사용자가 한 것과 구분되도록 분명히 표시해야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s1-05-chat.webp" aria-label="원안: &quot;승인&quot;만 남음 크게 보기"><img src="img/v2-B1s1-05-chat.webp" alt="원안: &quot;승인&quot;만 남음" loading="lazy" width="351" height="702"></button><figcaption data-key="g7-i0-o-c0">원안: &quot;승인&quot;만 남음</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-06-chat.webp" aria-label="확인 / 출발지 설정 크게 보기"><img src="img/v4-B1s1-06-chat.webp" alt="확인 / 출발지 설정" loading="lazy" width="351" height="702"></button><figcaption data-key="g7-i0-n-c0">확인 / 출발지 설정</figcaption></figure></div></div></div><ul class="what" data-item="g7-i0"><li data-key="g7-i0-s0">원안에서는 &quot;승인&quot;만 남아 무엇을 승인했는지, 내가 한 것인지 AI가 한 것인지 헷갈려서, 무엇에 답했는지 작은 글씨로 함께 남김</li></ul></li></ol>
+</details></div></section><section class="sub"><h3 class="subcat">진행 현황</h3><div class="cards"><details class="g" id="g8">
+  <summary><p class="rule">8. 화면은 지금 진행 중인 단계가 무엇인지 분명히 알려야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s1-18-chat.webp" aria-label="원안 크게 보기"><img src="img/v2-B1s1-18-chat.webp" alt="원안" loading="lazy" width="351" height="702"></button><figcaption data-key="g8-i0-o-c0">원안</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-15-chat.webp" aria-label="현재 단계가 맨 위 크게 보기"><img src="img/v4-B1s1-15-chat.webp" alt="현재 단계가 맨 위" loading="lazy" width="351" height="702"></button><figcaption data-key="g8-i0-n-c0">현재 단계가 맨 위</figcaption></figure></div></div></div><ul class="what" data-item="g8-i0"><li data-key="g8-i0-s0">원안에서는 지난 대화와 현재 단계가 섞여 지난 승인 버튼을 누르기도 함</li><li data-key="g8-i0-s1">지금 단계를 항상 맨 위에 두고 지난 대화는 위쪽 가장자리에서 흐려지게 함</li></ul></li></ol>
+</details><details class="g" id="g9">
+  <summary><p class="rule">9. 화면은 사용자가 지금 행동해야 하는지 기다려야 하는지를 명확히 보여 줘야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B2s1-05-chat.webp" aria-label="원안 크게 보기"><img src="img/v2-B2s1-05-chat.webp" alt="원안" loading="lazy" width="351" height="702"></button><figcaption data-key="g9-i0-o-c0">원안</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-02-chat.webp" aria-label="기다릴 때 크게 보기"><img src="img/v4-B1s1-02-chat.webp" alt="기다릴 때" loading="lazy" width="351" height="702"></button><figcaption data-key="g9-i0-n-c0">기다릴 때</figcaption></figure></div></div></div><ul class="what" data-item="g9-i0"><li data-key="g9-i0-s0">지금 기다려야 하는지 바로 알 수 있도록, AI가 일할 때는 글 대신 움직이는 점만 보여 줌</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-04-chat.webp" aria-label="행동할 때 크게 보기"><img src="img/v4-B1s1-04-chat.webp" alt="행동할 때" loading="lazy" width="351" height="702"></button><figcaption data-key="g9-i1-n-c0">행동할 때</figcaption></figure></div></div></div><ul class="what" data-item="g9-i1"><li data-key="g9-i1-s0">내가 답해야 할 때는 점을 없애고 질문과 버튼만 남겨 차이를 분명히 함</li></ul></li></ol>
+</details></div></section><section class="sub"><h3 class="subcat">정보 제시</h3><div class="cards"><details class="g" id="g10">
+  <summary><p class="rule">10. 화면은 핵심 정보만 간결하게 보여 주고, 부가 정보는 사용자가 원할 때 확인할 수 있게 해야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s1-09-chat.webp" aria-label="원안 진행 카드 크게 보기"><img src="img/v2-B1s1-09-chat.webp" alt="원안 진행 카드" loading="lazy" width="351" height="702"></button><figcaption data-key="g10-i0-o-c0">원안 진행 카드</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-08-chat.webp" aria-label="질문만 남김 크게 보기"><img src="img/v4-B1s1-08-chat.webp" alt="질문만 남김" loading="lazy" width="351" height="702"></button><figcaption data-key="g10-i0-n-c0">질문만 남김</figcaption></figure></div></div></div><ul class="what" data-item="g10-i0"><li data-key="g10-i0-s0">읽을 것이 너무 많아 무엇을 봐야 할지 몰랐던 문제를 줄이려고, &quot;할 일 처리하는 중&quot;, &quot;확인이 필요해요&quot; 같은 반복되는 줄을 지움</li></ul></li><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B2s1-04-chat.webp" aria-label="원안 결과 카드 크게 보기"><img src="img/v2-B2s1-04-chat.webp" alt="원안 결과 카드" loading="lazy" width="351" height="702"></button><figcaption data-key="g10-i1-o-c0">원안 결과 카드</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-10-chat.webp" aria-label="개선안 결과 카드 크게 보기"><img src="img/v4-B1s1-10-chat.webp" alt="개선안 결과 카드" loading="lazy" width="351" height="702"></button><figcaption data-key="g10-i1-n-c0">개선안 결과 카드</figcaption></figure></div></div></div><ul class="what" data-item="g10-i1"><li data-key="g10-i1-s0">핵심인 AI의 말이 먼저 보이도록, 발화는 굵게 하고 카드 안의 정보는 작게, &#x27;실행화면 보기&#x27;는 약하게 바꿈</li></ul></li></ol>
+</details><details class="g" id="g11">
+  <summary><p class="rule">11. 시스템은 사용자가 읽고 확인할 시간을 충분히 제공해야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B2s1-06-chat.webp" aria-label="원안: 빠르게 넘어감 크게 보기"><img src="img/v2-B2s1-06-chat.webp" alt="원안: 빠르게 넘어감" loading="lazy" width="351" height="702"></button><figcaption data-key="g11-i0-o-c0">원안: 빠르게 넘어감</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-10-chat.webp" aria-label="알림 뒤 더 머묾 크게 보기"><img src="img/v4-B1s1-10-chat.webp" alt="알림 뒤 더 머묾" loading="lazy" width="351" height="702"></button><figcaption data-key="g11-i0-n-c0">알림 뒤 더 머묾</figcaption></figure></div></div></div><ul class="what" data-item="g11-i0"><li data-key="g11-i0-s0">원안 높은 자동화는 너무 빨라 읽고 따라가지 못함</li><li data-key="g11-i0-s1">알아서 하는 단계는 결과를 더 오래 보여 주고, 더 시간이 필요하면 &#x27;멈추기&#x27;로 멈출 수 있게 함</li></ul></li></ol>
+</details></div></section></section>
+<section class="catblock"><h2 class="cat">사용자 통제</h2><section class="sub"><h3 class="subcat">중지 수단</h3><div class="cards"><details class="g" id="g12">
+  <summary><p class="rule">12. 화면은 중지 수단의 위치와 기능을 한눈에 알아볼 수 있게 보여 줘야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B2s1-05-chat.webp" aria-label="원안 중지 버튼 크게 보기"><img src="img/v2-B2s1-05-chat.webp" alt="원안 중지 버튼" loading="lazy" width="351" height="702"></button><figcaption data-key="g12-i0-o-c0">원안 중지 버튼</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-02-chat.webp" aria-label="멈추기 버튼 크게 보기"><img src="img/v4-B1s1-02-chat.webp" alt="멈추기 버튼" loading="lazy" width="351" height="702"></button><figcaption data-key="g12-i0-n-c0">멈추기 버튼</figcaption></figure></div></div></div><ul class="what" data-item="g12-i0"><li data-key="g12-i0-s0">원안의 빨간 네모 아이콘은 중지 버튼인지 알아보지 못해, &#x27;멈추기&#x27;라는 글자 버튼으로 바꿈</li></ul></li><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B2s1-03-run.webp" aria-label="원안 실행화면 크게 보기"><img src="img/v2-B2s1-03-run.webp" alt="원안 실행화면" loading="lazy" width="351" height="702"></button><figcaption data-key="g12-i1-o-c0">원안 실행화면</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-coach-k0.webp" aria-label="아래 버튼 칸 크게 보기"><img src="img/v4-coach-k0.webp" alt="아래 버튼 칸" loading="lazy" width="351" height="702"></button><figcaption data-key="g12-i1-n-c0">아래 버튼 칸</figcaption></figure></div></div></div><ul class="what" data-item="g12-i1"><li data-key="g12-i1-s0">개입할 수 있는 버튼을 찾기 쉽도록, 실행화면 바로 아래 한 칸에 &#x27;멈추기&#x27;와 &#x27;내가 조작하기&#x27;를 모음</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-coach-k2.webp" aria-label="&#x27;?&#x27; 안내 2/3 크게 보기"><img src="img/v4-coach-k2.webp" alt="&#x27;?&#x27; 안내 2/3" loading="lazy" width="351" height="702"></button><figcaption data-key="g12-i2-n-c0">&#x27;?&#x27; 안내 2/3</figcaption></figure></div></div></div><ul class="what" data-item="g12-i2"><li data-key="g12-i2-s0">버튼이 무슨 일을 하는지 모를 때 &#x27;?&#x27;를 누르면 멈추기를 짚어 설명함</li></ul></li></ol>
+</details></div></section><section class="sub"><h3 class="subcat">실행 중 개입</h3><div class="cards"><details class="g" id="g13">
+  <summary><p class="rule">13. 화면은 사용자가 AI로부터 조작권을 언제든 회수할 수 있음을 드러내야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s1-05-run.webp" aria-label="원안 직접 조작 버튼 크게 보기"><img src="img/v2-B1s1-05-run.webp" alt="원안 직접 조작 버튼" loading="lazy" width="351" height="702"></button><figcaption data-key="g13-i0-o-c0">원안 직접 조작 버튼</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-manual-m0-chat.webp" aria-label="내가 조작하기 크게 보기"><img src="img/v4-manual-m0-chat.webp" alt="내가 조작하기" loading="lazy" width="351" height="702"></button><figcaption data-key="g13-i0-n-c0">내가 조작하기</figcaption></figure></div></div></div><ul class="what" data-item="g13-i0"><li data-key="g13-i0-s0">언제든 내가 직접 할 수 있다는 것을 드러내도록, 원안의 작은 &#x27;직접 조작&#x27; 대신 눈에 띄는 빨간 &#x27;내가 조작하기&#x27;로 바꿈</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-manual-m1-chat.webp" aria-label="커짐 크게 보기"><img src="img/v4-manual-m1-chat.webp" alt="커짐" loading="lazy" width="351" height="702"></button><figcaption data-key="g13-i1-n-c0">커짐</figcaption></figure><figure><button type="button" class="zoom" data-src="img/v4-manual-m2-chat.webp" aria-label="로딩 크게 보기"><img src="img/v4-manual-m2-chat.webp" alt="로딩" loading="lazy" width="351" height="702"></button><figcaption data-key="g13-i1-n-c1">로딩</figcaption></figure><figure><button type="button" class="zoom" data-src="img/v4-manual-m4-chat.webp" aria-label="앱 화면 크게 보기"><img src="img/v4-manual-m4-chat.webp" alt="앱 화면" loading="lazy" width="351" height="702"></button><figcaption data-key="g13-i1-n-c2">앱 화면</figcaption></figure></div></div></div><ul class="what" data-item="g13-i1"><li data-key="g13-i1-s0">누른 뒤 조작권이 넘어왔다는 것을 알 수 있도록 화면 전환 과정을 보여 줌</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-coach-k3.webp" aria-label="&#x27;?&#x27; 안내 3/3 크게 보기"><img src="img/v4-coach-k3.webp" alt="&#x27;?&#x27; 안내 3/3" loading="lazy" width="351" height="702"></button><figcaption data-key="g13-i2-n-c0">&#x27;?&#x27; 안내 3/3</figcaption></figure></div></div></div><ul class="what" data-item="g13-i2"><li data-key="g13-i2-s0">&#x27;?&#x27; 안내에서 내가 조작하기를 짚어 설명함</li></ul></li></ol>
+</details><details class="g" id="g14">
+  <summary><p class="rule">14. 시스템은 결과가 확정되기 전에 사용자가 개입할 시점을 보장해야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B2s1-07-chat.webp" aria-label="원안: 정한 뒤 알림 크게 보기"><img src="img/v2-B2s1-07-chat.webp" alt="원안: 정한 뒤 알림" loading="lazy" width="351" height="702"></button><figcaption data-key="g14-i0-o-c0">원안: 정한 뒤 알림</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-06-chat.webp" aria-label="목적지 확인 크게 보기"><img src="img/v4-B1s1-06-chat.webp" alt="목적지 확인" loading="lazy" width="351" height="702"></button><figcaption data-key="g14-i0-n-c0">목적지 확인</figcaption></figure><figure><button type="button" class="zoom" data-src="img/v4-B1s1-15-chat.webp" aria-label="최종 호출 확인 크게 보기"><img src="img/v4-B1s1-15-chat.webp" alt="최종 호출 확인" loading="lazy" width="351" height="702"></button><figcaption data-key="g14-i0-n-c1">최종 호출 확인</figcaption></figure></div></div></div><ul class="what" data-item="g14-i0"><li data-key="g14-i0-s0">원안 높은 자동화에서는 오류를 알아차려도 이미 진행이 끝나 있었음</li><li data-key="g14-i0-s1">결과가 정해지는 순간마다 먼저 확인받은 뒤 진행함</li></ul></li></ol>
+</details></div></section><section class="sub"><h3 class="subcat">수정과 되돌리기</h3><div class="cards"><details class="g" id="g15">
+  <summary><p class="rule">15. 시스템은 사용자가 AI의 결정을 수정하는 방법을 알고 쉽게 수정할 수 있도록 해야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s1-15-chat.webp" aria-label="원안: 거부 후 다시 고르기 크게 보기"><img src="img/v2-B1s1-15-chat.webp" alt="원안: 거부 후 다시 고르기" loading="lazy" width="351" height="702"></button><figcaption data-key="g15-i0-o-c0">원안: 거부 후 다시 고르기</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-t17-c1-chat.webp" aria-label="출발지 수정 크게 보기"><img src="img/v4-t17-c1-chat.webp" alt="출발지 수정" loading="lazy" width="351" height="702"></button><figcaption data-key="g15-i0-n-c0">출발지 수정</figcaption></figure></div></div></div><ul class="what" data-item="g15-i0"><li data-key="g15-i0-s0">원안에서는 거부한 뒤 무엇을 말해야 할지 몰라 막힘</li><li data-key="g15-i0-s1">수정을 누르면 고를 수 있는 선택지를 바로 보여 줌</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-undo-u0-chat.webp" aria-label="되돌리기 크게 보기"><img src="img/v4-undo-u0-chat.webp" alt="되돌리기" loading="lazy" width="351" height="702"></button><figcaption data-key="g15-i1-n-c0">되돌리기</figcaption></figure></div></div></div><ul class="what" data-item="g15-i1"><li data-key="g15-i1-s0">이미 끝낸 단계도 고칠 수 있다는 것을 알 수 있도록, 답한 말풍선 아래에 &#x27;되돌리기&#x27;를 둠</li></ul></li></ol>
+</details><details class="g" id="g16">
+  <summary><p class="rule">16. 시스템은 결과가 확정된 뒤에도 사용자가 되돌릴 수 있게 해야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-undo-u0-chat.webp" aria-label="되돌리기 크게 보기"><img src="img/v4-undo-u0-chat.webp" alt="되돌리기" loading="lazy" width="351" height="702"></button><figcaption data-key="g16-i0-n-c0">되돌리기</figcaption></figure><figure><button type="button" class="zoom" data-src="img/v4-undo-u3-chat.webp" aria-label="되돌린 뒤 다시 물음 크게 보기"><img src="img/v4-undo-u3-chat.webp" alt="되돌린 뒤 다시 물음" loading="lazy" width="351" height="702"></button><figcaption data-key="g16-i0-n-c1">되돌린 뒤 다시 물음</figcaption></figure></div></div></div><ul class="what" data-item="g16-i0"><li data-key="g16-i0-s0">원안에는 되돌리는 방법이 없었음</li><li data-key="g16-i0-s1">&#x27;되돌리기&#x27;나 &#x27;방금 한 일 취소&#x27;를 누르면 그 단계 전으로 돌리고 다시 물어봄</li></ul></li></ol>
+</details></div></section><section class="sub"><h3 class="subcat">승인과 위임 범위</h3><div class="cards"><details class="g" id="g17">
+  <summary><p class="rule">17. 시스템은 AI의 제안을 사용자가 쉽게 거절할 수 있게 해야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s1-15-chat.webp" aria-label="원안: 말로 다시 고르기 크게 보기"><img src="img/v2-B1s1-15-chat.webp" alt="원안: 말로 다시 고르기" loading="lazy" width="351" height="702"></button><figcaption data-key="g17-i0-o-c0">원안: 말로 다시 고르기</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-t17-c1-chat.webp" aria-label="출발지 수정 크게 보기"><img src="img/v4-t17-c1-chat.webp" alt="출발지 수정" loading="lazy" width="351" height="702"></button><figcaption data-key="g17-i0-n-c0">출발지 수정</figcaption></figure><figure><button type="button" class="zoom" data-src="img/v4-t17-f1-chat.webp" aria-label="최종 호출 수정 크게 보기"><img src="img/v4-t17-f1-chat.webp" alt="최종 호출 수정" loading="lazy" width="351" height="702"></button><figcaption data-key="g17-i0-n-c1">최종 호출 수정</figcaption></figure></div></div></div><ul class="what" data-item="g17-i0"><li data-key="g17-i0-s0">거절한 뒤 다시 말로 설명해야 했던 부담을 줄이려고, 되묻는 질문과 함께 선택지 목록을 보여 줌</li></ul></li></ol>
+</details><details class="g" id="g18">
+  <summary><p class="rule">18. AI는 비가역적이거나 요청 외의 행동은 반드시 실행 전에 확인을 받고, 사소한 단계의 확인은 줄여야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s1-03-chat.webp" aria-label="원안 낮은 자동화: 앱 실행도 승인 크게 보기"><img src="img/v2-B1s1-03-chat.webp" alt="원안 낮은 자동화: 앱 실행도 승인" loading="lazy" width="351" height="702"></button><figcaption data-key="g18-i0-o-c0">원안 낮은 자동화: 앱 실행도 승인</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-02-chat.webp" aria-label="택시 앱 실행 크게 보기"><img src="img/v4-B1s1-02-chat.webp" alt="택시 앱 실행" loading="lazy" width="351" height="702"></button><figcaption data-key="g18-i0-n-c0">택시 앱 실행</figcaption></figure><figure><button type="button" class="zoom" data-src="img/v4-B1s1-10-chat.webp" aria-label="예상 금액 크게 보기"><img src="img/v4-B1s1-10-chat.webp" alt="예상 금액" loading="lazy" width="351" height="702"></button><figcaption data-key="g18-i0-n-c1">예상 금액</figcaption></figure></div></div></div><ul class="what" data-item="g18-i0"><li data-key="g18-i0-s0">낮은 자동화와 높은 자동화를 나누지 않고 단계의 중요도에 따라 확인 수준을 정함</li><li data-key="g18-i0-s1">사소한 단계(택시 앱 실행, 예상 금액)는 알아서 하고 알림</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-15-chat.webp" aria-label="최종 호출 확인 크게 보기"><img src="img/v4-B1s1-15-chat.webp" alt="최종 호출 확인" loading="lazy" width="351" height="702"></button><figcaption data-key="g18-i1-n-c0">최종 호출 확인</figcaption></figure></div></div></div><ul class="what" data-item="g18-i1"><li data-key="g18-i1-s0">되돌리기 어렵거나 비용이 드는 결정(출발지, 목적지, 최종 호출)은 반드시 확인함</li></ul></li><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B2s2-04-chat.webp" aria-label="원안 높은 자동화: 묻지 않고 예약 크게 보기"><img src="img/v2-B2s2-04-chat.webp" alt="원안 높은 자동화: 묻지 않고 예약" loading="lazy" width="351" height="702"></button><figcaption data-key="g18-i2-o-c0">원안 높은 자동화: 묻지 않고 예약</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s2-20-chat.webp" aria-label="예약 묻기 크게 보기"><img src="img/v4-B1s2-20-chat.webp" alt="예약 묻기" loading="lazy" width="351" height="702"></button><figcaption data-key="g18-i2-n-c0">예약 묻기</figcaption></figure></div></div></div><ul class="what" data-item="g18-i2"><li data-key="g18-i2-s0">원안 높은 자동화는 요청하지 않은 예약까지 묻지 않고 해 버림</li><li data-key="g18-i2-s1">요청 외 행동은 먼저 물음</li></ul></li></ol>
+</details><details class="g" id="g19">
+  <summary><p class="rule">19. AI는 결정의 중요도에 맞는 표현으로 확인을 요청해야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s1-18-chat.webp" aria-label="원안: 승인/거부 크게 보기"><img src="img/v2-B1s1-18-chat.webp" alt="원안: 승인/거부" loading="lazy" width="351" height="702"></button><figcaption data-key="g19-i0-o-c0">원안: 승인/거부</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-06-chat.webp" aria-label="수정/확인 크게 보기"><img src="img/v4-B1s1-06-chat.webp" alt="수정/확인" loading="lazy" width="351" height="702"></button><figcaption data-key="g19-i0-n-c0">수정/확인</figcaption></figure><figure><button type="button" class="zoom" data-src="img/v4-B1s2-17-chat.webp" aria-label="거부/허용 크게 보기"><img src="img/v4-B1s2-17-chat.webp" alt="거부/허용" loading="lazy" width="351" height="702"></button><figcaption data-key="g19-i0-n-c1">거부/허용</figcaption></figure><figure><button type="button" class="zoom" data-src="img/v4-B1s1-15-chat.webp" aria-label="수정/호출하기 크게 보기"><img src="img/v4-B1s1-15-chat.webp" alt="수정/호출하기" loading="lazy" width="351" height="702"></button><figcaption data-key="g19-i0-n-c2">수정/호출하기</figcaption></figure></div></div></div><ul class="what" data-item="g19-i0"><li data-key="g19-i0-s0">원안의 &quot;승인&quot;은 모든 질문에 똑같이 쓰여 무겁게 느껴짐</li><li data-key="g19-i0-s1">질문의 무게에 맞게 수정/확인, 거부/허용, 거부/예약하기, 수정/호출하기로 나눔</li></ul></li></ol>
+</details><details class="g" id="g20">
+  <summary><p class="rule">20. AI는 사용자의 선호가 필요한 결정을 임의로 내리지 않고, 사용자에게 먼저 물어야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s1-13-chat.webp" aria-label="원안 낮은 자동화 크게 보기"><img src="img/v2-B1s1-13-chat.webp" alt="원안 낮은 자동화" loading="lazy" width="351" height="702"></button><figcaption data-key="g20-i0-o-c0">원안 낮은 자동화</figcaption></figure><figure><button type="button" class="zoom" data-src="img/v2-B2s1-07-chat.webp" aria-label="원안 높은 자동화 크게 보기"><img src="img/v2-B2s1-07-chat.webp" alt="원안 높은 자동화" loading="lazy" width="351" height="702"></button><figcaption data-key="g20-i0-o-c1">원안 높은 자동화</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-12-chat.webp" aria-label="먼저 물음 크게 보기"><img src="img/v4-B1s1-12-chat.webp" alt="먼저 물음" loading="lazy" width="351" height="702"></button><figcaption data-key="g20-i0-n-c0">먼저 물음</figcaption></figure></div></div></div><ul class="what" data-item="g20-i0"><li data-key="g20-i0-s0">원안에서는 AI가 기사님 요청사항을 마음대로 골라 사용자가 강요로 느낌</li><li data-key="g20-i0-s1">AI가 고르지 않고 먼저 물음</li></ul></li><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s1-09-chat.webp" aria-label="원안: 일반택시로 정해 둠 크게 보기"><img src="img/v2-B1s1-09-chat.webp" alt="원안: 일반택시로 정해 둠" loading="lazy" width="351" height="702"></button><figcaption data-key="g20-i1-o-c0">원안: 일반택시로 정해 둠</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-08-chat.webp" aria-label="택시 종류 묻기 크게 보기"><img src="img/v4-B1s1-08-chat.webp" alt="택시 종류 묻기" loading="lazy" width="351" height="702"></button><figcaption data-key="g20-i1-n-c0">택시 종류 묻기</figcaption></figure></div></div></div><ul class="what" data-item="g20-i1"><li data-key="g20-i1-s0">요금이 달라지는 택시 종류도 미리 정해 두지 않고 먼저 물음</li></ul></li></ol>
+</details></div></section><section class="sub"><h3 class="subcat">정보 접근</h3><div class="cards"><details class="g" id="g21">
+  <summary><p class="rule">21. AI는 어떤 정보에 접근해 무엇에 쓰는지 투명하게 공개해야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-perm-p1-chat.webp" aria-label="시작할 때 권한 크게 보기"><img src="img/v4-perm-p1-chat.webp" alt="시작할 때 권한" loading="lazy" width="351" height="702"></button><figcaption data-key="g21-i0-n-c0">시작할 때 권한</figcaption></figure></div></div></div><ul class="what" data-item="g21-i0"><li data-key="g21-i0-s0">내 정보가 어디에 쓰이는지 몰라 불안했던 문제를 줄이려고, 시작할 때 무엇에 접근해 무엇에 쓰는지 알리고 허용을 받음</li></ul></li><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s2-04-chat.webp" aria-label="원안: 이미 이용내역을 봄 크게 보기"><img src="img/v2-B1s2-04-chat.webp" alt="원안: 이미 이용내역을 봄" loading="lazy" width="351" height="702"></button><figcaption data-key="g21-i1-o-c0">원안: 이미 이용내역을 봄</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s2-17-chat.webp" aria-label="이유와 함께 묻기 크게 보기"><img src="img/v4-B1s2-17-chat.webp" alt="이유와 함께 묻기" loading="lazy" width="351" height="702"></button><figcaption data-key="g21-i1-n-c0">이유와 함께 묻기</figcaption></figure></div></div></div><ul class="what" data-item="g21-i1"><li data-key="g21-i1-s0">원안에서는 묻지 않고 이용내역을 열어 봄</li><li data-key="g21-i1-s1">보기 전에 왜 필요한지와 함께 먼저 물음</li></ul></li></ol>
+</details><details class="g" id="g22">
+  <summary><p class="rule">22. 시스템은 사용자가 AI의 정보 접근을 제한하거나 기록을 지울 수 있게 해야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-perm-p1-chat.webp" aria-label="항목별 토글 크게 보기"><img src="img/v4-perm-p1-chat.webp" alt="항목별 토글" loading="lazy" width="351" height="702"></button><figcaption data-key="g22-i0-n-c0">항목별 토글</figcaption></figure></div></div></div><ul class="what" data-item="g22-i0"><li data-key="g22-i0-s0">AI가 볼 수 있는 정보를 사용자가 정할 수 있도록 항목별로 켜고 끌 수 있게 하고, 거부하면 보지 않음</li></ul></li></ol>
+</details></div></section></section>
+<section class="catblock"><h2 class="cat">사용자 멘탈모델/기대</h2><section class="sub"><h3 class="subcat">화면 이해</h3><div class="cards"><details class="g" id="g23">
+  <summary><p class="rule">23. 화면은 실행 화면이 AI가 지금 내 앱을 대리조작하는 실시간 화면임을 명시적으로 알려야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s1-05-run.webp" aria-label="원안 실행화면 크게 보기"><img src="img/v2-B1s1-05-run.webp" alt="원안 실행화면" loading="lazy" width="351" height="702"></button><figcaption data-key="g23-i0-o-c0">원안 실행화면</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-04-run.webp" aria-label="실행화면 크게 보기"><img src="img/v4-B1s1-04-run.webp" alt="실행화면" loading="lazy" width="351" height="702"></button><figcaption data-key="g23-i0-n-c0">실행화면</figcaption></figure></div></div></div><ul class="what" data-item="g23-i0"><li data-key="g23-i0-s0">원안의 실행화면을 길 안내나 상세 정보로 오해해서, &quot;AI가 앱 조작 중&quot; 칩과 움직이는 테두리로 지금 내 앱을 대신 조작하는 화면임을 드러냄</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-coach-k1.webp" aria-label="&#x27;?&#x27; 안내 1/3 크게 보기"><img src="img/v4-coach-k1.webp" alt="&#x27;?&#x27; 안내 1/3" loading="lazy" width="351" height="702"></button><figcaption data-key="g23-i1-n-c0">&#x27;?&#x27; 안내 1/3</figcaption></figure></div></div></div><ul class="what" data-item="g23-i1"><li data-key="g23-i1-s0">&#x27;?&#x27; 안내에서 실시간 화면이라고 직접 설명함</li></ul></li></ol>
+</details><details class="g" id="g24">
+  <summary><p class="rule">24. 화면의 누를 수 있는 요소와 없는 요소는 명확히 구분되어야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp"><p class="grp-t">원안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v2-B1s1-05-run.webp" aria-label="원안 실행화면 크게 보기"><img src="img/v2-B1s1-05-run.webp" alt="원안 실행화면" loading="lazy" width="351" height="702"></button><figcaption data-key="g24-i0-o-c0">원안 실행화면</figcaption></figure></div></div><span class="arrow" aria-hidden="true">→</span><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-04-run.webp" aria-label="흰 덮개 크게 보기"><img src="img/v4-B1s1-04-run.webp" alt="흰 덮개" loading="lazy" width="351" height="702"></button><figcaption data-key="g24-i0-n-c0">흰 덮개</figcaption></figure><figure><button type="button" class="zoom" data-src="img/v4-coach-k1.webp" aria-label="누를 수 없음 안내 크게 보기"><img src="img/v4-coach-k1.webp" alt="누를 수 없음 안내" loading="lazy" width="351" height="702"></button><figcaption data-key="g24-i0-n-c1">누를 수 없음 안내</figcaption></figure></div></div></div><ul class="what" data-item="g24-i0"><li data-key="g24-i0-s0">원안에서는 실행화면을 눌러도 반응이 없어 헤맴</li><li data-key="g24-i0-s1">흰 덮개로 누를 수 없는 화면임을 보이고 &#x27;?&#x27; 안내에서도 알림</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-B1s1-08-chat.webp" aria-label="누를 수 있는 목록 크게 보기"><img src="img/v4-B1s1-08-chat.webp" alt="누를 수 있는 목록" loading="lazy" width="351" height="702"></button><figcaption data-key="g24-i1-n-c0">누를 수 있는 목록</figcaption></figure><figure><button type="button" class="zoom" data-src="img/v4-B1s1-15-chat.webp" aria-label="누를 수 없는 표 크게 보기"><img src="img/v4-B1s1-15-chat.webp" alt="누를 수 없는 표" loading="lazy" width="351" height="702"></button><figcaption data-key="g24-i1-n-c1">누를 수 없는 표</figcaption></figure></div></div></div><ul class="what" data-item="g24-i1"><li data-key="g24-i1-s0">누를 수 있는 목록에만 ›를 붙여 누를 수 없는 정보와 구분함</li></ul></li></ol>
+</details></div></section><section class="sub"><h3 class="subcat">기대에 맞는 통제 방식</h3><div class="cards"><details class="g" id="g25">
+  <summary><p class="rule">25. 시스템은 사용자가 대화나 익숙한 방식(취소, 뒤로 가기 등)으로도 작업을 통제할 수 있게 해야 한다.</p></summary>
+  <ol class="items"><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-back-bk-chat.webp" aria-label="뒤로 가기 크게 보기"><img src="img/v4-back-bk-chat.webp" alt="뒤로 가기" loading="lazy" width="351" height="702"></button><figcaption data-key="g25-i0-n-c0">뒤로 가기</figcaption></figure></div></div></div><ul class="what" data-item="g25-i0"><li data-key="g25-i0-s0">익숙한 뒤로 가기로도 통제할 수 있도록, 누르면 AI를 멈추고 계속하기, 방금 한 일 취소, 앱 종료 중에서 고르게 함</li></ul></li><li class="item"><div class="shots"><div class="grp new"><p class="grp-t">개선안</p><div class="figs"><figure><button type="button" class="zoom" data-src="img/v4-back-bq-chat.webp" aria-label="앱 종료 확인 크게 보기"><img src="img/v4-back-bq-chat.webp" alt="앱 종료 확인" loading="lazy" width="351" height="702"></button><figcaption data-key="g25-i1-n-c0">앱 종료 확인</figcaption></figure></div></div></div><ul class="what" data-item="g25-i1"><li data-key="g25-i1-s0">실수로 모든 진행을 잃지 않도록 앱 종료는 한 번 더 확인함</li></ul></li></ol>
+</details></div></section></section>
+</div>
+<button type="button" class="edit-toggle" id="edit-toggle" hidden aria-pressed="false">문구 편집</button>
+<div class="lb" id="lb" hidden><img alt="크게 보기"></div>
+<script>
+const lb = document.getElementById("lb");
+document.addEventListener("click", (e) => {
+  const z = e.target.closest(".zoom");
+  if (z) { lb.querySelector("img").src = z.dataset.src; lb.hidden = false; return; }
+  if (!lb.hidden) lb.hidden = true;
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") lb.hidden = true; });
+
+// 문구 편집: '문구 편집'을 누르고 글자를 고치면 이 페이지에 저장됨 (다시 열어도 유지)
+// 불릿에서 엔터: 커서 위치에서 불릿을 둘로 나눔 / 불릿 맨 앞에서 백스페이스: 앞 불릿과 합침
+(async () => {
+  const db = await window.claude?.use?.("db");
+  if (!db) return;
+  const col = db.collection("edits");
+  const lists = {}; // 항목별 불릿 목록 (나누거나 합친 경우)
+  const editing = () => document.body.classList.contains("editing");
+  const renderList = (ul, items) => {
+    ul.innerHTML = "";
+    items.forEach((text, j) => {
+      const li = document.createElement("li");
+      li.dataset.key = `${ul.dataset.item}-s${j}`;
+      li.textContent = text;
+      if (editing()) li.contentEditable = "plaintext-only";
+      ul.appendChild(li);
+    });
+  };
+  col.onSnapshot((snap) => {
+    const docs = snap.docs.map((d) => [d.id, d.data()]).filter(([, v]) => v);
+    docs.forEach(([id, v]) => { if (id.endsWith("-list") && Array.isArray(v.items)) lists[id.slice(0, -5)] = v.items; });
+    docs.forEach(([id, v]) => {
+      if (id.endsWith("-list") || typeof v.text !== "string") return;
+      const item = id.replace(/-(s|o-c|n-c)\d+$/, "");
+      if (/-s\d+$/.test(id) && lists[item]) return; // 목록 전체가 저장돼 있으면 그쪽을 따름
+      const el = document.querySelector(`[data-key="${id}"]`);
+      if (el && document.activeElement !== el) el.textContent = v.text;
+    });
+    Object.entries(lists).forEach(([item, items]) => {
+      const ul = document.querySelector(`ul[data-item="${item}"]`);
+      if (ul && !ul.contains(document.activeElement)) renderList(ul, items);
+    });
+  }, () => {});
+  const btn = document.getElementById("edit-toggle");
+  btn.hidden = false;
+  btn.onclick = () => {
+    const on = !editing();
+    document.body.classList.toggle("editing", on);
+    btn.setAttribute("aria-pressed", String(on));
+    btn.textContent = on ? "편집 끝내기" : "문구 편집";
+    document.querySelectorAll("[data-key]").forEach((el) => { el.contentEditable = on ? "plaintext-only" : "false"; });
+  };
+  const flash = (el) => { el.classList.add("saved"); setTimeout(() => el.classList.remove("saved"), 900); };
+  const saveList = async (ul) => {
+    const items = [...ul.children].map((li) => li.textContent.trim()).filter(Boolean);
+    lists[ul.dataset.item] = items;
+    try { await col.doc(`${ul.dataset.item}-list`).set({ items }); flash(ul); } catch {}
+  };
+  document.addEventListener("focusin", (e) => { const el = e.target.closest?.("[data-key]"); if (el) el.dataset.before = el.textContent; });
+  document.addEventListener("focusout", async (e) => {
+    const el = e.target.closest?.("[data-key]");
+    if (!el || !el.isConnected || el.textContent === el.dataset.before) return;
+    const ul = el.closest("ul[data-item]");
+    if (ul) return saveList(ul);
+    try { await col.doc(el.dataset.key).set({ text: el.textContent.trim() }); flash(el); } catch { el.textContent = el.dataset.before; }
+  });
+  const caret = (el) => { const s = getSelection(); if (!s.rangeCount) return 0; const r = s.getRangeAt(0).cloneRange(); r.selectNodeContents(el); r.setEnd(s.getRangeAt(0).endContainer, s.getRangeAt(0).endOffset); return r.toString().length; };
+  const focusAt = (el, pos) => { el.focus(); const n = el.firstChild || el; const r = document.createRange(); r.setStart(n, Math.min(pos, (n.textContent || "").length)); r.collapse(true); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
+  document.addEventListener("keydown", (e) => {
+    const el = e.target.closest?.("[data-key]");
+    if (!el || !editing()) return;
+    const ul = el.closest("ul[data-item]");
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (!ul) return el.blur();
+      // 불릿 나누기
+      const text = el.textContent, at = caret(el);
+      const items = [...ul.children].map((li) => li.textContent);
+      const idx = [...ul.children].indexOf(el);
+      items.splice(idx, 1, text.slice(0, at).trim(), text.slice(at).trim());
+      renderList(ul, items);
+      saveList(ul);
+      focusAt(ul.children[idx + 1], 0);
+    } else if (e.key === "Backspace" && ul && caret(el) === 0 && el.previousElementSibling) {
+      // 앞 불릿과 합치기
+      e.preventDefault();
+      const prev = el.previousElementSibling, idx = [...ul.children].indexOf(el);
+      const items = [...ul.children].map((li) => li.textContent);
+      const pos = items[idx - 1].length;
+      items.splice(idx - 1, 2, items[idx - 1] + (items[idx - 1] && items[idx] ? " " : "") + items[idx]);
+      renderList(ul, items);
+      saveList(ul);
+      focusAt(ul.children[idx - 1], pos);
+    }
+  });
+  // 편집 중에는 캡처 설명을 눌러도 크게 보기가 열리지 않게
+  document.addEventListener("click", (e) => { if (editing() && e.target.closest("[data-key]")) e.stopPropagation(); }, true);
+})();
+</script>

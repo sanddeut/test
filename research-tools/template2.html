@@ -1,0 +1,119 @@
+<title>연구2 프로토타입 개선안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  /* 레이아웃: 왼쪽에 단계 정보(번호, 문구, 태그), 오른쪽에 휴대폰 화면(대화창, 실행화면)을 나란히. 「연구1 최종 시나리오」 문서와 같은 색 체계 */
+  :root {
+    --bg: #f6f5f1; --surface: #ffffff; --fg: #24231e; --muted: #6b685e; --line: #e3e0d6; --head: #efede6;
+    --accent: #a85f0e; --b-only: #fff1d6; --s1: #e5efff; --s2: #efe8ff; --frame: #b9b6ac;
+    --font: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #1a1916; --surface: #23221e; --fg: #ecebe6; --muted: #a6a398; --line: #393731; --head: #2b2a25;
+    --accent: #f0a64a; --b-only: #3a2f1c; --s1: #1c2940; --s2: #292240; --frame: #57544c; color-scheme: dark; } }
+  :root[data-theme="dark"] {
+    --bg: #1a1916; --surface: #23221e; --fg: #ecebe6; --muted: #a6a398; --line: #393731; --head: #2b2a25;
+    --accent: #f0a64a; --b-only: #3a2f1c; --s1: #1c2940; --s2: #292240; --frame: #57544c; color-scheme: dark; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14.5px; line-height: 1.6;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+  .wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+  h1 { font-size: 26px; font-weight: 600; margin: 0 0 6px; text-wrap: balance; }
+  h2 { font-size: 22px; font-weight: 600; margin: 0; text-wrap: balance; }
+  h3 { font-size: 17px; font-weight: 600; margin: 0; text-wrap: balance; }
+  h3 small { font-weight: 400; color: var(--muted); font-size: 13.5px; margin-left: 8px; }
+  h4 { font-size: 15px; font-weight: 600; margin: 0; }
+  .top p { margin: 0; color: var(--muted); max-width: 72ch; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line); }
+  .toc, .subnav { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 14px; }
+  a { color: var(--accent); }
+  article { display: flex; flex-direction: column; gap: 28px; }
+  .vh p { margin: 6px 0 0; color: var(--muted); max-width: 72ch; }
+  section { display: flex; flex-direction: column; gap: 10px; scroll-margin-top: 12px; }
+  .sec-intro { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 72ch; }
+  details.acc { display: flex; flex-direction: column; scroll-margin-top: 12px; }
+  details.acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding-block: 6px; border-radius: 6px; }
+  details.acc > summary::-webkit-details-marker { display: none; }
+  details.acc > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); }
+  details.acc[open] > summary::before { transform: rotate(45deg); margin-top: -4px; }
+  details.acc > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  details.acc[open] > summary { margin-bottom: 10px; }
+  ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+  .step { display: grid; grid-template-columns: minmax(200px, 300px) minmax(0, 1fr); gap: 16px 24px; padding: 16px; border-top: 1px solid var(--line); }
+  .step:first-child { border-top: 0; }
+  .meta { display: flex; gap: 12px; min-width: 0; }
+  .num { font-family: var(--mono); font-size: 13px; color: var(--muted); min-width: 34px; padding-top: 2px; font-variant-numeric: tabular-nums; }
+  .mt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag { font-size: 11.5px; letter-spacing: .02em; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+  .tag.t-b, .tag.t-a { color: var(--accent); border-color: currentColor; }
+  .tag.t-s1, .tag.t-s2 { color: var(--fg); font-weight: 500; }
+  .say { border-left: 2px solid var(--line); padding-left: 10px; }
+  .say p { margin: 0; }
+  .opts { margin: 0; font-size: 13px; color: var(--muted); }
+  .opts span { white-space: nowrap; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; background: var(--surface); color: var(--fg); }
+  .note { margin: 0; font-size: 13px; color: var(--muted); max-width: 60ch; }
+  .figs { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .ph { margin: 0; display: flex; flex-direction: column; gap: 4px; align-items: center; width: 176px; }
+  .ph figcaption { font-size: 12px; color: var(--muted); }
+  .zoom { all: unset; cursor: zoom-in; display: block; border-radius: 10px; border: 1px solid var(--frame); overflow: hidden; line-height: 0; background: var(--surface); }
+  .zoom:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .zoom img { width: 174px; height: auto; display: block; }
+  @media (max-width: 760px) {
+    .step { grid-template-columns: minmax(0, 1fr); }
+    .figs { gap: 10px; }
+    .ph { width: calc(50% - 5px); }
+    .zoom img { width: 100%; }
+  }
+  dialog { border: 0; padding: 0; background: transparent; max-width: 100vw; max-height: 100vh; }
+  dialog::backdrop { background: rgb(0 0 0 / .72); }
+  dialog img { display: block; max-height: 92vh; max-width: 92vw; width: auto; border-radius: 16px; }
+  dialog p { color: #fff; text-align: center; margin: 8px 0 0; font-size: 13px; }
+  @media (prefers-reduced-motion: no-preference) { .zoom { transition: transform .15s } .zoom:hover { transform: translateY(-2px) } }
+  /* 원안(작게)과 개선안을 나란히 */
+  .step { grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); }
+  .cmp { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; min-width: 0; }
+  .col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .col-t { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .04em; color: var(--muted); }
+  .col.new .col-t { color: var(--accent); }
+  .orig .figs { gap: 8px; }
+  .orig .ph { width: 92px; }
+  .orig .zoom { border-radius: 7px; }
+  .orig .zoom img { width: 90px; }
+  .orig .ph figcaption { font-size: 11px; text-align: center; line-height: 1.3; }
+  .new .figs { gap: 10px; }
+  .new .ph { width: 132px; }
+  .new .zoom img { width: 130px; }
+  .frames { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+  .frame { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+  .frame-t { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .same { display: grid; place-items: center; width: 130px; min-height: 120px; border: 1.5px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 12.5px; text-align: center; padding: 8px; }
+  .ph { position: relative; }
+  .fnum { position: absolute; left: 4px; top: 4px; z-index: 1; background: var(--fg); color: var(--bg); font-family: var(--mono); font-size: 11px; line-height: 1; padding: 3px 5px; border-radius: 4px; pointer-events: none; white-space: nowrap; }
+  .ph.recent .fnum { background: #d93025; color: #fff; }
+  .ph.recent .zoom { border: 2.5px solid #d93025; }
+  .ph.recent figcaption { color: #d93025; font-weight: 600; }
+  .empty { display: grid; place-items: center; min-height: 180px; border: 1.5px dashed var(--line); border-radius: 10px; color: var(--muted); font-size: 13px; }
+  @media (max-width: 760px) { .cmp { grid-template-columns: minmax(0, 1fr); } .orig .ph { width: 92px; } .orig .zoom img { width: 90px; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>연구2 프로토타입 개선안</h1>
+  </header>
+  {{BODY}}
+</div>
+<dialog id="zoom"><img alt=""><p></p></dialog>
+<script>
+  const dlg = document.getElementById("zoom");
+  document.querySelectorAll(".zoom").forEach((b) => b.addEventListener("click", () => {
+    const im = b.querySelector("img");
+    dlg.querySelector("img").src = im.src;
+    dlg.querySelector("img").alt = im.alt;
+    dlg.querySelector("p").textContent = im.alt;
+    dlg.showModal();
+  }));
+  dlg.addEventListener("click", () => dlg.close());
+</script>

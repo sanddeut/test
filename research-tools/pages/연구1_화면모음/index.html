@@ -1,0 +1,188 @@
+<title>연구1 프로토타입 화면 모음</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  /* 레이아웃: 왼쪽에 단계 정보(번호·문구·태그), 오른쪽에 휴대폰 화면(대화창·실행화면)을 나란히. 「연구1 최종 시나리오」 문서와 같은 색 체계 */
+  :root {
+    --bg: #f6f5f1; --surface: #ffffff; --fg: #24231e; --muted: #6b685e; --line: #e3e0d6; --head: #efede6;
+    --accent: #a85f0e; --b-only: #fff1d6; --s1: #e5efff; --s2: #efe8ff; --frame: #b9b6ac;
+    --font: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #1a1916; --surface: #23221e; --fg: #ecebe6; --muted: #a6a398; --line: #393731; --head: #2b2a25;
+    --accent: #f0a64a; --b-only: #3a2f1c; --s1: #1c2940; --s2: #292240; --frame: #57544c; color-scheme: dark; } }
+  :root[data-theme="dark"] {
+    --bg: #1a1916; --surface: #23221e; --fg: #ecebe6; --muted: #a6a398; --line: #393731; --head: #2b2a25;
+    --accent: #f0a64a; --b-only: #3a2f1c; --s1: #1c2940; --s2: #292240; --frame: #57544c; color-scheme: dark; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14.5px; line-height: 1.6;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+  .wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+  h1 { font-size: 26px; font-weight: 600; margin: 0 0 6px; text-wrap: balance; }
+  h2 { font-size: 22px; font-weight: 600; margin: 0; text-wrap: balance; }
+  h3 { font-size: 17px; font-weight: 600; margin: 0; text-wrap: balance; }
+  h3 small { font-weight: 400; color: var(--muted); font-size: 13.5px; margin-left: 8px; }
+  h4 { font-size: 15px; font-weight: 600; margin: 0; }
+  .top p { margin: 0; color: var(--muted); max-width: 72ch; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line); }
+  .toc, .subnav { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 14px; }
+  a { color: var(--accent); }
+  article { display: flex; flex-direction: column; gap: 28px; }
+  .vh p { margin: 6px 0 0; color: var(--muted); max-width: 72ch; }
+  section { display: flex; flex-direction: column; gap: 10px; scroll-margin-top: 12px; }
+  .sec-intro { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 72ch; }
+  details.acc { display: flex; flex-direction: column; scroll-margin-top: 12px; }
+  details.acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding-block: 6px; border-radius: 6px; }
+  details.acc > summary::-webkit-details-marker { display: none; }
+  details.acc > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); }
+  details.acc[open] > summary::before { transform: rotate(45deg); margin-top: -4px; }
+  details.acc > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  details.acc[open] > summary { margin-bottom: 10px; }
+  ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+  .step { display: grid; grid-template-columns: minmax(200px, 300px) minmax(0, 1fr); gap: 16px 24px; padding: 16px; border-top: 1px solid var(--line); }
+  .step:first-child { border-top: 0; }
+  .meta { display: flex; gap: 12px; min-width: 0; }
+  .num { font-family: var(--mono); font-size: 13px; color: var(--muted); min-width: 34px; padding-top: 2px; font-variant-numeric: tabular-nums; }
+  .mt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag { font-size: 11.5px; letter-spacing: .02em; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+  .tag.t-b, .tag.t-a { color: var(--accent); border-color: currentColor; }
+  .tag.t-s1, .tag.t-s2 { color: var(--fg); font-weight: 500; }
+  .say { border-left: 2px solid var(--line); padding-left: 10px; }
+  .say p { margin: 0; }
+  .opts { margin: 0; font-size: 13px; color: var(--muted); }
+  .opts span { white-space: nowrap; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; background: var(--surface); color: var(--fg); }
+  .note { margin: 0; font-size: 13px; color: var(--muted); max-width: 60ch; }
+  .figs { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .ph { margin: 0; display: flex; flex-direction: column; gap: 4px; align-items: center; width: 176px; }
+  .ph figcaption { font-size: 12px; color: var(--muted); }
+  .zoom { all: unset; cursor: zoom-in; display: block; border-radius: 10px; border: 1px solid var(--frame); overflow: hidden; line-height: 0; background: var(--surface); }
+  .zoom:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .zoom img { width: 174px; height: auto; display: block; }
+  @media (max-width: 760px) {
+    .step { grid-template-columns: minmax(0, 1fr); }
+    .figs { gap: 10px; }
+    .ph { width: calc(50% - 5px); }
+    .zoom img { width: 100%; }
+  }
+  dialog { border: 0; padding: 0; background: transparent; max-width: 100vw; max-height: 100vh; }
+  dialog::backdrop { background: rgb(0 0 0 / .72); }
+  dialog img { display: block; max-height: 92vh; max-width: 92vw; width: auto; border-radius: 16px; }
+  dialog p { color: #fff; text-align: center; margin: 8px 0 0; font-size: 13px; }
+  @media (prefers-reduced-motion: no-preference) { .zoom { transition: transform .15s } .zoom:hover { transform: translateY(-2px) } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>연구1 프로토타입 화면 모음</h1>
+  </header>
+  <article id="v2"><details class="acc" id="v2-low" open><summary><h3>낮은 자동화</h3></summary><ol class="steps"><li class="step ">
+  <div class="meta"><div class="num">1</div><div class="mt"><h4>택시 앱 실행</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="택시 앱 실행 대화창 크게 보기"><img src="img/v2-B1s1-03-chat.webp" alt="택시 앱 실행 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure></div>
+</li>
+<li class="step ">
+  <div class="meta"><div class="num">2</div><div class="mt"><h4>출발지 설정</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="출발지 설정 대화창 크게 보기"><img src="img/v2-B1s1-05-chat.webp" alt="출발지 설정 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="출발지 설정 실행화면 크게 보기"><img src="img/v2-B1s1-05-run.webp" alt="출발지 설정 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step ">
+  <div class="meta"><div class="num">3</div><div class="mt"><h4>목적지 설정</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="목적지 설정 대화창 크게 보기"><img src="img/v2-B1s1-07-chat.webp" alt="목적지 설정 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="목적지 설정 실행화면 크게 보기"><img src="img/v2-B1s1-07-run.webp" alt="목적지 설정 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step b">
+  <div class="meta"><div class="num">4</div><div class="mt"><h4>택시 종류 확인</h4><div class="tags"><span class="tag t-b">높은 복잡도</span></div></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="택시 종류 확인 대화창 크게 보기"><img src="img/v2-B1s1-09-chat.webp" alt="택시 종류 확인 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="택시 종류 확인 실행화면 크게 보기"><img src="img/v2-B1s1-09-run.webp" alt="택시 종류 확인 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step b">
+  <div class="meta"><div class="num">5</div><div class="mt"><h4>예상 금액 확인</h4><div class="tags"><span class="tag t-b">높은 복잡도</span></div></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="예상 금액 확인 대화창 크게 보기"><img src="img/v2-B1s1-11-chat.webp" alt="예상 금액 확인 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="예상 금액 확인 실행화면 크게 보기"><img src="img/v2-B1s1-11-run.webp" alt="예상 금액 확인 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step s1">
+  <div class="meta"><div class="num">6</div><div class="mt"><h4>[세션1 오류] 기사님 요청사항 임의 선택</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="기사님 요청사항 임의 선택 대화창 크게 보기"><img src="img/v2-B1s1-13-chat.webp" alt="기사님 요청사항 임의 선택 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="기사님 요청사항 임의 선택 실행화면 크게 보기"><img src="img/v2-B1s1-13-run.webp" alt="기사님 요청사항 임의 선택 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step s1">
+  <div class="meta"><div class="num">6-1</div><div class="mt"><h4>[세션1 오류] 거부 후 요청사항 바꾸기</h4><div class="tags"><span class="tag t-x">거부했을 때</span></div></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="거부 후 요청사항 바꾸기 대화창 크게 보기"><img src="img/v2-B1s1-15-chat.webp" alt="거부 후 요청사항 바꾸기 대화창" loading="lazy" width="351" height="702"></button><figcaption>거부 → 다시 고르기 (대화창)</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="거부 후 요청사항 바꾸기 거부 → 다시 고르기 (실행화면) 크게 보기"><img src="img/v2-B1s1-15-run.webp" alt="거부 후 요청사항 바꾸기 거부 → 다시 고르기 (실행화면)" loading="lazy" width="351" height="702"></button><figcaption>거부 → 다시 고르기 (실행화면)</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="거부 후 요청사항 바꾸기 요청사항을 바꾼 뒤 (대화창) 크게 보기"><img src="img/v2-B1s1-16-chat.webp" alt="거부 후 요청사항 바꾸기 요청사항을 바꾼 뒤 (대화창)" loading="lazy" width="351" height="702"></button><figcaption>요청사항을 바꾼 뒤 (대화창)</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="거부 후 요청사항 바꾸기 요청사항을 바꾼 뒤 (실행화면) 크게 보기"><img src="img/v2-B1s1-16-run.webp" alt="거부 후 요청사항 바꾸기 요청사항을 바꾼 뒤 (실행화면)" loading="lazy" width="351" height="702"></button><figcaption>요청사항을 바꾼 뒤 (실행화면)</figcaption></figure></div>
+</li>
+<li class="step ">
+  <div class="meta"><div class="num">7</div><div class="mt"><h4>최종 호출 확인</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="최종 호출 확인 대화창 크게 보기"><img src="img/v2-B1s1-18-chat.webp" alt="최종 호출 확인 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="최종 호출 확인 실행화면 크게 보기"><img src="img/v2-B1s1-18-run.webp" alt="최종 호출 확인 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step ">
+  <div class="meta"><div class="num">8</div><div class="mt"><h4>결제 비밀번호 (직접조작)</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="결제 비밀번호 (직접조작) 대화창 크게 보기"><img src="img/v2-B1s1-19-chat.webp" alt="결제 비밀번호 (직접조작) 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="결제 비밀번호 (직접조작) [화면 열기] 후 앱 화면 크게 보기"><img src="img/v2-B1s1-20-chat.webp" alt="결제 비밀번호 (직접조작) [화면 열기] 후 앱 화면" loading="lazy" width="351" height="702"></button><figcaption>[화면 열기] 후 앱 화면</figcaption></figure></div>
+</li>
+<li class="step ">
+  <div class="meta"><div class="num">9</div><div class="mt"><h4>호출 완료</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="호출 완료 대화창 크게 보기"><img src="img/v2-B1s1-21-chat.webp" alt="호출 완료 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="호출 완료 실행화면 크게 보기"><img src="img/v2-B1s1-21-run.webp" alt="호출 완료 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="호출 완료 완료 후 앱 화면 크게 보기"><img src="img/v2-B1s1-22-chat.webp" alt="호출 완료 완료 후 앱 화면" loading="lazy" width="351" height="702"></button><figcaption>완료 후 앱 화면</figcaption></figure></div>
+</li>
+<li class="step s2">
+  <div class="meta"><div class="num">10</div><div class="mt"><h4>[세션2 오류] 이용내역 열람 + 예약 호출 제안</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="이용내역 열람 + 예약 호출 제안 대화창 크게 보기"><img src="img/v2-B1s2-04-chat.webp" alt="이용내역 열람 + 예약 호출 제안 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="이용내역 열람 + 예약 호출 제안 실행화면 크게 보기"><img src="img/v2-B1s2-04-run.webp" alt="이용내역 열람 + 예약 호출 제안 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step s2">
+  <div class="meta"><div class="num">10-1</div><div class="mt"><h4>[세션2 오류] 예약 거부 시</h4><div class="tags"><span class="tag t-x">거부했을 때</span></div></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="예약 거부 시 대화창 크게 보기"><img src="img/v2-B1s2r-05-chat.webp" alt="예약 거부 시 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="예약 거부 시 실행화면 크게 보기"><img src="img/v2-B1s2r-05-run.webp" alt="예약 거부 시 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step s2">
+  <div class="meta"><div class="num">10-2</div><div class="mt"><h4>[세션2 오류] 예약 승인 시</h4><div class="tags"><span class="tag t-x">승인했을 때</span></div></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="예약 승인 시 대화창 크게 보기"><img src="img/v2-B1s2-05-chat.webp" alt="예약 승인 시 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="예약 승인 시 실행화면 크게 보기"><img src="img/v2-B1s2-05-run.webp" alt="예약 승인 시 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li></ol></details><details class="acc" id="v2-high" open><summary><h3>높은 자동화</h3></summary><ol class="steps"><li class="step ">
+  <div class="meta"><div class="num">1</div><div class="mt"><h4>택시 앱 실행</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="택시 앱 실행 대화창 크게 보기"><img src="img/v2-B2s1-02-chat.webp" alt="택시 앱 실행 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure></div>
+</li>
+<li class="step ">
+  <div class="meta"><div class="num">2</div><div class="mt"><h4>출발지 설정</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="출발지 설정 대화창 크게 보기"><img src="img/v2-B2s1-03-chat.webp" alt="출발지 설정 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="출발지 설정 실행화면 크게 보기"><img src="img/v2-B2s1-03-run.webp" alt="출발지 설정 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step ">
+  <div class="meta"><div class="num">3</div><div class="mt"><h4>목적지 설정</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="목적지 설정 대화창 크게 보기"><img src="img/v2-B2s1-04-chat.webp" alt="목적지 설정 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="목적지 설정 실행화면 크게 보기"><img src="img/v2-B2s1-04-run.webp" alt="목적지 설정 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step b">
+  <div class="meta"><div class="num">4</div><div class="mt"><h4>택시 종류 확인</h4><div class="tags"><span class="tag t-b">높은 복잡도</span></div></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="택시 종류 확인 대화창 크게 보기"><img src="img/v2-B2s1-05-chat.webp" alt="택시 종류 확인 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="택시 종류 확인 실행화면 크게 보기"><img src="img/v2-B2s1-05-run.webp" alt="택시 종류 확인 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step b">
+  <div class="meta"><div class="num">5</div><div class="mt"><h4>예상 금액 확인</h4><div class="tags"><span class="tag t-b">높은 복잡도</span></div></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="예상 금액 확인 대화창 크게 보기"><img src="img/v2-B2s1-06-chat.webp" alt="예상 금액 확인 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="예상 금액 확인 실행화면 크게 보기"><img src="img/v2-B2s1-06-run.webp" alt="예상 금액 확인 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step s1">
+  <div class="meta"><div class="num">6</div><div class="mt"><h4>[세션1 오류] 기사님 요청사항 임의 선택</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="기사님 요청사항 임의 선택 대화창 크게 보기"><img src="img/v2-B2s1-07-chat.webp" alt="기사님 요청사항 임의 선택 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="기사님 요청사항 임의 선택 실행화면 크게 보기"><img src="img/v2-B2s1-07-run.webp" alt="기사님 요청사항 임의 선택 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step s1">
+  <div class="meta"><div class="num">6-1</div><div class="mt"><h4>[세션1 오류] 중지 후 요청사항 바꾸기</h4><div class="tags"><span class="tag t-x">중지했을 때</span></div></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="중지 후 요청사항 바꾸기 대화창 크게 보기"><img src="img/v2-B2s1-09-chat.webp" alt="중지 후 요청사항 바꾸기 대화창" loading="lazy" width="351" height="702"></button><figcaption>중지 → 선택지</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="중지 후 요청사항 바꾸기 요청사항을 바꾼 뒤 크게 보기"><img src="img/v2-B2s1-11-chat.webp" alt="중지 후 요청사항 바꾸기 요청사항을 바꾼 뒤" loading="lazy" width="351" height="702"></button><figcaption>요청사항을 바꾼 뒤</figcaption></figure></div>
+</li>
+<li class="step ">
+  <div class="meta"><div class="num">7</div><div class="mt"><h4>최종 호출 확인</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="최종 호출 확인 대화창 크게 보기"><img src="img/v2-B2s1-13-chat.webp" alt="최종 호출 확인 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="최종 호출 확인 실행화면 크게 보기"><img src="img/v2-B2s1-13-run.webp" alt="최종 호출 확인 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step ">
+  <div class="meta"><div class="num">9</div><div class="mt"><h4>호출 완료</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="호출 완료 대화창 크게 보기"><img src="img/v2-B2s1-16-chat.webp" alt="호출 완료 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="호출 완료 실행화면 크게 보기"><img src="img/v2-B2s1-16-run.webp" alt="호출 완료 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step s2">
+  <div class="meta"><div class="num">10</div><div class="mt"><h4>[세션2 오류] 이용내역 열람 + 예약 호출 안내</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="이용내역 열람 + 예약 호출 안내 대화창 크게 보기"><img src="img/v2-B2s2-03-chat.webp" alt="이용내역 열람 + 예약 호출 안내 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="이용내역 열람 + 예약 호출 안내 실행화면 크게 보기"><img src="img/v2-B2s2-03-run.webp" alt="이용내역 열람 + 예약 호출 안내 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li>
+<li class="step s2">
+  <div class="meta"><div class="num">10</div><div class="mt"><h4>[세션2 오류] 예약 등록</h4></div></div>
+  <div class="figs"><figure class="ph"><button type="button" class="zoom" aria-label="예약 등록 대화창 크게 보기"><img src="img/v2-B2s2-04-chat.webp" alt="예약 등록 대화창" loading="lazy" width="351" height="702"></button><figcaption>대화창</figcaption></figure><figure class="ph"><button type="button" class="zoom" aria-label="예약 등록 실행화면 크게 보기"><img src="img/v2-B2s2-04-run.webp" alt="예약 등록 실행화면" loading="lazy" width="351" height="702"></button><figcaption>실행화면</figcaption></figure></div>
+</li></ol></details></article>
+</div>
+<dialog id="zoom"><img alt=""><p></p></dialog>
+<script>
+  const dlg = document.getElementById("zoom");
+  document.querySelectorAll(".zoom").forEach((b) => b.addEventListener("click", () => {
+    const im = b.querySelector("img");
+    dlg.querySelector("img").src = im.src;
+    dlg.querySelector("img").alt = im.alt;
+    dlg.querySelector("p").textContent = im.alt;
+    dlg.showModal();
+  }));
+  dlg.addEventListener("click", () => dlg.close());
+</script>

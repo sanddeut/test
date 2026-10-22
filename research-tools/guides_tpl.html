@@ -1,0 +1,216 @@
+<title>연구2 가이드라인 적용</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* 가이드라인 번호 순서의 세로 목록. 한 항목 = 원칙 문장, 적용 내용, 원안/개선안 캡처 */
+:root {
+  --bg: #f5f6f8; --card: #ffffff; --fg: #1c1d21; --muted: #6b6f7a; --line: #e2e5ea; --accent: #0b57d0; --accent-soft: #e8effc; --line-soft: #f0f1f4;
+  --sans: "Noto Sans KR", system-ui, -apple-system, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #15171b; --card: #1e2127; --fg: #eceef2; --muted: #9aa0ab; --line: #30343c; --accent: #8ab4ff; --accent-soft: #24304a; --line-soft: #262a31; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #15171b; --card: #1e2127; --fg: #eceef2; --muted: #9aa0ab; --line: #30343c; --accent: #8ab4ff; --accent-soft: #24304a; --line-soft: #262a31; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 80px; }
+h1 { font-size: 28px; margin: 0 0 6px; text-wrap: balance; }
+h2.cat { font-size: 13px; letter-spacing: .06em; color: var(--muted); margin: 36px 0 10px; font-weight: 500; }
+.g { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 10px; scroll-margin-top: 16px; }
+.g header { display: flex; align-items: baseline; gap: 10px; }
+.n { font-family: var(--mono); font-size: 20px; color: var(--accent); }
+.sub { font-size: 13px; color: var(--muted); }
+.rule { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.5; text-wrap: balance; max-width: 60ch; }
+.how { margin: 0; padding-left: 18px; color: var(--fg); max-width: 75ch; display: flex; flex-direction: column; gap: 4px; }
+.how li::marker { color: var(--muted); }
+.cmp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px; margin-top: 6px; }
+.col { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.col-t { margin: 0; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+.col.new .col-t { color: var(--accent); }
+.figs { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+figure { margin: 0; width: 120px; display: flex; flex-direction: column; gap: 4px; }
+figcaption { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.zoom { border: 1px solid var(--line); border-radius: 10px; padding: 0; background: none; cursor: zoom-in; overflow: hidden; display: block; }
+.zoom:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.zoom img { display: block; width: 100%; height: auto; }
+.none { margin: 0; color: var(--muted); font-size: 13px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 8px; }
+.lb { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: grid; place-items: center; z-index: 20; padding: 24px; }
+.lb[hidden] { display: none; }
+.lb img { max-height: 92vh; width: auto; border-radius: 12px; }
+@media (max-width: 640px) { .cmp { grid-template-columns: minmax(0, 1fr); } figure { width: calc(50% - 5px); } }
+.items { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; }
+.item { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: 16px; padding-block: 14px; border-top: 1px solid var(--line); }
+.what { margin: 0; font-size: 15px; line-height: 1.55; }
+.shots { display: flex; flex-wrap: wrap; gap: 18px; min-width: 0; }
+.grp { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.grp-t { margin: 0; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+.grp.new .grp-t { color: var(--accent); }
+@media (max-width: 640px) { .item { grid-template-columns: minmax(0, 1fr); gap: 8px; } }
+h2.cat { font-size: 24px; font-weight: 700; color: var(--fg); letter-spacing: 0; margin: 48px 0 4px; }
+h3.subcat { font-size: 17px; font-weight: 700; color: var(--muted); margin: 22px 0 10px; }
+/* 접고 펴기 */
+details > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .2s; flex: none; margin-right: 2px; }
+details[open] > summary::before { transform: rotate(45deg); }
+details > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+details.cat > summary h2, details.sub > summary h3 { margin: 0; }
+details.cat { margin-top: 40px; }
+details.sub { margin: 18px 0 0 4px; }
+.cards { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+.g { margin-bottom: 0; }
+/* 전체 글씨 한 단계 작게, 자간 1px 좁게 */
+body { font-size: 14px; letter-spacing: -1px; }
+h1 { font-size: 26px; }
+h2.cat { font-size: 22px; }
+h3.subcat { font-size: 16px; }
+.rule { font-size: 16px; }
+.what { font-size: 14px; }
+.n { font-size: 18px; }
+.grp-t { font-size: 11px; letter-spacing: -1px; }
+figcaption { font-size: 11px; }
+@media (prefers-reduced-motion: reduce) { details > summary::before { transition: none; } }
+.catblock { margin-top: 40px; }
+h2.cat { margin: 0; }
+/* 굵은 글씨는 한 단계 가늘게 */
+h1, h2.cat, h3.subcat, .rule, .grp-t { font-weight: 600; }
+/* 한 줄: 원안 → 개선안, 그 오른쪽에 넓게 설명 (문장마다 불릿) */
+.item { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 20px; }
+.item .shots { flex: none; display: flex; align-items: center; gap: 12px; max-width: 100%; flex-wrap: wrap; }
+.arrow { font-size: 22px; color: var(--muted); align-self: center; padding-top: 18px; }
+.item .what { flex: 1 1 320px; min-width: 0; margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.6; }
+.item .what li::marker { color: var(--muted); }
+.item .what { list-style: disc; }
+.item .shots { min-width: min(100%, 300px); }
+/* 문구 편집 */
+.edit-toggle { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 15; border: 0; border-radius: 999px; background: var(--accent); color: var(--card); padding: 10px 18px; font: 600 14px var(--sans); box-shadow: 0 4px 14px rgba(0,0,0,.2); cursor: pointer; }
+.edit-toggle[aria-pressed="true"] { background: var(--fg); }
+body.editing [data-key] { outline: 1px dashed var(--accent); outline-offset: 2px; border-radius: 3px; cursor: text; }
+body.editing [data-key]:focus { outline: 2px solid var(--accent); background: var(--accent-soft); }
+[data-key].saved { background: var(--accent-soft); transition: background .6s; }
+/* 가이드라인마다 접고 펴기 (처음엔 모두 접힘) */
+section.sub { margin: 18px 0 0; }
+h3.subcat { margin: 0; }
+.cards { gap: 8px; margin-top: 10px; }
+details.g { padding: 0; gap: 0; }
+details.g > summary { padding: 14px 18px; }
+details.g > summary .rule { margin: 0; flex: 1; }
+details.g > summary::before { margin-top: 1px; }
+details.g[open] > summary { border-bottom: 1px solid var(--line); }
+details.g .items { padding: 0 18px 8px; margin: 0; }
+details.g .item:first-child { border-top: 0; }
+/* 같은 소제목의 가이드라인은 카드 하나로 묶고 구분선으로 나눔, 쉐브론은 오른쪽 끝 */
+.cards { gap: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+details.g { background: none; border: 0; border-radius: 0; margin: 0; }
+details.g + details.g { border-top: 1px solid var(--line); }
+details.g > summary::before { content: none; }
+details.g > summary::after { content: ""; flex: none; width: 7px; height: 7px; margin-left: 12px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .2s; }
+details.g[open] > summary::after { transform: rotate(45deg); }
+details.g > summary:hover { background: var(--bg); }
+details.g > summary .rule { max-width: none; font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { details.g > summary::after { transition: none; } }
+/* 펼친 가이드라인 안의 구분선은 더 옅게, 위아래 여백 넉넉히 */
+details.g .item { border-top-color: var(--line-soft); padding-block: 22px; }
+</style>
+<div class="wrap">
+  <h1>연구2 가이드라인 적용</h1>
+  {{BODY}}
+</div>
+<button type="button" class="edit-toggle" id="edit-toggle" hidden aria-pressed="false">문구 편집</button>
+<div class="lb" id="lb" hidden><img alt="크게 보기"></div>
+<script>
+const lb = document.getElementById("lb");
+document.addEventListener("click", (e) => {
+  const z = e.target.closest(".zoom");
+  if (z) { lb.querySelector("img").src = z.dataset.src; lb.hidden = false; return; }
+  if (!lb.hidden) lb.hidden = true;
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") lb.hidden = true; });
+
+// 문구 편집: '문구 편집'을 누르고 글자를 고치면 이 페이지에 저장됨 (다시 열어도 유지)
+// 불릿에서 엔터: 커서 위치에서 불릿을 둘로 나눔 / 불릿 맨 앞에서 백스페이스: 앞 불릿과 합침
+(async () => {
+  const db = await window.claude?.use?.("db");
+  if (!db) return;
+  const col = db.collection("edits");
+  const lists = {}; // 항목별 불릿 목록 (나누거나 합친 경우)
+  const editing = () => document.body.classList.contains("editing");
+  const renderList = (ul, items) => {
+    ul.innerHTML = "";
+    items.forEach((text, j) => {
+      const li = document.createElement("li");
+      li.dataset.key = `${ul.dataset.item}-s${j}`;
+      li.textContent = text;
+      if (editing()) li.contentEditable = "plaintext-only";
+      ul.appendChild(li);
+    });
+  };
+  col.onSnapshot((snap) => {
+    const docs = snap.docs.map((d) => [d.id, d.data()]).filter(([, v]) => v);
+    docs.forEach(([id, v]) => { if (id.endsWith("-list") && Array.isArray(v.items)) lists[id.slice(0, -5)] = v.items; });
+    docs.forEach(([id, v]) => {
+      if (id.endsWith("-list") || typeof v.text !== "string") return;
+      const item = id.replace(/-(s|o-c|n-c)\d+$/, "");
+      if (/-s\d+$/.test(id) && lists[item]) return; // 목록 전체가 저장돼 있으면 그쪽을 따름
+      const el = document.querySelector(`[data-key="${id}"]`);
+      if (el && document.activeElement !== el) el.textContent = v.text;
+    });
+    Object.entries(lists).forEach(([item, items]) => {
+      const ul = document.querySelector(`ul[data-item="${item}"]`);
+      if (ul && !ul.contains(document.activeElement)) renderList(ul, items);
+    });
+  }, () => {});
+  const btn = document.getElementById("edit-toggle");
+  btn.hidden = false;
+  btn.onclick = () => {
+    const on = !editing();
+    document.body.classList.toggle("editing", on);
+    btn.setAttribute("aria-pressed", String(on));
+    btn.textContent = on ? "편집 끝내기" : "문구 편집";
+    document.querySelectorAll("[data-key]").forEach((el) => { el.contentEditable = on ? "plaintext-only" : "false"; });
+  };
+  const flash = (el) => { el.classList.add("saved"); setTimeout(() => el.classList.remove("saved"), 900); };
+  const saveList = async (ul) => {
+    const items = [...ul.children].map((li) => li.textContent.trim()).filter(Boolean);
+    lists[ul.dataset.item] = items;
+    try { await col.doc(`${ul.dataset.item}-list`).set({ items }); flash(ul); } catch {}
+  };
+  document.addEventListener("focusin", (e) => { const el = e.target.closest?.("[data-key]"); if (el) el.dataset.before = el.textContent; });
+  document.addEventListener("focusout", async (e) => {
+    const el = e.target.closest?.("[data-key]");
+    if (!el || !el.isConnected || el.textContent === el.dataset.before) return;
+    const ul = el.closest("ul[data-item]");
+    if (ul) return saveList(ul);
+    try { await col.doc(el.dataset.key).set({ text: el.textContent.trim() }); flash(el); } catch { el.textContent = el.dataset.before; }
+  });
+  const caret = (el) => { const s = getSelection(); if (!s.rangeCount) return 0; const r = s.getRangeAt(0).cloneRange(); r.selectNodeContents(el); r.setEnd(s.getRangeAt(0).endContainer, s.getRangeAt(0).endOffset); return r.toString().length; };
+  const focusAt = (el, pos) => { el.focus(); const n = el.firstChild || el; const r = document.createRange(); r.setStart(n, Math.min(pos, (n.textContent || "").length)); r.collapse(true); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
+  document.addEventListener("keydown", (e) => {
+    const el = e.target.closest?.("[data-key]");
+    if (!el || !editing()) return;
+    const ul = el.closest("ul[data-item]");
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (!ul) return el.blur();
+      // 불릿 나누기
+      const text = el.textContent, at = caret(el);
+      const items = [...ul.children].map((li) => li.textContent);
+      const idx = [...ul.children].indexOf(el);
+      items.splice(idx, 1, text.slice(0, at).trim(), text.slice(at).trim());
+      renderList(ul, items);
+      saveList(ul);
+      focusAt(ul.children[idx + 1], 0);
+    } else if (e.key === "Backspace" && ul && caret(el) === 0 && el.previousElementSibling) {
+      // 앞 불릿과 합치기
+      e.preventDefault();
+      const prev = el.previousElementSibling, idx = [...ul.children].indexOf(el);
+      const items = [...ul.children].map((li) => li.textContent);
+      const pos = items[idx - 1].length;
+      items.splice(idx - 1, 2, items[idx - 1] + (items[idx - 1] && items[idx] ? " " : "") + items[idx]);
+      renderList(ul, items);
+      saveList(ul);
+      focusAt(ul.children[idx - 1], pos);
+    }
+  });
+  // 편집 중에는 캡처 설명을 눌러도 크게 보기가 열리지 않게
+  document.addEventListener("click", (e) => { if (editing() && e.target.closest("[data-key]")) e.stopPropagation(); }, true);
+})();
+</script>

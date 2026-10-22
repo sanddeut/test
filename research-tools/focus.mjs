@@ -1,0 +1,13 @@
+import { createRequire } from "module";
+const require = createRequire("/opt/node-tools/node_modules/");
+const { chromium } = require("playwright");
+const b = await chromium.launch();
+const ctx = await b.newContext({ viewport: { width: 390, height: 780 }, isMobile: true, hasTouch: true });
+const p = await ctx.newPage();
+await p.goto("http://localhost:8123/v4/");
+await p.click("#btn-web"); await p.waitForTimeout(1200);
+await p.evaluate(() => document.querySelector("#btn-task-close")?.click()); await p.waitForTimeout(600);
+await p.tap("#start-btn"); await p.waitForTimeout(500);
+await p.tap("#pick-text"); await p.waitForTimeout(300);
+console.log(await p.evaluate(() => ({ active: document.activeElement?.id, ph: $("#msg").placeholder })));
+await b.close();
