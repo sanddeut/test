@@ -17,6 +17,7 @@
 - `drive.mjs`: 시나리오 한 번을 끝까지 진행하며 단계마다 대화창과 실행화면을 찍음. 예: `node drive.mjs v4 B1 1 B1s1 "" approve`
 - `back.mjs`, `manual.mjs`, `coach.mjs`, `perm.mjs`, `undo.mjs`, `t17.mjs`, `queue.mjs`: 뒤로 가기, 내가 조작하기, '?' 안내, 권한 다이얼로그, 되돌리기, 수정 후 추천 선택지, 진행 중 요청 장면을 따로 찍음
 - `aftercall.mjs [undo|change|back|s2]`: 호출한 뒤 되돌리기(호출 취소), 호출 뒤 옵션 변경 실패, 뒤로 가기로 취소, 세션2 예약 중 되돌리기 장면 (shots/v4/after)
+- `figs.mjs`, `figcompose.mjs`: 논문용 주석 그림. figs.mjs가 장면마다 요소에 번호를 달아 찍고(shots/fig), figcompose.mjs가 번호별 가이드라인 설명을 붙여 `research-tools/figures/fig1~4.png`로 합침 (`node figcompose.mjs <저장 폴더>`)
 - 실행 전: 저장소 루트에서 `python3 -m http.server 8123`, `npm install` (leaflet)
 - `.mjs` 파일 안의 `SP` 경로(작업 폴더)는 쓰는 위치에 맞게 바꿔야 해요. 캡처는 `SP/shots/<버전>/<이름>/`에 저장돼요.
 
