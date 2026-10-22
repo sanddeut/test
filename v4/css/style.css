@@ -1266,3 +1266,6 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 /* 권한 다이얼로그: 확인 버튼 하나, 위 여백 넓게 */
 .perm-btns { margin-top: 16px; }
 .coach-tip.up::after { content: ""; position: absolute; top: -8px; left: var(--tail-x, 50%); width: 16px; height: 16px; background: #fff; transform: rotate(45deg); border-radius: 2px; }
+
+/* 배차 완료 화면의 '호출 취소' (호출한 뒤 되돌리기에서 AI가 누름) */
+.tx-cancel-call { text-align: center; font-size: 13px; color: #8a8f99; padding: 12px 0 2px; }
