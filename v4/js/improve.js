@@ -100,12 +100,19 @@ function renderVoice() {
 // - 내 말풍선 옆에 작은 초록 동그라미 체크로 전달됐음을 표시 (메신저의 '읽음'처럼)
 // - 글자를 적어 두고 보내지 않으면 보내기 버튼을 깜빡이며 '보내기를 눌러야 전달돼요'
 // =====================================================================
+const STEP_WHAT = {
+  taxi_open: "택시 앱 실행", origin: "출발지 설정", dest: "목적지 설정", car: "택시 종류", pay: "결제 방식",
+  coupon: "예상 금액", request: "기사님 요청사항", final: "최종 호출", reserve: "예약 호출",
+};
 const _renderBubble = renderBubble;
 renderBubble = function (role, text) {
   _renderBubble(role, text);
   if (role !== "user") return;
   const b = [...chat().querySelectorAll(".bubble.user")].at(-1);
   if (b && !b.querySelector(".receipt")) b.insertAdjacentHTML("beforeend", '<span class="receipt" title="전달됨" aria-label="전달됨"><span class="ms">check_circle</span></span>');
+  // 승인/거부 버튼으로 답한 경우: 무엇에 답했는지 작은 글씨로 아랫줄에
+  const what = S?.running && (text === "승인" || text === "거부") ? STEP_WHAT[S.steps[S.stepIdx]?.id] : null;
+  if (b && what && !b.querySelector(".ub-what")) b.querySelector(".receipt").insertAdjacentHTML("beforebegin", `<small class="ub-what">${what}</small>`);
 };
 
 const UNSENT_MS = 4000;
@@ -484,7 +491,7 @@ function queueFocus() {
   requestAnimationFrame(() => requestAnimationFrame(() => { focusQueued = false; applyFocus(); }));
 }
 
-const FADE = 56;
+const FADE = 116; // 현재 대화 위로 남겨 둘 높이 (바로 앞 말풍선과 「되돌리기」가 살짝 보이게)
 function applyFocus() {
   const c = chat();
   if (!c || !S) return;

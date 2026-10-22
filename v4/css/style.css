@@ -1172,3 +1172,6 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 
 /* 택시 종류: 세 가지를 처음부터 펼쳐 보임 */
 .pv-car.expanded .pv-car-head b { display: none; }
+
+/* 승인/거부 말풍선: 무엇에 답했는지 아랫줄에 작게 */
+.bubble.user .ub-what { display: block; font-size: 12.5px; color: #5f6b80; line-height: 1.3; margin-top: 1px; }
