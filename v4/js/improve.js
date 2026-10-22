@@ -326,7 +326,7 @@ runStepAt = async function (i, step) {
   S.waiter = null; S.ivWaiter = null;
   // 멈춰 있던 이전 진행은 버리고 다시 시작
   S.resumeWaiters = []; S.paused = false; S.manual = false; S.backPaused = false; S.inReject = false; S.pickOut = null;
-  document.querySelectorAll(".reject-picks").forEach((x) => x.remove());
+  S.picksShown = false;
   if (typeof setActing === "function") setActing(false);
   syncControls();
   const c = $("#run-card");
@@ -494,20 +494,40 @@ function rejectPicks() {
   }
 }
 
-function renderPicks(list, waiter) {
-  document.querySelectorAll(".reject-picks").forEach((x) => x.remove());
-  const box = document.createElement("div");
-  box.className = "choice-list reject-picks";
+// 질문과 선택지를 진행 카드 안에 함께 (다른 선택 질문과 같은 모양)
+function renderPicks(list, waiter, question = lastAgentText()) {
+  const c = $("#run-card");
+  if (!c || !cardLive()) return;
+  const last = [...chat().querySelectorAll(":scope > .bubble.agent")].at(-1);
+  if (last && last.textContent === question) last.remove(); // 방금 말풍선으로 나온 질문을 카드로 옮김
+  const q = c.querySelector("#rc-q");
+  q.textContent = question;
+  q.hidden = false;
+  const box = c.querySelector("#rc-choices");
+  box.innerHTML = "";
+  const listEl = document.createElement("div");
+  listEl.className = "choice-list";
   list.forEach((o) => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "choice chip";
     b.innerHTML = `<span class="c-main"><b>${esc(o.label)}</b></span><span class="ms c-go">chevron_right</span>`;
     b.onclick = () => pickReject(o, waiter);
-    box.appendChild(b);
+    listEl.appendChild(b);
   });
-  chat().insertBefore(box, $("#chips"));
+  box.appendChild(listEl);
+  c.classList.remove("away");
+  c.classList.add("asking", "can-manual");
+  setCard({});
+  placeCard();
+  S.picksShown = true;
   scrollChat();
+}
+
+function clearPicks() {
+  if (!S?.picksShown) return;
+  S.picksShown = false;
+  freezeQuestion();
 }
 
 function pickReject(o, waiter) {
@@ -518,10 +538,9 @@ function pickReject(o, waiter) {
     $("#msg").focus();
     return;
   }
-  document.querySelectorAll(".reject-picks").forEach((x) => x.remove());
-  appendBubble("user", o.label);
+  appendBubble("user", o.label); // 질문은 대화 기록으로 남기고 답을 붙임
   logEvent("user_button", { choice: o.label, via: "reject_pick" });
-  if (o.sub) { renderBubble("agent", o.ask); renderPicks(o.sub, waiter); return; }
+  if (o.sub) { renderPicks(o.sub, waiter, o.ask); return; }
   S.waiter = null;
   syncControls();
   if (o.cancel) { cancelRide(); return; }
@@ -529,12 +548,19 @@ function pickReject(o, waiter) {
   replyPause().then(() => waiter.resolve({ type: "text", text: o.label }));
 }
 
+// 선택지가 떠 있을 때 말이나 글로 답하면, 질문을 먼저 대화 기록으로
+const _appendBubble = appendBubble;
+appendBubble = function (role, text) {
+  if (role === "user") clearPicks();
+  return _appendBubble(role, text);
+};
+
 const _waitText = waitText;
 waitText = function () {
   const p = _waitText();
   const list = rejectPicks();
   if (list) renderPicks(list, S.waiter);
-  return p.then((t) => { document.querySelectorAll(".reject-picks").forEach((x) => x.remove()); return t; });
+  return p.then((t) => { clearPicks(); return t; });
 };
 
 const _turn = turn;
