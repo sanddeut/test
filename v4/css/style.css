@@ -952,7 +952,7 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .voice-btn { display: none; flex: 1; min-width: 0; align-items: center; gap: 8px; border: 0; background: #eef3fd; color: #0b57d0; border-radius: 999px; padding: 10px 14px; font-size: 16.5px; font-weight: 600; font-family: inherit; text-align: left; }
 .voice-btn span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .voice-btn .ms { font-size: 22px; vertical-align: 0; flex: none; }
-.voice-btn.on { background: #fde8e7; color: #b3261e; }
+.voice-btn.on { background: transparent; color: #b3261e; }
 .voice-btn.on .ms { animation: blink 1s infinite; }
 .phone[data-input="voice"] .voice-btn { display: flex; }
 .phone[data-input="voice"] #msg, .phone[data-input="voice"] #mic, .phone[data-input="text"] #mic { display: none !important; }
