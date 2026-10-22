@@ -1140,7 +1140,7 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .rc-body .rc-summary b { font-weight: 500; }
 
 /* 말로/글로 전환 버튼: 흰 배경에서 경계가 보이게 옅은 회색 테두리, 입력창과 조금 더 띄움 */
-.mode-fab { bottom: calc(100% + 11px); box-shadow: 0 0 0 1px #e3e6ea, 0 2px 8px rgba(0,0,0,.08); }
+.mode-fab { bottom: calc(100% + 10px); box-shadow: 0 0 0 1px #e3e6ea, 0 2px 8px rgba(0,0,0,.08); }
 
 /* 진행 카드: [발화 + 카드]와 [사용자 버튼]을 두 묶음으로. 발화와 카드 사이 넉넉히, 버튼 위 옅은 구분선, 버튼은 조금 작게 */
 .rc-body .rc-q { margin-bottom: 10px; }
