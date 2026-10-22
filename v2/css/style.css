@@ -931,4 +931,5 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .pv-car .pv-car-opt.on span, .pv-car .pv-car-opt.on b { color: #1c1d21; font-weight: 700; }
 
 /* 택시 종류: 세 가지를 처음부터 펼쳐 보임 */
-.pv-car.expanded .pv-car-head b { display: none; }
+.pv-car.expanded .pv-car-head { display: none !important; }
+.pv-car.expanded .pv-car-head + .pv-car-opt { border-top: 0 !important; }
