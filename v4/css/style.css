@@ -1188,3 +1188,6 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 /* 카드 안 선택지는 보통 굵기 (굵게는 발화 문장만) */
 .rc-body .choice .c-main b { font-weight: 400; }
 .rc-body .pv-car .pv-car-opt.on span, .rc-body .pv-car .pv-car-opt.on b { font-weight: 500; }
+/* "AI가 앱 조작 중"을 점에 조금 더 가깝게 */
+#rc-status .dots { height: 1em; margin-top: 4px; }
+#rc-status .rc-sub { margin-top: 2px; }
