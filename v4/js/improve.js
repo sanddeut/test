@@ -79,7 +79,7 @@ function renderVoice() {
   const said = $("#msg").value.trim();
   v.classList.toggle("on", listening());
   v.innerHTML = listening()
-    ? `<span class="ms fill">graphic_eq</span><span>${said ? esc(said) : "듣고 있어요. 다 말했으면 눌러 주세요"}</span>`
+    ? `<span class="ms fill">graphic_eq</span><span>${said ? esc(said) : "듣고 있어요"}</span>`
     : said
       ? `<span class="ms fill">mic</span><span>${esc(said)}</span>`
       : `<span class="ms fill">mic</span><span>눌러서 말하기</span>`;
