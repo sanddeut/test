@@ -793,8 +793,8 @@ fitScreen = function () {
 // =====================================================================
 const COACH = [
   { sel: ".screen-clip", text: "AI가 지금 내 앱을 대신 누르는 실시간 화면이에요. 여기는 누를 수 없어요." },
-  { sel: "#btn-stop", text: "AI를 잠시 멈춰요. 다시 이어서 할 수 있어요." },
-  { sel: "#btn-manual", text: "AI 대신 내가 직접 앱을 눌러요." },
+  { sel: "#btn-stop", text: "AI의 조작을 잠시 멈춰요." },
+  { sel: "#btn-manual", text: "AI 대신 내가 직접 앱을 조작해요." },
 ];
 function openCoach() {
   if (!S) return;
