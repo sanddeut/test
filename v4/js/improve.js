@@ -277,6 +277,64 @@ function setupRunFrame() {
   box.appendChild(btn);
 }
 
+// =====================================================================
+// [진행 현황] 화면은 지금 진행 중인 단계가 무엇인지 분명히 알려야 한다
+// - 현재 대화(진행 카드 또는 마지막 말풍선)를 대화창 맨 위에 둠: 아래에 빈 공간을 둬서 지나간 대화가 위로 올라가게
+// - 지나간 대화는 흐리게, 스크롤을 올려 그 대화가 화면 아래쪽으로 오면 다시 진하게
+// - 지나간 AI 말풍선에는 작게 '완료'
+// =====================================================================
+function currentItem() {
+  const c = chat();
+  const card = $("#run-card");
+  if (card && !card.classList.contains("away") && card.offsetParent) return card;
+  const items = [...c.querySelectorAll(":scope > .bubble:not(.typing)")];
+  return items.at(-1) || null;
+}
+
+let focusQueued = false;
+function queueFocus() {
+  if (focusQueued) return;
+  focusQueued = true;
+  requestAnimationFrame(() => requestAnimationFrame(() => { focusQueued = false; applyFocus(); }));
+}
+
+function applyFocus() {
+  const c = chat();
+  if (!c || !S) return;
+  let spacer = $("#chat-spacer");
+  if (!spacer) { spacer = document.createElement("div"); spacer.id = "chat-spacer"; }
+  if (spacer.nextSibling || spacer.parentNode !== c) c.appendChild(spacer);
+  const cur = currentItem();
+  // 지나간 대화 표시
+  c.querySelectorAll(":scope > .bubble, :scope > #run-card").forEach((el) => {
+    const past = Boolean(cur) && el !== cur && el.id !== "typing" && (el.compareDocumentPosition(cur) & Node.DOCUMENT_POSITION_FOLLOWING);
+    el.classList.toggle("past", past);
+    if (past) pastObserver.observe(el);
+  });
+  // 현재 대화가 맨 위에 오도록 아래 빈 공간
+  if (cur) {
+    const top = cur.offsetTop - c.offsetTop;
+    const contentEnd = spacer.offsetTop - c.offsetTop;
+    const need = c.clientHeight - (contentEnd - top) - 24;
+    spacer.style.height = `${Math.max(0, need)}px`;
+    c.scrollTop = Math.max(0, top - 12);
+  }
+}
+
+// 지나간 대화가 화면 아래쪽(아래 45%)에 오면 진하게
+const pastObserver = new IntersectionObserver((entries) => {
+  entries.forEach((e) => e.target.classList.toggle("near", e.isIntersecting));
+}, { root: null, rootMargin: "-55% 0px 0px 0px" });
+
+function setupFocus() {
+  const c = chat();
+  new MutationObserver((ms) => { if (ms.some((m) => [...m.addedNodes, ...m.removedNodes].some((n) => n.id !== "chat-spacer"))) queueFocus(); })
+    .observe(c, { childList: true });
+  const card = () => $("#run-card");
+  new MutationObserver(queueFocus).observe(document.body, { attributes: true, attributeFilter: ["class"], subtree: true, attributeOldValue: false });
+}
+
 document.addEventListener("DOMContentLoaded", setupInputMode);
+document.addEventListener("DOMContentLoaded", setupFocus);
 document.addEventListener("DOMContentLoaded", setupRunFrame);
 document.addEventListener("DOMContentLoaded", setupBackDialog);

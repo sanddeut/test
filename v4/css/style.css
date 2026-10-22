@@ -1058,3 +1058,9 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .frame-manual { display: none !important; position: relative; z-index: 3; margin-top: -18px; align-items: center; gap: 4px; font-size: 15px !important; padding: 9px 18px !important; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
 .frame-manual .ms { font-size: 19px; vertical-align: 0; }
 .phone[data-view="progress"] .frame-manual { display: inline-flex !important; }
+/* 진행 현황: 지나간 대화는 흐리게(아래쪽으로 오면 진하게), 지나간 AI 말풍선에 작게 '완료' */
+#chat-spacer { flex: none; }
+.chat > .past { opacity: .4; transition: opacity .3s; }
+.chat > .past.near { opacity: 1; }
+.chat > .bubble.agent.past:not(.with-guide) { position: relative; }
+.chat > .bubble.agent.past:not(.with-guide)::before { content: "완료"; position: absolute; left: calc(100% + 6px); bottom: 2px; font-size: 11.5px; font-weight: 600; color: #8a8f99; white-space: nowrap; }
