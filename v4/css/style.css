@@ -1184,3 +1184,7 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 
 /* 거부 후 추천 선택지: 대화창 안 목록 */
 .chat > .reject-picks { flex-shrink: 0; align-self: stretch; }
+
+/* 카드 안 선택지는 보통 굵기 (굵게는 발화 문장만) */
+.rc-body .choice .c-main b { font-weight: 400; }
+.rc-body .pv-car .pv-car-opt.on span, .rc-body .pv-car .pv-car-opt.on b { font-weight: 500; }
