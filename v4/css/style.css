@@ -1221,3 +1221,32 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 #rc-status .dots { margin-top: 0; }
 /* 실행화면 보기: 위 요소들과 구분되게 여백 */
 .rc-body .rc-open { margin-top: 10px; }
+
+/* 실행화면: 앱 화면과 아래 버튼 칸을 하나의 테두리로 묶음 */
+.run-frame { display: contents; }
+.run-tray { display: none; }
+.phone[data-view="progress"] .run-frame { display: flex; flex-direction: column; align-items: stretch; border-radius: 30px; border: 2px solid transparent;
+  background: linear-gradient(#f7f6fd, #f7f6fd) padding-box, conic-gradient(from var(--ring), #4c8df6, #a36bf5 72deg, #f06292 144deg, #4c8df6 360deg) border-box;
+  animation: ring-spin 3s linear infinite; box-shadow: 0 4px 20px rgba(0,0,0,.10); overflow: hidden; }
+.phone[data-view="progress"] .run-frame .screen-clip { border: 0 !important; background: #fff !important; animation: none !important; box-shadow: 0 1px 0 #e6e3f5 !important; border-radius: 28px 28px 22px 22px; }
+.phone[data-view="progress"] .run-tray { display: flex; justify-content: center; gap: 8px; padding: 10px 12px 12px; }
+.run-tray .frame-manual { position: static !important; transform: none !important; display: inline-flex !important; padding: 9px 18px !important; font-size: 14.5px !important; box-shadow: none !important; }
+.run-tray .tray-stop { border: 1.5px solid #d93025; background: #fff; color: #d93025; border-radius: 999px; padding: 8px 18px; font-size: 14.5px; font-weight: 700; font-family: inherit; }
+.run-tray .tray-stop:disabled { opacity: .45; }
+.phone[data-view="progress"] .pv-bottom { display: none !important; }
+.pv-help { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: 0; background: none; width: 40px; height: 40px; display: grid; place-items: center; color: #1c1d21; }
+.pv-help .ms { font-size: 26px; }
+
+/* 「?」 화면 안내 */
+.coach { position: absolute; inset: 0; z-index: 70; }
+.coach-hole { position: absolute; box-shadow: 0 0 0 9999px rgba(0,0,0,.6); pointer-events: none; transition: all .25s ease; }
+.coach-tip { position: absolute; left: 20px; right: 20px; background: #fff; border-radius: 16px; padding: 16px 16px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+.coach-tip p { margin: 0 0 12px; font-size: 16px; line-height: 1.5; font-weight: 500; color: #1c1d21; }
+.coach-foot { display: flex; align-items: center; justify-content: space-between; }
+.coach-n { font-size: 13px; color: #8a8f99; }
+.coach-next { border: 0; border-radius: 999px; background: #0b57d0; color: #fff; padding: 8px 18px; font-size: 15px; font-weight: 600; font-family: inherit; }
+.phone.coaching .run-tray button:disabled { opacity: 1; }
+
+/* 권한 다이얼로그: 제목과 내용 사이를 넓게, 항목 이름은 한 단계 가늘게 */
+.perm-card > b { margin-bottom: 12px; }
+.perm-card li b { font-weight: 500; }

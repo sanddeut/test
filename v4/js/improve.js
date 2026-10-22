@@ -195,6 +195,13 @@ onSubmit = function (e) {
   fitMsg();
   appendBubble("user", text);
   logEvent("user_text", { text });
+  // 화면을 누르는 중이라 바로 반영할 수 없으면 이유와 대안을 짧게 알리고, 다음에 물을 때 반영 (가이드라인 3)
+  if ($(".phone").classList.contains("acting")) {
+    S.queuedText = text;
+    logEvent("input_queued", { text });
+    renderBubble("agent", "지금은 앱 화면을 누르는 중이라 바로 바꿀 수 없어요. 이 단계가 끝나면 바로 반영할게요.");
+    return;
+  }
   handleInterjection(text);
   syncControls();
 };
@@ -397,6 +404,15 @@ function refreshUndoLink() {
   btn.onclick = () => requestUndo(Number(b.dataset.step), "bubble");
   b.after(btn);
 }
+
+// 미뤄 둔 요청은 다음에 입력을 기다릴 때 그 답으로 넘김
+setInterval(() => {
+  if (!S?.queuedText || !S.waiter || S.paused || S.finished) return;
+  const text = S.queuedText; S.queuedText = null;
+  const w = S.waiter; S.waiter = null;
+  setChips([]);
+  w.resolve({ type: "text", text });
+}, 200);
 
 function setupUndo() {
   const c = chat();
@@ -725,10 +741,97 @@ function setupRunFrame() {
   chip.className = "ai-live-chip";
   chip.textContent = "AI가 앱 조작 중 ...";
   clip.appendChild(chip);
+  // 실행화면 아래 한 칸에 「멈추기」와 「내가 조작하기」를 묶음 (테두리 안)
+  const frame = document.createElement("div");
+  frame.className = "run-frame";
+  clip.parentNode.insertBefore(frame, clip);
+  frame.appendChild(clip);
+  const tray = document.createElement("div");
+  tray.className = "run-tray";
+  const stop = $("#btn-stop");
+  stop.textContent = "멈추기";
+  stop.classList.add("tray-stop");
   const btn = $("#btn-manual");
   btn.classList.add("frame-manual");
   btn.textContent = "내가 조작하기";
-  clip.appendChild(btn);
+  tray.append(stop, btn);
+  frame.appendChild(tray);
+  // 오른쪽 위 「?」: 실행화면의 각 요소 안내
+  const help = document.createElement("button");
+  help.type = "button";
+  help.id = "btn-help";
+  help.className = "pv-help";
+  help.setAttribute("aria-label", "화면 안내");
+  help.innerHTML = '<span class="ms">help</span>';
+  help.onclick = openCoach;
+  $(".pv-head").appendChild(help);
+}
+
+// 실행화면 크기: 아래 버튼 칸만큼 빼고 맞춤
+const _fitScreen = fitScreen;
+fitScreen = function () {
+  _fitScreen();
+  const phone = $(".phone");
+  if (phone?.dataset.view !== "progress") return;
+  const box = $(".screen-box");
+  const clip = $(".screen-clip");
+  const W = phone.clientWidth;
+  const H = parseFloat(phone.style.getPropertyValue("--app-h")) || phone.clientHeight;
+  const tray = 64;
+  const scale = Math.max(0.3, Math.min(0.8, (box.clientHeight - 36 - tray) / H, (box.clientWidth * 0.86) / W));
+  phone.style.setProperty("--scale", scale.toFixed(4));
+  clip.style.width = `${Math.floor(W * scale)}px`;
+  clip.style.height = `${Math.floor(H * scale)}px`;
+};
+
+// =====================================================================
+// [「?」 화면 안내] AI를 잠시 멈추고, 실행화면·멈추기·내가 조작하기를 차례로 짚어 줌 (나머지는 어둡게)
+// =====================================================================
+const COACH = [
+  { sel: ".screen-clip", text: "AI가 지금 내 앱을 대신 누르는 실시간 화면이에요. 여기는 누를 수 없어요." },
+  { sel: "#btn-stop", text: "AI를 잠시 멈춰요. 다시 이어서 할 수 있어요." },
+  { sel: "#btn-manual", text: "AI 대신 내가 직접 앱을 눌러요." },
+];
+function openCoach() {
+  if (!S) return;
+  const pausedByCoach = S.running && !S.paused;
+  if (pausedByCoach) { S.paused = true; syncControls(); }
+  logEvent("help_open");
+  const phone = $(".phone");
+  phone.classList.add("coaching");
+  const layer = document.createElement("div");
+  layer.className = "coach";
+  layer.innerHTML = '<div class="coach-hole"></div><div class="coach-tip" role="dialog" aria-live="polite"><p></p><div class="coach-foot"><span class="coach-n"></span><button type="button" class="coach-next"></button></div></div>';
+  phone.appendChild(layer);
+  let i = 0;
+  const show = () => {
+    const t = $(COACH[i].sel);
+    const pr = phone.getBoundingClientRect();
+    const r = t.getBoundingClientRect();
+    const pad = 6;
+    const hole = layer.querySelector(".coach-hole");
+    Object.assign(hole.style, { left: `${r.left - pr.left - pad}px`, top: `${r.top - pr.top - pad}px`, width: `${r.width + pad * 2}px`, height: `${r.height + pad * 2}px`, borderRadius: getComputedStyle(t).borderRadius });
+    const tip = layer.querySelector(".coach-tip");
+    tip.querySelector("p").textContent = COACH[i].text;
+    tip.querySelector(".coach-n").textContent = `${i + 1} / ${COACH.length}`;
+    tip.querySelector(".coach-next").textContent = i < COACH.length - 1 ? "다음" : "알겠어요";
+    // 짚은 곳 아래에 자리가 있으면 아래, 없으면 위
+    const below = r.bottom - pr.top + 14;
+    tip.style.top = "";
+    tip.style.bottom = "";
+    if (below + 150 < pr.height) tip.style.top = `${below}px`;
+    else tip.style.bottom = `${pr.bottom - r.top + 14}px`;
+    if (i === 0) { tip.style.top = `${r.top - pr.top + r.height * 0.4}px`; tip.style.bottom = ""; }
+  };
+  layer.querySelector(".coach-next").onclick = () => {
+    i++;
+    if (i < COACH.length) return show();
+    layer.remove();
+    phone.classList.remove("coaching");
+    logEvent("help_close");
+    if (pausedByCoach && S && !S.finished) resume();
+  };
+  show();
 }
 
 // 내가 조작하기: 실행화면이 커지며 전체 화면을 덮고 → 흰 화면과 로딩 스피너 → 실제 앱 화면이 살짝 튕기며 나타남
