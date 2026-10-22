@@ -24,5 +24,6 @@
 - 연구1 프로토타입 화면 모음: https://claude.ai/artifact/4kzTYFFGogaAgBTie3D9n1
 - 연구2 프로토타입 개선안 (원안 낮은 자동화 / 원안 높은 자동화 / 개선안 세 칸 비교): https://claude.ai/artifact/MwWcf4ipVnp1yKtyzyifXa
 - 연구2 가이드라인 적용 (가이드라인 순서대로, 페이지에서 직접 문구 편집 가능): https://claude.ai/artifact/2D8aDKCXMapPx1JF9vnvCt
+- 논문용 가이드라인과 구현 대응표 (현재 판과 이전 판 전환): https://claude.ai/artifact/XC5W9KEJy8r82BRjLk26ad (`research-tools/build_table.py`로 `paper-guideline-table.md`에서 만듦)
 
 가이드라인 원문: FigJam '가이드라인 정리' (파일 키 bkwIjqwKSX6YknzhUVgewt, 노드 2130:1270) 2안. 연구1 어피니티는 FigJam 노드 86:730.
