@@ -812,7 +812,7 @@ function openCoach() {
     const t = $(COACH[i].sel);
     const pr = phone.getBoundingClientRect();
     const r = t.getBoundingClientRect();
-    const pad = 6;
+    const pad = 0; // 밝게 남기는 영역을 요소에 딱 맞춤
     const hole = layer.querySelector(".coach-hole");
     Object.assign(hole.style, { left: `${r.left - pr.left - pad}px`, top: `${r.top - pr.top - pad}px`, width: `${r.width + pad * 2}px`, height: `${r.height + pad * 2}px`, borderRadius: getComputedStyle(t).borderRadius });
     const tip = layer.querySelector(".coach-tip");
