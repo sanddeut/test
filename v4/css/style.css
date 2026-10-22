@@ -1046,7 +1046,7 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 /* 실행화면 (피그마 시안): 파랑·보라·분홍 그라데이션 테두리가 돌고, 흰색 0.3 덮개, 위 가운데 탭 모양 칩, 오른쪽 아래 빨간 「내가 조작하기」 */
 @property --ring { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
 .phone[data-view="progress"] .screen-clip, .phone.acting[data-view="progress"] .screen-clip {
-  border: 3px solid transparent; box-sizing: content-box;
+  border: 2px solid transparent; box-sizing: content-box;
   background: linear-gradient(#fff, #fff) padding-box, conic-gradient(from var(--ring), #4c8df6, #a36bf5 72deg, #f06292 144deg, #4c8df6 360deg) border-box;
   animation: ring-spin 3s linear infinite; box-shadow: 0 4px 20px rgba(0,0,0,.10); }
 @keyframes ring-spin { to { --ring: 360deg; } }
@@ -1191,3 +1191,33 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 /* "AI가 앱 조작 중"을 점에 조금 더 가깝게 */
 #rc-status .dots { height: 1em; margin-top: 4px; }
 #rc-status .rc-sub { margin-top: 2px; }
+
+/* 대화를 시작할 때 권한 묻기 */
+.perm-dlg { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.perm-card { background: #fff; border-radius: 22px; padding: 26px 20px 16px; width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 16px; }
+.perm-card > b { font-size: 18px; font-weight: 700; line-height: 1.4; }
+.perm-card ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.perm-card li { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.perm-card li b { display: block; font-size: 15.5px; font-weight: 600; }
+.perm-card li small { display: block; font-size: 13px; color: #6b6f7a; margin-top: 1px; }
+.perm-tgl { position: relative; flex: none; width: 44px; height: 26px; }
+.perm-tgl input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.perm-tgl i { position: absolute; inset: 0; border-radius: 999px; background: #c9ccd3; transition: background .2s; pointer-events: none; }
+.perm-tgl i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.perm-tgl input:checked + i { background: #0b57d0; }
+.perm-tgl input:checked + i::after { transform: translateX(18px); }
+.perm-btns { display: flex; gap: 8px; margin-top: 4px; }
+.perm-btns button { flex: 1; border: 0; border-radius: 999px; padding: 12px; font-size: 16px; font-weight: 600; font-family: inherit; }
+.perm-no { background: none; color: #6b6f7a; }
+.perm-yes { background: #0b57d0; color: #fff; }
+
+/* 내가 조작하기: 실행화면 가운데 아래 */
+.frame-manual { right: auto !important; left: 50%; transform: translateX(-50%); }
+/* 되돌리기: 위 말풍선에 더 가깝게 */
+.undo-link, .undo-link.on-user { margin-top: -16px; }
+/* "AI가 앱 조작 중"을 점 위로 */
+#rc-status:has(.dots) { flex-direction: column-reverse; }
+#rc-status .rc-sub { margin: 0 0 2px; }
+#rc-status .dots { margin-top: 0; }
+/* 실행화면 보기: 위 요소들과 구분되게 여백 */
+.rc-body .rc-open { margin-top: 10px; }

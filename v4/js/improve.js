@@ -111,7 +111,7 @@ renderBubble = function (role, text) {
   const b = [...chat().querySelectorAll(".bubble.user")].at(-1);
   if (b && !b.querySelector(".receipt")) b.insertAdjacentHTML("beforeend", '<span class="receipt" title="전달됨" aria-label="전달됨"><span class="ms">check_circle</span></span>');
   // 승인/거부 버튼으로 답한 경우: 무엇에 답했는지 작은 글씨로 아랫줄에
-  const what = S?.running && (text === "승인" || text === "거부") ? STEP_WHAT[S.steps[S.stepIdx]?.id] : null;
+  const what = S?.running && ["승인", "거부", "확인", "수정", "허용", "호출하기", "예약하기"].includes(text) ? (S.consentAsk ? "이용내역 확인" : STEP_WHAT[S.steps[S.stepIdx]?.id]) : null;
   if (b && what && !b.querySelector(".ub-what")) b.querySelector(".receipt").insertAdjacentHTML("beforebegin", `<small class="ub-what">${what}</small>`);
 };
 
@@ -315,7 +315,7 @@ runStepAt = async function (i, step) {
   (S.snaps ||= [])[i] = snapState();
   const redo = S.redoIdx === i;
   S.redoIdx = null;
-  const work = step.id === "request" ? askRequest(step) : redo ? runLowStep(step) : _runStepAt(i, step);
+  const work = runByPolicy(step, redo);
   const undo = new Promise((res) => { S.undoResolve = res; });
   const r = await Promise.race([work, undo]);
   S.undoResolve = null;
@@ -575,10 +575,137 @@ handleReject = async function (...args) {
   try { return await _handleReject(...args); } finally { if (S) S.inReject = false; }
 };
 
+// =====================================================================
+// [하나의 개선안] 낮은·높은 자동화를 나누지 않고, 단계마다 가이드라인 18(사소한 단계는 알아서, 중요한 결정은 확인)에 따라
+// - 알아서 하고 알림: 택시 앱 실행, 예상 금액(최종 호출 확인에서 함께 확인)
+// - 확인: 출발지·목적지("여기가 맞나요?"), 최종 호출
+// - 먼저 물음(목록): 택시 종류, 기사님 요청사항
+// - 세션2: 이용내역을 보기 전에 이유와 함께 허용을 묻고, 예약도 먼저 물음
+// =====================================================================
+const STEP_POLICY = { taxi_open: "auto", coupon: "auto", pay: "auto", car: "list", request: "list", reserve: "consent" };
+
+const _newSession = newSession;
+newSession = function (cfg) {
+  // 조건 선택과 상관없이 하나의 개선안 (높은 복잡도 과업 기준)
+  const s = _newSession({ ...cfg, condition: "B1" });
+  s.unified = true;
+  return s;
+};
+
+// 버튼 이름: 질문의 무게와 상황에 맞게 (가이드라인 19)
+// 맞는지 확인: 수정 / 확인, 정보 접근 허용: 거부 / 허용, 예약 제안: 거부 / 예약하기, 최종 호출: 수정 / 호출하기
+function choiceLabels() {
+  if (S?.consentAsk) return { reject: "거부", approve: "허용" };
+  const id = S?.steps[S.stepIdx]?.id;
+  if (id === "final") return { reject: "수정", approve: "호출하기" };
+  if (id === "reserve") return { reject: "거부", approve: "예약하기" };
+  return { reject: "수정", approve: "확인" };
+}
+const relabel = (options, L) => (options || []).map((o) => (o.id === "approve" && o.label === "승인" ? { ...o, label: L.approve } : o.id === "reject" && o.label === "거부" ? { ...o, label: L.reject } : o));
+const _setChips = setChips;
+setChips = function (options, onPick) {
+  const L = choiceLabels();
+  // 이용내역 허용을 물을 때는 예약 내용 카드를 보여 주지 않음 (아직 이용내역을 보지 않았으므로)
+  if (S?.consentAsk) { const pv = stepPreview; stepPreview = () => null; try { return _setChips(relabel(options, L), onPick); } finally { stepPreview = pv; } }
+  return _setChips(relabel(options, L), onPick);
+};
+
+// 알아서 하는 단계: 결과를 읽을 시간을 넉넉히 (가이드라인 11)
+async function runAuto(step) {
+  const prev = [S.automation, S.cond];
+  S.automation = "high";
+  S.cond = "B2"; // 알리는 문구("~할게요", "~이에요")
+  let r;
+  try { r = await runHighStep(step); } finally { [S.automation, S.cond] = prev; }
+  if (r && !S.finished) { await sleep(1500 * PACE); await gate(); } // 결과를 읽을 시간 (가이드라인 11)
+  return r;
+}
+
+async function askCar(step) {
+  await doPre(step);
+  const ask = "택시 종류를 고를 수 있어요. 어떤 택시로 할까요?";
+  await agentSay(ask);
+  const opts = Object.keys(CAR_TYPES).map((k) => ({ id: k, label: CAR_TYPES[k].label, price: won0(fareOf({ ...S.form, car: k })) }));
+  for (;;) {
+    const c = await askChoice(opts, ask, ["set_car", "cancel"], "택시 종류를 말하면 set_car(일반택시=normal, 모범택시=deluxe, 대형택시=large)야. 말하지 않으면 reply로 어떤 택시로 할지 되물어.");
+    if (c.id === "__reask") continue;
+    if (c.id === "cancel") { await cancelRide(); return false; }
+    const k = CAR_TYPES[c.id] ? c.id : c.out?.car_type;
+    if (!CAR_TYPES[k]) { if (c.out?.reply) await agentSay(c.out.reply, { talk: true }); continue; }
+    S.m.approvals++;
+    logEvent("car_chosen", { car: k, via: c.via });
+    setOption("car", k, c.via);
+    await doApply(step, k);
+    await sayKey("car.set", { car: k });
+    await dwell();
+    return true;
+  }
+}
+
+// 세션2: 이용내역을 보기 전에 이유와 함께 묻고(가이드라인 21), 예약도 먼저 물음(가이드라인 18)
+async function askReserve(step) {
+  const why = "다음에도 쉽게 부를 수 있게 자주 가는 곳을 찾아 드리려고 해요. 최근 3개월 택시 이용내역을 확인해도 될까요?";
+  promote(); // 호출 완료 안내는 먼저 대화 기록으로 (질문과 섞이지 않게)
+  await agentSay(why);
+  S.consentAsk = true;
+  let c;
+  try { do { c = await askChoice(APPROVE, why, [], "이용내역을 확인해도 되면 approve, 안 되면 reject야."); } while (c.id === "__reask"); }
+  finally { S.consentAsk = false; }
+  logEvent("history_consent", { allowed: c.id === "approve", via: c.via });
+  if (c.id !== "approve") {
+    S.reserveCancelled = true;
+    await agentSay("이용내역은 확인하지 않을게요.");
+    return finish("completed");
+  }
+  setActing(true);
+  try { await step.pre(S); } finally { setActing(false); }
+  const pre = step.pre;
+  step.pre = null; // 이미 이용내역을 열었음
+  try { return await runLowStep(step); } finally { step.pre = pre; }
+}
+
+function runByPolicy(step, redo) {
+  const p = STEP_POLICY[step.id];
+  if (step.id === "request") return askRequest(step);
+  if (step.id === "car") return askCar(step);
+  if (p === "consent") return askReserve(step);
+  if (p === "auto" && !redo) return runAuto(step);
+  return runLowStep(step);
+}
+
+// =====================================================================
+// [가이드라인 21, 22] 대화를 시작할 때 무엇을 허용할지 묻기 (항목별로 끌 수 있음)
+// =====================================================================
+const PERMS = [
+  { id: "app", name: "앱 대신 조작하기", why: "택시를 부르려고 휴대폰 앱을 대신 눌러요" },
+  { id: "location", name: "위치 정보", why: "출발지를 찾을 때 써요" },
+  { id: "history", name: "택시 이용내역", why: "자주 가는 곳을 찾을 때 써요" },
+];
+function showPermDialog() {
+  if ($("#perm-dlg")) $("#perm-dlg").remove();
+  const d = document.createElement("div");
+  d.id = "perm-dlg";
+  d.className = "perm-dlg";
+  d.innerHTML = `<div class="perm-card" role="dialog" aria-modal="true" aria-labelledby="perm-title">
+      <b id="perm-title">AI와의 대화에서 무엇을 허용할까요?</b>
+      <ul>${PERMS.map((p) => `<li><span><b>${p.name}</b><small>${p.why}</small></span><label class="perm-tgl"><input type="checkbox" data-perm="${p.id}" checked><i></i></label></li>`).join("")}</ul>
+      <div class="perm-btns"><button type="button" class="perm-no">허용 안 함</button><button type="button" class="perm-yes">허용</button></div>
+    </div>`;
+  $(".phone").appendChild(d);
+  const close = (all) => {
+    const perm = Object.fromEntries([...d.querySelectorAll("[data-perm]")].map((x) => [x.dataset.perm, all && x.checked]));
+    if (S) { S.perm = perm; logEvent("permissions", perm); }
+    d.remove();
+  };
+  d.querySelector(".perm-yes").onclick = () => close(true);
+  d.querySelector(".perm-no").onclick = () => close(false);
+}
+
 // 새 세션을 시작할 때마다 처음 상태(눌러서 시작하기)로
 const _start = start;
 start = function () {
   setInputMode("start");
+  setTimeout(showPermDialog, 0); // 대화를 시작할 때 무엇을 허용할지 묻기
   history.pushState({ v4: 1 }, ""); // 뒤로 가기를 눌러도 페이지를 나가지 않게
   return _start();
 };
