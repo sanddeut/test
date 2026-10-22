@@ -1169,3 +1169,6 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 
 /* 내가 조작하기: 손 아이콘 없이, 조금 작게 */
 .frame-manual { padding: 6.5px 12px !important; font-size: 12px !important; }
+
+/* 택시 종류: 세 가지를 처음부터 펼쳐 보임 */
+.pv-car.expanded .pv-car-head b { display: none; }

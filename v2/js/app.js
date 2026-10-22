@@ -252,7 +252,7 @@ function stepPreview() {
       // 택시 종류 확인: 지금 택시 종류 한 줄(· 3종 ›)만 보여주고, 누르면 카드 안에서 세 가지가 펼쳐져 고를 수 있음 (쿠폰과 같은 형태)
       const cur = carTarget(S);
       const row = (k) => `<div class="pv-car-opt${cur === k ? " on" : ""}" data-pick="${k}" data-label="${esc(CAR_TYPES[k].label)}" role="button" tabindex="0"><span>${esc(CAR_TYPES[k].label)}</span><b>${esc(won0(fareOf({ ...S.form, car: k })))}${cur === k ? PV_CHECK : ""}</b></div>`;
-      const box = pickable(el("rc-summary pv-fare pv-car", `<div class="pv-cpn pv-car-head" role="button" tabindex="0"><span>택시 종류</span><b>${esc(CAR_TYPES[cur].label)} <small>· ${Object.keys(CAR_TYPES).length}종</small>${PV_GO}</b></div>` +
+      const box = pickable(el("rc-summary pv-fare pv-car expanded", `<div class="pv-cpn pv-car-head" role="button" tabindex="0"><span>택시 종류</span><b>${esc(CAR_TYPES[cur].label)} <small>· ${Object.keys(CAR_TYPES).length}종</small>${PV_GO}</b></div>` +
         Object.keys(CAR_TYPES).map(row).join("")), "car");
       const head = box.querySelector(".pv-car-head");
       const open = () => { if (box.classList.contains("expanded")) return; box.classList.add("expanded"); if (S) logEvent("car_more_options"); };
