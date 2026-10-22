@@ -81,6 +81,8 @@ ROWS = [
     ("8", "결제 비밀번호 (직접조작)", o("v2", "B1s1", "19") + fig("v2", "B1s1", by_id("v2", "B1s1", "20"), "chat", "[화면 열기] 후 앱 화면"), SAME_LOW,
      fig("v4", "B1s1", v4("B1s1", lambda s: s["kind"] == "pin"), "chat", "대화창") + fig("v4", "B1s1", v4("B1s1", lambda s: s["kind"] == "pin-app"), "chat", "[화면 열기] 후 앱 화면")),
     ("9", "호출 완료", o("v2", "B1s1", "21") + fig("v2", "B1s1", by_id("v2", "B1s1", "22"), "chat", "완료 후 앱 화면"), o("v2", "B2s1", "16"), pair("v4", "B1s1", v4("B1s1", S("done")))),
+    ("9-1", "호출한 뒤 되돌리기", NONE, NONE, raw("after/undo-1.png", "호출 완료 아래 되돌리기") + raw("after/undo-2.png", "호출 취소 뒤 어디부터 다시 할지") + raw("after/undo-4.png", "바꾼 뒤 다시 호출 확인") + raw("after/s2-2.png", "세션2: 예약을 묻던 중 되돌리기")),
+    ("9-2", "호출한 뒤 바꿔 달라고 할 때", NONE, NONE, raw("after/change-2.png", "앱에서 바꿔 보다 막힘") + raw("after/change-3.png", "이유를 전하고 취소할지 물음") + raw("after/change-4.png", "취소하고 바꾼 뒤 다시 호출 확인")),
     ("10", "세션2: 이용내역과 예약", o("v2", "B1s2", "04", "이용내역 열람 + 예약 제안") + fig("v2", "B1s2r", by_id("v2", "B1s2r", "05"), "chat", "예약 거부 시") + fig("v2", "B1s2", by_id("v2", "B1s2", "05"), "chat", "예약 승인 시"),
      o("v2", "B2s2", "03", "이용내역 열람 + 예약 안내") + fig("v2", "B2s2", by_id("v2", "B2s2", "04"), "chat", "예약 등록"),
      pair("v4", "B1s2", v4("B1s2", ASK("reserve")), "이용내역 허용 묻기") + pair("v4", "B1s2", v4("B1s2", ASK("reserve"), 1), "예약 묻기") + fig("v4", "B1s2", v4("B1s2", S("reserve", "say", "예약했어요")), "chat", "예약한 뒤")),

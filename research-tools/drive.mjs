@@ -262,7 +262,7 @@ await page.click("#send");
 // 끝날 때까지 대기
 for (let t = 0; t < 600; t++) {
   await wait(1000);
-  const done = await page.evaluate(() => S.finished).catch(() => true);
+  const done = await page.evaluate(() => S.finished || S.postCall).catch(() => true);
   if (done) break;
 }
 await busy;

@@ -307,7 +307,9 @@ ensureRunCard = function () {
 // 최종 호출 확인부터는 되돌릴 수 없음. 단, 호출한 뒤에는 호출 완료 안내 아래 '되돌리기'로 AI가 호출 취소를 시도함 (아래 [호출한 뒤])
 // =====================================================================
 const NO_UNDO = ["final", "password", "done", "reserve"];
-const undoable = (i) => i >= 0 && S?.steps[i] && (!NO_UNDO.includes(S.steps[i].id) || (S.postCall && S.steps[i].id === "done"));
+// 호출한 뒤(세션1은 배차 뒤 기다리는 동안, 세션2는 예약을 마치기 전까지): 호출 완료 안내 아래 되돌리기 = 호출 취소 시도
+const afterCall = () => Boolean(S && (S.postCall || (S.rideDone && !S.form.reserved)));
+const undoable = (i) => i >= 0 && S?.steps[i] && (!NO_UNDO.includes(S.steps[i].id) || (afterCall() && S.steps[i].id === "done"));
 const stepName = (step) => step.label.replace(/^\[[^\]]*\]\s*/, "");
 
 function snapState() {
@@ -327,7 +329,7 @@ runStepAt = async function (i, step) {
   const r = await Promise.race([work, undo]);
   S.undoResolve = null;
   if (r !== "__undo") return r;
-  if (S.postCall) return cancelCall(null); // 호출한 뒤 되돌리기 = 호출 취소 시도
+  if (afterCall()) return cancelCall(null); // 호출한 뒤 되돌리기 = 호출 취소 시도
   // 되돌리기: 그 단계 시작 전 상태로 돌리고 다시 물음 (멈춰 둔 이전 진행은 버림)
   const t = S.undoTo;
   Object.assign(S, structuredClone(S.snaps[t]));
@@ -357,7 +359,7 @@ runStepAt = async function (i, step) {
 // 되돌릴 단계: 결과를 말한 마지막 AI 말풍선의 단계, 없으면 지금 단계 바로 전 단계
 // 최종 호출 확인에 답하기 전까지만 되돌릴 수 있음
 function canUndoNow() {
-  if (S.postCall) return true;
+  if (afterCall()) return true;
   const f = S.steps.findIndex((x) => x.id === "final");
   return f < 0 || S.stepIdx <= f;
 }
@@ -371,7 +373,14 @@ function lastDoneStep() {
 // 이미 끝난 단계(지금 단계보다 앞)의 마지막 AI 말풍선: 낮은 자동화는 승인한 질문, 높은 자동화는 "~했어요" 결과
 // 승인/거부로 답한 단계는 사용자 말풍선, 답할 일이 없던 단계(높은 자동화)는 AI 말풍선
 function lastDoneBubble() {
-  if (S?.postCall) return [...chat().querySelectorAll(":scope > .bubble.agent[data-step]")].filter((x) => S.steps[Number(x.dataset.step)]?.id === "done").at(-1) || null; // 호출 완료 안내 아래
+  if (afterCall()) {
+    // 호출 완료 안내 아래 (세션2는 예약을 물을 때 대화 기록으로 옮겨져 예약 단계 번호가 붙으므로 문구로 찾음)
+    const d = S.steps.findIndex((x) => x.id === "done");
+    const said = lines("done", S).join(" ");
+    const b = [...chat().querySelectorAll(":scope > .bubble.agent")].filter((x) => Number(x.dataset.step) === d || x.textContent === said).at(-1) || null;
+    if (b) b.dataset.step = d;
+    return b;
+  }
   return [...chat().querySelectorAll(":scope > .bubble[data-step]")].filter((x) => Number(x.dataset.step) < S.stepIdx).at(-1) || null;
 }
 
@@ -379,6 +388,7 @@ function requestUndo(target = lastDoneStep(), via = "back") {
   if (!S || S.finished || !S.running || target == null || S.undoPending || !canUndoNow()) return false;
   S.undoPending = true;
   S.undoTo = target;
+  if (afterCall() && $("#run-card")?.classList.contains("asking")) freezeQuestion(); // 묻던 질문(세션2 예약)을 먼저 대화 기록으로
   appendBubble("user", via === "bubble" ? "되돌리기" : "방금 한 일 취소");
   logEvent("undo_request", { via, to: S.steps[target].id });
   document.querySelectorAll(".undo-link").forEach((b) => b.remove());
@@ -1029,6 +1039,7 @@ async function cancelCall(change) {
   S.waiter = null; S.ivWaiter = null;
   S.resumeWaiters = []; S.paused = false; S.manual = false; S.backPaused = false; S.inReject = false; S.pickOut = null;
   S.undoPending = false;
+  S.consentAsk = false; // 세션2: 이용내역 허용을 묻던 중이면 그 질문은 버림
   syncControls();
   logEvent("after_call_cancel", { change: change?.intent || null });
   await agentSay("호출을 취소해 볼게요.");
