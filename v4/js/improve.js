@@ -26,7 +26,7 @@ function setupInputMode() {
   const start = document.createElement("div");
   start.id = "start-wrap";
   start.className = "start-wrap only-chat";
-  start.innerHTML = `<button type="button" id="start-btn" class="start-btn">눌러서 시작하기</button>
+  start.innerHTML = `<button type="button" id="start-btn" class="start-btn">눌러서 대화 시작</button>
     <button type="button" id="pick-voice" class="pick-btn"><span class="ms fill">mic</span>말로 하기</button>
     <button type="button" id="pick-text" class="pick-btn"><span class="ms">keyboard</span>글자로 하기</button>`;
   form.before(start);
@@ -145,7 +145,7 @@ function renderStartGuide() {
   greet.insertAdjacentHTML("beforeend", `<div class="guide-box">
     <b class="guide-title"><span class="ms">info</span>이렇게 대화를 시작해보세요</b>
     <ol>
-      <li>아래 「눌러서 시작하기」를 눌러요</li>
+      <li>아래 「눌러서 대화 시작」을 눌러요</li>
       <li>말로 할지, 글자로 할지 골라요</li>
     </ol>
   </div>`);
