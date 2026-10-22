@@ -929,3 +929,42 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .pv-car .pv-car-opt span { color: #3c4048; }
 .pv-car .pv-car-opt b { display: flex; align-items: center; gap: 6px; font-weight: 500; }
 .pv-car .pv-car-opt.on span, .pv-car .pv-car-opt.on b { color: #1c1d21; font-weight: 700; }
+
+/* =====================================================================
+   연구2 개선안 (js/improve.js)
+   ===================================================================== */
+/* [입력 방법] 처음: 「눌러서 시작하기」 → 「말로 하기」「글자로 하기」 */
+.start-wrap { display: none; gap: 8px; margin: 6px 14px calc(56px + env(safe-area-inset-bottom)); flex: none; }
+.phone[data-view="chat"][data-input="start"] .start-wrap, .phone[data-view="chat"][data-input="pick"] .start-wrap { display: flex !important; }
+.phone[data-input="start"] .composer, .phone[data-input="pick"] .composer { display: none !important; }
+.start-btn, .pick-btn { border: 0; border-radius: 999px; height: 56px; font-size: 18px; font-weight: 700; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; white-space: nowrap;
+  transition: flex-grow .35s cubic-bezier(.3,.7,.3,1), opacity .25s, padding .35s; }
+.start-btn { flex: 1 1 0; background: #0b57d0; color: #fff; box-shadow: 0 2px 10px rgba(11,87,208,.25); }
+.pick-btn { flex: 0 1 0; padding: 0; opacity: 0; background: #fff; color: #0b57d0; box-shadow: 0 0 0 1.5px #0b57d0; }
+.pick-btn .ms { font-size: 24px; vertical-align: 0; }
+.pick-btn:disabled { color: #9aa0ab; box-shadow: 0 0 0 1.5px #c9ced8; }
+.phone[data-input="pick"] .start-btn { flex: 0 1 0; padding: 0; opacity: 0; pointer-events: none; }
+.phone[data-input="pick"] .pick-btn { flex: 1 1 0; padding: 0 12px; opacity: 1; }
+.phone[data-input="pick"] #pick-voice { background: #0b57d0; color: #fff; box-shadow: none; }
+.phone[data-input="pick"] #pick-voice:disabled { background: #e3e6ea; color: #7a808a; }
+/* 고른 뒤: 고른 방식만 */
+.composer { position: relative; }
+.voice-btn { display: none; flex: 1; min-width: 0; align-items: center; gap: 8px; border: 0; background: #eef3fd; color: #0b57d0; border-radius: 999px; padding: 10px 14px; font-size: 16.5px; font-weight: 600; font-family: inherit; text-align: left; }
+.voice-btn span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voice-btn .ms { font-size: 22px; vertical-align: 0; flex: none; }
+.voice-btn.on { background: #fde8e7; color: #b3261e; }
+.voice-btn.on .ms { animation: blink 1s infinite; }
+.phone[data-input="voice"] .voice-btn { display: flex; }
+.phone[data-input="voice"] #msg, .phone[data-input="voice"] #mic, .phone[data-input="text"] #mic { display: none !important; }
+.phone[data-input="voice"] .composer { align-items: center; }
+/* 말로 하기 ↔ 글자로 하기: 입력창 위 오른쪽 작은 버튼 */
+.mode-fab { display: none; position: absolute; right: 4px; bottom: calc(100% + 8px); align-items: center; gap: 4px; border: 0; border-radius: 999px; background: #fff; color: #3c4048; font-size: 13.5px; font-weight: 600; font-family: inherit; padding: 6px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.mode-fab .ms { font-size: 18px; vertical-align: 0; }
+.phone[data-input="text"] .mode-fab, .phone[data-input="voice"] .mode-fab { display: inline-flex; }
+/* 보내기 버튼: '보내기' 글자 */
+.composer .send.send-text { width: auto; border-radius: 999px; padding: 0 16px; font-size: 15.5px; font-weight: 700; }
+/* 첫 인사 아래 안내 카드 */
+.bubble.guide-card { white-space: normal; display: flex; flex-direction: column; gap: 6px; }
+.guide-card b { font-size: 16.5px; }
+.guide-card ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 16px; line-height: 1.5; }
+.phone[data-input="text"] .start-wrap, .phone[data-input="voice"] .start-wrap, .phone:not([data-view="chat"]) .start-wrap { display: none !important; }
