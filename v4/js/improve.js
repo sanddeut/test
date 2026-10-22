@@ -201,11 +201,10 @@ function setupBackDialog() {
   d.className = "back-dlg";
   d.hidden = true;
   d.innerHTML = `<div class="bd-card" role="dialog" aria-modal="true" aria-labelledby="bd-title">
-      <b id="bd-title"><span class="ms fill">pause_circle</span>진행을 멈췄어요</b>
+      <b id="bd-title">진행을 멈췄어요</b>
       <p>어떻게 할까요?</p>
       <button type="button" class="bd-go">계속하기</button>
       <button type="button" class="bd-undo">방금 한 일 취소</button>
-      <hr>
       <button type="button" class="bd-quit">앱 종료</button>
     </div>
     <div class="bd-card bd-confirm" role="dialog" aria-modal="true" aria-labelledby="bd-q-title" hidden>
