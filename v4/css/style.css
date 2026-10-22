@@ -1263,3 +1263,5 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .coach-foot { position: absolute; left: 20px; right: 20px; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: space-between; }
 .coach-n { color: rgba(255,255,255,.85); font-size: 14px; }
 .coach-next { background: #fff; color: #1c1d21; }
+/* 권한 다이얼로그: 확인 버튼 하나, 위 여백 넓게 */
+.perm-btns { margin-top: 16px; }

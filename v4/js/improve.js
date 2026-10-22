@@ -710,7 +710,7 @@ function showPermDialog() {
   d.innerHTML = `<div class="perm-card" role="dialog" aria-modal="true" aria-labelledby="perm-title">
       <b id="perm-title">AI와의 대화에서 무엇을 허용할까요?</b>
       <ul>${PERMS.map((p) => `<li><span><b>${p.name}</b><small>${p.why}</small></span><label class="perm-tgl"><input type="checkbox" data-perm="${p.id}" checked><i></i></label></li>`).join("")}</ul>
-      <div class="perm-btns"><button type="button" class="perm-no">허용 안 함</button><button type="button" class="perm-yes">허용</button></div>
+      <div class="perm-btns"><button type="button" class="perm-yes">확인</button></div>
     </div>`;
   $(".phone").appendChild(d);
   const close = (all) => {
@@ -718,8 +718,7 @@ function showPermDialog() {
     if (S) { S.perm = perm; logEvent("permissions", perm); }
     d.remove();
   };
-  d.querySelector(".perm-yes").onclick = () => close(true);
-  d.querySelector(".perm-no").onclick = () => close(false);
+  d.querySelector(".perm-yes").onclick = () => close(true); // 켜고 끄는 건 토글로, 버튼은 확인 하나
 }
 
 // 새 세션을 시작할 때마다 처음 상태(눌러서 시작하기)로
