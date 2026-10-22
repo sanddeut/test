@@ -8,7 +8,7 @@
 |---|---|---|
 | 연구1_화면모음 | 연구1 프로토타입 화면 모음 (원안) | https://claude.ai/artifact/4kzTYFFGogaAgBTie3D9n1 |
 | 연구2_개선안_비교 | 원안 낮은 자동화 / 원안 높은 자동화 / 개선안 비교 | https://claude.ai/artifact/MwWcf4ipVnp1yKtyzyifXa |
-| 연구2_가이드라인_적용 | 가이드라인 25개 순서대로 적용 내용 정리 | https://claude.ai/artifact/2D8aDKCXMapPx1JF9vnvCt |
+| 연구2_가이드라인_적용 | 가이드라인 25개 순서대로 적용 내용 정리 | https://claude.ai/artifact/2D8aDKCXMapPx1JF9vnvCt , 노션: https://app.notion.com/p/401f12e24fd681858b1fd408acb365e3 |
 
 각 폴더의 `index.html`과 `img/`가 올린 페이지와 같아요. `연구2_가이드라인_적용/페이지에서_고친_문구/`는 페이지의 '문구 편집'으로 고친 내용을 내려받은 것이에요(이미 `build_guides.py`에 반영함).
 
