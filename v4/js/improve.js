@@ -105,7 +105,7 @@ renderBubble = function (role, text) {
   _renderBubble(role, text);
   if (role !== "user") return;
   const b = [...chat().querySelectorAll(".bubble.user")].at(-1);
-  if (b && !b.querySelector(".receipt")) b.insertAdjacentHTML("beforeend", '<span class="receipt" title="전달됨" aria-label="전달됨"><span class="ms fill">check_circle</span></span>');
+  if (b && !b.querySelector(".receipt")) b.insertAdjacentHTML("beforeend", '<span class="receipt" title="전달됨" aria-label="전달됨"><span class="ms">check_circle</span></span>');
 };
 
 const UNSENT_MS = 4000;
