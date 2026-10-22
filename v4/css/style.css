@@ -1027,3 +1027,16 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .voice-btn.on.has-text .vlabel { width: fit-content; min-height: 0; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; opacity: 1; }
 .voice-btn.on .vtext { padding: 0 6px; }
 .bubble.user .receipt .ms { font-size: 15px; vertical-align: 0; color: #8a8f99; }
+/* 뒤로 가기: 가운데 다이얼로그, 뒤 화면은 딤 */
+.back-dlg { position: absolute; inset: 0; z-index: 50; background: rgba(20,22,26,.5); display: grid; place-items: center; padding: 24px; }
+.bd-card { width: 100%; max-width: 320px; background: #fff; border-radius: 22px; padding: 24px 18px 10px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.25); text-align: center; }
+.bd-card b { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 19px; font-weight: 700; color: #1c1d21; }
+.bd-card b .ms { font-size: 24px; color: #0b57d0; vertical-align: 0; }
+.bd-card p { margin: 0 0 10px; font-size: 16px; color: #3c4048; }
+.bd-card button { border: 0; border-radius: 14px; font-family: inherit; font-size: 17px; font-weight: 700; height: 52px; }
+.bd-go { background: #0b57d0; color: #fff; }
+.bd-undo { background: #fff; color: #0b57d0; box-shadow: inset 0 0 0 1.5px #0b57d0; }
+.bd-card hr { width: 100%; border: 0; border-top: 1px solid #e6e9ee; margin: 8px 0 0; }
+.bd-quit { background: none; color: #c5221f; height: 46px !important; font-size: 16px !important; }
+/* 전달됨: 동그라미 안 체크, 차분한 초록 */
+.bubble.user .receipt .ms { font-size: 16px; color: #5f9e78; }

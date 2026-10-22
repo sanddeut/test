@@ -96,7 +96,7 @@ function renderVoice() {
 
 // =====================================================================
 // [입력 피드백] 시스템은 사용자의 입력이 오류 없이 전달되었는지를 즉시 알려야 한다
-// - 내 말풍선 옆에 작은 회색 체크(✓)로 전달됐음을 표시 (메신저의 '읽음'처럼)
+// - 내 말풍선 옆에 작은 초록 동그라미 체크로 전달됐음을 표시 (메신저의 '읽음'처럼)
 // - 글자를 적어 두고 보내지 않으면 보내기 버튼을 깜빡이며 '보내기를 눌러야 전달돼요'
 // =====================================================================
 const _renderBubble = renderBubble;
@@ -104,7 +104,7 @@ renderBubble = function (role, text) {
   _renderBubble(role, text);
   if (role !== "user") return;
   const b = [...chat().querySelectorAll(".bubble.user")].at(-1);
-  if (b && !b.querySelector(".receipt")) b.insertAdjacentHTML("beforeend", '<span class="receipt" title="전달됨" aria-label="전달됨"><span class="ms">done</span></span>');
+  if (b && !b.querySelector(".receipt")) b.insertAdjacentHTML("beforeend", '<span class="receipt" title="전달됨" aria-label="전달됨"><span class="ms fill">check_circle</span></span>');
 };
 
 const UNSENT_MS = 4000;
@@ -182,11 +182,58 @@ onSubmit = function (e) {
   syncControls();
 };
 
+// =====================================================================
+// [입력 방법] 시스템은 사용자가 대화나 익숙한 방식(취소, 뒤로 가기 등)으로도 작업을 통제할 수 있게 해야 한다
+// - 휴대폰 뒤로 가기를 누르면 페이지를 나가지 않고 진행을 멈춘 뒤 가운데 다이얼로그로 물음
+//   계속하기(기본) / 방금 한 일 취소 / 앱 종료(구분선 아래 빨간 글자)
+// =====================================================================
+function setupBackDialog() {
+  const d = document.createElement("div");
+  d.id = "back-dlg";
+  d.className = "back-dlg";
+  d.hidden = true;
+  d.innerHTML = `<div class="bd-card" role="dialog" aria-modal="true" aria-labelledby="bd-title">
+      <b id="bd-title"><span class="ms fill">pause_circle</span>진행을 멈췄어요</b>
+      <p>무엇을 할까요?</p>
+      <button type="button" class="bd-go">계속하기</button>
+      <button type="button" class="bd-undo">방금 한 일 취소</button>
+      <hr>
+      <button type="button" class="bd-quit">앱 종료</button>
+    </div>`;
+  $(".phone").appendChild(d);
+  d.querySelector(".bd-go").onclick = () => closeBackDialog("continue");
+  d.querySelector(".bd-undo").onclick = () => closeBackDialog("undo");
+  d.querySelector(".bd-quit").onclick = () => closeBackDialog("quit");
+  window.addEventListener("popstate", () => {
+    if (!S || S.finished || !S.running) return;
+    history.pushState({ v4: 1 }, ""); // 페이지에 머묾
+    openBackDialog();
+  });
+}
+
+function openBackDialog() {
+  if (!$("#back-dlg").hidden) return;
+  S.backPaused = !S.paused;
+  if (S.backPaused) { S.paused = true; syncControls(); }
+  logEvent("back_button");
+  $("#back-dlg").hidden = false;
+}
+
+function closeBackDialog(choice) {
+  $("#back-dlg").hidden = true;
+  logEvent("back_choice", { choice });
+  if (choice === "quit") return finish("cancelled");
+  // TODO: '방금 한 일 취소'는 단계별로 무엇을 되돌릴지 정한 뒤 구현 (지금은 계속하기와 같음)
+  if (S.backPaused) resume();
+}
+
 // 새 세션을 시작할 때마다 처음 상태(눌러서 시작하기)로
 const _start = start;
 start = function () {
   setInputMode("start");
+  history.pushState({ v4: 1 }, ""); // 뒤로 가기를 눌러도 페이지를 나가지 않게
   return _start();
 };
 
 document.addEventListener("DOMContentLoaded", setupInputMode);
+document.addEventListener("DOMContentLoaded", setupBackDialog);
