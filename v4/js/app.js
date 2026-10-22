@@ -1216,10 +1216,16 @@ async function run() {
     const step = S.steps[i];
     logEvent("step_start", { label: step.label });
     renderStepper();
-    const ok = S.automation === "low" ? await runLowStep(step) : await runHighStep(step);
+    const ok = await runStepAt(i, step);
+    if (ok === "undo") { i = S.undoTo - 1; continue; } // 되돌린 단계부터 다시
     if (!ok || S.finished) return;
     if (S.automation === "low") await sleep(1000 * PACE); // 높은 자동화는 단계 안에서 읽는 시간을 둠
   }
+}
+
+// 한 단계 실행 (개선안에서 되돌리기를 끼워 넣음)
+function runStepAt(i, step) {
+  return S.automation === "low" ? runLowStep(step) : runHighStep(step);
 }
 
 const resolveMsgs = (m) => (typeof m === "function" ? m(S) : m);

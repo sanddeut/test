@@ -134,7 +134,9 @@ syncSendButton = function () {
   _syncSendButton();
   const btn = $("#send");
   if (btn.dataset.mode === "send" && btn.textContent !== "보내기") btn.textContent = "보내기";
+  if (btn.dataset.mode === "stop" && btn.textContent !== "멈추기") btn.textContent = "멈추기";
   btn.classList.toggle("send-text", btn.dataset.mode === "send");
+  btn.classList.toggle("stop-text", btn.dataset.mode === "stop");
 };
 
 // 첫 인사 아래 안내 카드
@@ -247,7 +249,7 @@ function closeBackDialog(choice) {
   $("#back-dlg").hidden = true;
   logEvent("back_choice", { choice });
   if (choice === "quit") return finish("cancelled");
-  // TODO: '방금 한 일 취소'는 단계별로 무엇을 되돌릴지 정한 뒤 구현 (지금은 계속하기와 같음)
+  if (choice === "undo" && requestUndo()) return; // 멈춘 상태 그대로 되돌림 (이전 진행은 다시 이어지지 않음)
   if (S.backPaused) resume();
 }
 
@@ -264,7 +266,7 @@ setCard = function (opts = {}) {
   const st = c.querySelector("#rc-status");
   // 진행 문장은 대화에 이미 있으니, 작업 중에는 점만 보여 줌
   const working = Boolean(S?.running) && !S.finished && !S.stopped && !c.classList.contains("asking");
-  if (working) st.innerHTML = '<span class="dots" aria-label="작업 중"><i></i><i></i><i></i></span>';
+  if (working) st.innerHTML = '<span class="dots" aria-label="작업 중"><i></i><i></i><i></i></span><span class="rc-sub">AI가 앱 조작 중</span>';
   c.classList.toggle("working", working);
 };
 
@@ -284,6 +286,123 @@ ensureRunCard = function () {
   }
   return c;
 };
+
+// =====================================================================
+// [되돌리기] 「방금 한 일 취소」(뒤로 가기 다이얼로그)와 AI 말풍선 아래 「되돌리기」
+// 바로 전에 끝낸 단계를 그 단계 시작 전 상태로 되돌리고, 그 단계를 다시 물음 (높은 자동화도 이 단계만은 물어봄)
+// 최종 호출 확인부터는 되돌릴 수 없음
+// =====================================================================
+const NO_UNDO = ["final", "password", "done", "reserve"];
+const undoable = (i) => i >= 0 && S?.steps[i] && !NO_UNDO.includes(S.steps[i].id);
+const stepName = (step) => step.label.replace(/^\[[^\]]*\]\s*/, "");
+
+function snapState() {
+  return structuredClone({
+    form: S.form, phone: S.phone, userSet: S.userSet, userDest: S.userDest, originTarget: S.originTarget,
+    manualDone: S.manualDone || {}, requestByUser: S.requestByUser, reserveCancelled: S.reserveCancelled,
+  });
+}
+
+const _runStepAt = runStepAt;
+runStepAt = async function (i, step) {
+  (S.snaps ||= [])[i] = snapState();
+  const redo = S.redoIdx === i;
+  S.redoIdx = null;
+  const work = redo ? runLowStep(step) : _runStepAt(i, step);
+  const undo = new Promise((res) => { S.undoResolve = res; });
+  const r = await Promise.race([work, undo]);
+  S.undoResolve = null;
+  if (r !== "__undo") return r;
+  // 되돌리기: 그 단계 시작 전 상태로 돌리고 다시 물음 (멈춰 둔 이전 진행은 버림)
+  const t = S.undoTo;
+  Object.assign(S, structuredClone(S.snaps[t]));
+  S.waiter = null; S.ivWaiter = null;
+  // 멈춰 있던 이전 진행은 버리고 다시 시작
+  S.resumeWaiters = []; S.paused = false; S.manual = false; S.backPaused = false;
+  if (typeof setActing === "function") setActing(false);
+  syncControls();
+  const c = $("#run-card");
+  if (c) {
+    c.querySelector("#rc-q").textContent = ""; c.querySelector("#rc-q").hidden = true;
+    c.querySelector("#rc-choices").innerHTML = "";
+    c.classList.remove("asking", "notice", "can-manual", "away");
+  }
+  resetStatus();
+  setChips([]);
+  renderPhone();
+  logEvent("undo", { to: S.steps[t].id });
+  S.redoIdx = t;
+  S.undoPending = false;
+  renderBubble("agent", `방금 한 일을 되돌렸어요. ${stepName(S.steps[t])}부터 다시 할게요.`);
+  await sleep(1200 * PACE);
+  return "undo";
+};
+
+// 되돌릴 단계: 결과를 말한 마지막 AI 말풍선의 단계, 없으면 지금 단계 바로 전 단계
+// 최종 호출 확인에 답하기 전까지만 되돌릴 수 있음
+function canUndoNow() {
+  const f = S.steps.findIndex((x) => x.id === "final");
+  return f < 0 || S.stepIdx <= f;
+}
+
+function lastDoneStep() {
+  const b = lastDoneBubble();
+  const i = b ? Number(b.dataset.step) : (S?.stepIdx ?? 0) - 1;
+  return undoable(i) ? i : null;
+}
+
+// 이미 끝난 단계(지금 단계보다 앞)의 마지막 AI 말풍선: 낮은 자동화는 승인한 질문, 높은 자동화는 "~했어요" 결과
+function lastDoneBubble() {
+  return [...chat().querySelectorAll(":scope > .bubble.agent[data-step]")].filter((x) => Number(x.dataset.step) < S.stepIdx).at(-1) || null;
+}
+
+function requestUndo(target = lastDoneStep(), via = "back") {
+  if (!S || S.finished || !S.running || target == null || S.undoPending || !canUndoNow()) return false;
+  S.undoPending = true;
+  S.undoTo = target;
+  appendBubble("user", via === "bubble" ? "되돌리기" : "방금 한 일 취소");
+  logEvent("undo_request", { via, to: S.steps[target].id });
+  document.querySelectorAll(".undo-link").forEach((b) => b.remove());
+  // AI를 멈추고, 입력을 기다리거나 멈춘 지점에 닿으면 되돌림
+  S.paused = true;
+  const iv = setInterval(() => {
+    if (!S || S.finished) return clearInterval(iv);
+    if (S.undoResolve && (S.waiter || S.ivWaiter || S.resumeWaiters.length)) { clearInterval(iv); S.undoResolve("__undo"); }
+  }, 80);
+  return true;
+}
+
+// 이미 끝낸 단계의 마지막 AI 말풍선 하나 아래에 작은 「되돌리기」
+function refreshUndoLink() {
+  if (!S) return;
+  const c = chat();
+  c.querySelectorAll(".undo-link").forEach((b) => b.remove());
+  if (!S.running || S.finished || S.undoPending) return;
+  const b = lastDoneBubble();
+  if (!b || !undoable(Number(b.dataset.step))) return;
+  if (!canUndoNow()) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "undo-link";
+  btn.innerHTML = '<span class="ms">undo</span>되돌리기';
+  btn.onclick = () => requestUndo(Number(b.dataset.step), "bubble");
+  b.after(btn);
+}
+
+function setupUndo() {
+  const c = chat();
+  new MutationObserver((ms) => {
+    let changed = false;
+    for (const m of ms) for (const n of m.addedNodes) {
+      if (n.nodeType === 1 && n.classList.contains("bubble") && n.classList.contains("agent") && S?.running && n.dataset.step == null) { n.dataset.step = S.stepIdx; changed = true; }
+      if (n.nodeType === 1 && n.classList.contains("bubble")) changed = true;
+    }
+    if (changed) refreshUndoLink();
+  }).observe(c, { childList: true });
+  // 단계가 넘어갈 때도 다시 확인
+  let last = -2;
+  setInterval(() => { if (S && S.stepIdx !== last) { last = S.stepIdx; refreshUndoLink(); } }, 300);
+}
 
 // 새 세션을 시작할 때마다 처음 상태(눌러서 시작하기)로
 const _start = start;
@@ -310,7 +429,7 @@ function setupRunFrame() {
   clip.appendChild(chip);
   const btn = $("#btn-manual");
   btn.classList.add("frame-manual");
-  btn.innerHTML = '<span class="ms fill">back_hand</span>내가 조작하기';
+  btn.textContent = "내가 조작하기";
   clip.appendChild(btn);
 }
 
@@ -401,3 +520,4 @@ document.addEventListener("DOMContentLoaded", setupInputMode);
 document.addEventListener("DOMContentLoaded", setupFocus);
 document.addEventListener("DOMContentLoaded", setupRunFrame);
 document.addEventListener("DOMContentLoaded", setupBackDialog);
+document.addEventListener("DOMContentLoaded", setupUndo);

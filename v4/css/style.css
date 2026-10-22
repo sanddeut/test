@@ -1151,3 +1151,21 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .rc-choices > .chip:not(.choice):first-of-type { margin-left: 14px; }
 .rc-choices > .chip:not(.choice):last-of-type { margin-right: 14px; }
 .run-card.asking.can-manual .rc-manual { margin-top: 4px; }
+
+/* 작업 중 점 아래 "AI가 앱 조작 중" */
+#rc-status:has(.dots) { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+#rc-status .rc-sub { font-size: 12.5px; color: #8a8f99; line-height: 1.3; }
+
+/* 멈추기: 빨간 네모 대신 빨간 글자 버튼 */
+.composer .send.stop-text { width: auto; height: 40px; padding: 0 16px; border-radius: 999px; font-size: 16px; font-weight: 700; font-family: inherit; background: #d93025; color: #fff; }
+
+/* AI 말풍선 아래 작은 「되돌리기」 */
+.undo-link { align-self: flex-start; display: inline-flex; align-items: center; gap: 3px; margin: -6px 0 0 8px; border: 0; background: none; padding: 2px 4px; color: #6b6f7a; font-size: 13px; font-weight: 500; font-family: inherit; }
+.undo-link .ms { font-size: 16px; vertical-align: 0; }
+
+/* 전달 체크는 보낸 순간 그 말풍선에서만 잠깐 보였다가 사라짐 */
+.bubble.user .receipt { animation: receipt-fade 2.4s ease forwards; }
+@keyframes receipt-fade { 0%, 65% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+
+/* 내가 조작하기: 손 아이콘 없이, 조금 작게 */
+.frame-manual { padding: 6.5px 12px !important; font-size: 12px !important; }
