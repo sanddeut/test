@@ -823,10 +823,9 @@ function openCoach() {
     tip.classList.remove("up", "down", "inside");
     tip.style.top = ""; tip.style.bottom = "";
     if (i === 0) {
-      // 실행화면: 버튼 칸 아래에 두고 꼬리가 위(실행화면)를 가리킴
-      const fr = (t.closest(".run-frame") || t).getBoundingClientRect();
+      // 실행화면: 바로 아래에 붙여 두고 꼬리가 위(실행화면)를 가리킴
       tip.classList.add("up");
-      tip.style.top = `${fr.bottom - pr.top + 16}px`;
+      tip.style.top = `${r.bottom - pr.top + 12}px`;
     }
     else { tip.classList.add("down"); tip.style.bottom = `${pr.bottom - r.top + 16}px`; }
     const cx = r.left - pr.left + r.width / 2;
