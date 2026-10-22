@@ -177,7 +177,7 @@ function freezeQuestion() {
 // 선택지 목록은 누르는 버튼처럼 보이지 않게: 한 상자 안의 목록(스택드 리스트) + 고른 행 오른쪽에 색 체크만
 const PV_CHECK = '<span class="ms pv-check">check</span>';
 const PV_GO = '<span class="ms pv-go">chevron_right</span>';
-const PV_AI = '<span class="ai-pick">AI가 선택</span>';
+const PV_AI = '<span class="ai-pick">AI의 선택</span>';
 
 // 요청사항·쿠폰 미리보기 목록은 대화창 카드에서 바로 고를 수 있게 (파일럿: 거부 → 목록 단계가 번거로움)
 function pickable(box, stepId) {
