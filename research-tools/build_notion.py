@@ -11,7 +11,7 @@ from urllib.parse import quote
 
 SP = os.path.dirname(os.path.abspath(__file__))
 PAGE = f"{SP}/pages/연구2_가이드라인_적용"
-IMG_W = 26  # 캡처 한 칸의 최대 너비(%). 캡처가 많으면 좁혀서 설명 칸을 남김
+IMG_W = 15  # 캡처 한 칸의 너비(%). 모든 캡처를 같은 크기로, 전체 너비 페이지에서도 작게 보이게
 # 브랜치가 바뀌거나 지워져도 이미지가 깨지지 않도록 커밋 번호로 고정 (이미지를 바꾸면 푸시한 뒤 다시 만들어야 함)
 SHA = subprocess.check_output(["git", "log", "-1", "--format=%H", "--", "pages/연구2_가이드라인_적용/img"], cwd=SP, text=True).strip()
 RAW = f"https://raw.githubusercontent.com/sanddeut/test/{SHA}/" + quote("research-tools/pages/연구2_가이드라인_적용/")
@@ -88,7 +88,7 @@ for cat, subs in tree:
                 bullets = lists.get(it["key"], it["bullets"])
                 cols = []
                 n = sum(len(f) for _, f in it["groups"])
-                w = min(IMG_W, 72 // n)
+                w = IMG_W
                 for label, figs in it["groups"]:
                     for fi, (src, cap) in enumerate(figs):
                         head = f"**{label}**" if fi == 0 else "<p />"
