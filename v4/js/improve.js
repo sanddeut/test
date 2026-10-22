@@ -9,6 +9,7 @@
 // - 보내기 버튼은 화살표 대신 '보내기' 글자
 // =====================================================================
 const inputMode = { mode: "start" }; // start | pick | text | voice
+const TEXT_PLACEHOLDER = "여기에 글자로 적어 주세요";
 
 function setInputMode(mode) {
   inputMode.mode = mode;
@@ -121,6 +122,13 @@ function watchUnsent() {
 }
 
 // 보내기 버튼: 화살표 대신 '보내기' 글자 (작업 중 중지 버튼은 원안 그대로)
+// 글자로 하기 입력칸 안내 문구: '말하기'가 아니라 글자로 적는 곳임을 알 수 있게
+const _syncControlsPh = syncControls;
+syncControls = function () {
+  _syncControlsPh();
+  if (S && !$("#msg").disabled) $("#msg").placeholder = TEXT_PLACEHOLDER;
+};
+
 const _syncSendButton = syncSendButton;
 syncSendButton = function () {
   _syncSendButton();
@@ -165,7 +173,7 @@ syncControls = function () {
   if (!lowTalkable()) return;
   $("#msg").disabled = false;
   $("#mic").disabled = false;
-  $("#msg").placeholder = "AI에게 말하기…";
+  $("#msg").placeholder = TEXT_PLACEHOLDER;
   syncSendButton();
 };
 
@@ -194,7 +202,7 @@ function setupBackDialog() {
   d.hidden = true;
   d.innerHTML = `<div class="bd-card" role="dialog" aria-modal="true" aria-labelledby="bd-title">
       <b id="bd-title"><span class="ms fill">pause_circle</span>진행을 멈췄어요</b>
-      <p>무엇을 할까요?</p>
+      <p>어떻게 할까요?</p>
       <button type="button" class="bd-go">계속하기</button>
       <button type="button" class="bd-undo">방금 한 일 취소</button>
       <hr>
