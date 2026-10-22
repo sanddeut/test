@@ -139,14 +139,18 @@ sayKey = async function (key, vars, opts) {
 };
 
 function renderStartGuide() {
-  const d = document.createElement("div");
-  d.className = "bubble agent guide-card";
-  d.innerHTML = `<b>이렇게 대화를 시작해보세요</b>
+  // 첫 인사 말풍선 안에 안내를 함께 넣고, 안내는 회색 상자로 AI의 말과 구분
+  const greet = [...chat().querySelectorAll(".bubble.agent")].at(-1);
+  if (!greet) return;
+  greet.classList.add("with-guide");
+  greet.insertAdjacentHTML("beforeend", `<div class="guide-box">
+    <span class="guide-label"><span class="ms">info</span>안내</span>
+    <b>이렇게 대화를 시작해보세요</b>
     <ol>
       <li>아래 「눌러서 시작하기」를 눌러요</li>
       <li>말로 할지, 글자로 할지 골라요</li>
-    </ol>`;
-  chat().insertBefore(d, $("#chips"));
+    </ol>
+  </div>`);
   scrollChat();
 }
 

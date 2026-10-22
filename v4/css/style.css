@@ -993,3 +993,14 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .voice-btn.said { justify-content: flex-start; color: #1c1d21; font-weight: 500; font-size: 16px; box-shadow: 0 0 0 1px #d6dce6, 0 2px 10px rgba(0,0,0,.06); }
 .voice-btn span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .phone[data-input="voice"] .composer .send.send-text { height: 52px; padding: 0 20px; font-size: 17px; }
+/* 첫 인사 말풍선 안 안내: 회색 상자로 구분 */
+.bubble.with-guide { white-space: normal; display: flex; flex-direction: column; gap: 10px; }
+.guide-box { background: #f1f3f6; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.guide-label { display: inline-flex; align-items: center; gap: 3px; font-size: 12.5px; font-weight: 700; color: #5f6470; }
+.guide-label .ms { font-size: 15px; vertical-align: 0; }
+.guide-box b { font-size: 15.5px; }
+.guide-box ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 2px; font-size: 15px; line-height: 1.5; color: #3c4048; }
+/* 말하기 버튼: 누를 수 있다는 게 보이게 보내기보다 연한 배경색 */
+.voice-btn { background: #dce8fc; color: #0b57d0; box-shadow: none; }
+.voice-btn.on { background: #fbe0de; color: #b3261e; box-shadow: none; }
+.voice-btn.said { background: #fff; }
