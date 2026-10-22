@@ -112,7 +112,7 @@ const TARGET_PLACE = "gangnam"; // 참가자가 요청하는 목적지
 const AGENT_PLACE = TARGET_PLACE; // 에이전트가 고르는 목적지 (v2 최종: 목적지 오류 없음)
 
 // 세션별 오류 (연구1 v2 최종 시나리오)
-// - 세션1: 최종 확인 다음, 에이전트가 묻지 않고 기사님 요청사항을 '기사님과 이야기 나누며 가고 싶어요'로 선택
+// - 세션1: 최종 호출 확인 전, 에이전트가 묻지 않고 기사님 요청사항을 '기사님과 이야기 나누며 가고 싶어요'로 선택
 // - 세션2: 호출 완료 후, 묻지 않고 최근 3개월 이용내역을 열람하고 다음 주 토요일 같은 시간 예약 호출을 제안·등록
 const SESSIONS = {
   1: { title: "세션1 · 기사님 요청사항 임의 선택", error: "request" },
@@ -271,20 +271,20 @@ function scriptDefaults(cond) {
     } else add("coupon", "예상 금액 확인", "안내 (쿠폰은 기본 적용 안 함)", "예상 금액은 {요금}이에요.");
   }
 
-  if (low) {
-    add("final", "최종 호출 확인", "승인 요청", "호출 내용을 최종 확인해주세요.");
-    add("final.ask", "최종 호출 확인", "거부 시", "무엇을 수정할까요?");
-  } else add("final", "최종 호출 확인", "안내", "‘{목적지}’으로 가는 {택시종류}를 호출할게요.");
-
   // [세션1 오류] 기사님 요청사항 임의 선택
   if (low) {
     add("request", "[세션1 오류] 기사님 요청사항", "승인 요청", "기사님 요청사항을 선택할 수 있어요. ‘{요청사항}’를 추천해요.");
     add("request.ask", "[세션1 오류] 기사님 요청사항", "거부 시", "기사님 요청사항을 어떻게 할까요?");
-    add("request.confirm", "[세션1 오류] 기사님 요청사항", "요청사항을 고른 뒤", "기사님 요청사항을 ‘{요청사항}’로 바꿨어요. 이렇게 호출할게요.");
+    add("request.confirm", "[세션1 오류] 기사님 요청사항", "요청사항을 고른 뒤", "기사님 요청사항을 ‘{요청사항}’로 바꿨어요.");
   } else add("request", "[세션1 오류] 기사님 요청사항", "안내", "기사님 요청사항으로 ‘{요청사항}’를 추천해요.");
   add("change.request", "[세션1 오류] 기사님 요청사항", "중지 중 요청사항을 바꿨을 때", "기사님 요청사항을 ‘{요청사항}’로 바꿨어요.");
-  if (low) add("request.none.confirm", "[세션1 오류] 기사님 요청사항", "요청사항을 뺀 뒤", "기사님 요청사항을 뺐어요. 이렇게 호출할게요.");
+  if (low) add("request.none.confirm", "[세션1 오류] 기사님 요청사항", "요청사항을 뺀 뒤", "기사님 요청사항을 뺐어요.");
   add("change.request.none", "[세션1 오류] 기사님 요청사항", "중지 중 요청사항을 뺐을 때", "기사님 요청사항을 뺐어요.");
+
+  if (low) {
+    add("final", "최종 호출 확인", "승인 요청", "호출 내용을 최종 확인해주세요.");
+    add("final.ask", "최종 호출 확인", "거부 시", "무엇을 수정할까요?");
+  } else add("final", "최종 호출 확인", "안내", "‘{목적지}’으로 가는 {택시종류}를 호출할게요.");
 
   add("password", "[직접조작] 결제 비밀번호", "안내", "결제를 위해 결제 비밀번호 입력이 필요해요. 택시 앱을 열어 직접 입력해주세요.");
   add("done.busy", "완료 안내", "진행 문구 (택시를 찾는 동안)", "택시를 찾고 있어요 …");
@@ -568,6 +568,36 @@ function buildSteps(complexity, session = 1) {
   }
 
   steps.push(
+    ...(session === 1 ? [{
+      id: "request",
+      kind: "error_request",
+      label: "[세션1 오류] 기사님 요청사항 임의 선택",
+      guide: `호출 확인 화면에서 에이전트가 사용자에게 묻지 않고 기사님 요청사항을 ‘${REQUESTS[AGENT_REQUEST]}’로 선택한 단계. 고를 수 있는 요청사항: ${REQUEST_CHOICES.map((k) => REQUESTS[k]).join(", ")} (요청사항 없이 호출할 수도 있음)`,
+      low: { messages: (s) => lines("request", s, { request: AGENT_REQUEST }), options: APPROVE, reject: "request" },
+      high: { messages: msg("request") },
+      // 호출 확인 시트의 [기사님 요청사항]을 누르고 '기사님과 이야기 나누며 가고 싶어요'를 고른 뒤 알리거나 승인을 물음
+      // 목록은 열어 둔 채로 묻고(고른 항목이 보이게), 승인하면 [확인] → 호출 확인 시트로 돌아와 다음 단계(최종 호출 확인)
+      // 낮은·높은 자동화 모두 목록에서 바로 골라 둔 채로 알림 (낮은 자동화는 승인을 물음)
+      pre: async (s) => {
+        if (s.userSet?.request) return;
+        // 호출 확인 시트를 먼저 엶 (최종 호출 확인보다 앞 단계)
+        if (!["confirm", "request"].includes(s.phone.sheet)) {
+          if (s.phone.sheet) { s.phone.sheet = null; renderPhone(); await actSleep(300); }
+          await tap(".tx-call");
+          s.phone.sheet = "confirm";
+          renderPhone();
+          await actSleep(500);
+        }
+        // 낮은·높은 자동화 모두 목록에서 먼저 골라 둠 (낮은 자동화는 그 뒤 승인을 물음)
+        await pickRequest(s, AGENT_REQUEST, { stay: true });
+      },
+      act: async (s) => {
+        if (!s.userSet?.request && s.form.request !== AGENT_REQUEST) await pickRequest(s, AGENT_REQUEST, { stay: true });
+        s.phone.reqFocus = null;
+        await closeRequestSheet(s);
+      },
+      apply: () => {},
+    }] : []),
     {
       id: "final",
       label: "최종 호출 확인",
@@ -582,33 +612,9 @@ function buildSteps(complexity, session = 1) {
         renderPhone();
         await actSleep(500);
       },
-      // 세션1은 다음 단계(기사님 요청사항)에서 호출하므로 확인 시트를 그대로 둠
-      act: async (s) => { if (session === 2) await callTaxi(s); },
-      apply: (s) => { if (session === 2) { s.phone.pin = ""; s.phone.sheet = "pin"; } },
-    },
-    ...(session === 1 ? [{
-      id: "request",
-      kind: "error_request",
-      label: "[세션1 오류] 기사님 요청사항 임의 선택",
-      guide: `호출 확인 화면에서 에이전트가 사용자에게 묻지 않고 기사님 요청사항을 ‘${REQUESTS[AGENT_REQUEST]}’로 선택한 단계. 고를 수 있는 요청사항: ${REQUEST_CHOICES.map((k) => REQUESTS[k]).join(", ")} (요청사항 없이 호출할 수도 있음)`,
-      low: { messages: (s) => lines("request", s, { request: AGENT_REQUEST }), options: APPROVE, reject: "request" },
-      high: { messages: msg("request") },
-      // 호출 확인 시트의 [기사님 요청사항]을 누르고 '기사님과 이야기 나누며 가고 싶어요'를 고른 뒤 알리거나 승인을 물음
-      // 목록은 열어 둔 채로 묻고(고른 항목이 보이게), 승인하면 [확인] → [호출]
-      // 낮은·높은 자동화 모두 목록에서 바로 골라 둔 채로 알림 (낮은 자동화는 승인을 물음)
-      pre: async (s) => {
-        if (s.userSet?.request) return;
-        // 낮은·높은 자동화 모두 목록에서 먼저 골라 둠 (낮은 자동화는 그 뒤 승인을 물음)
-        await pickRequest(s, AGENT_REQUEST, { stay: true });
-      },
-      act: async (s) => {
-        if (!s.userSet?.request && s.form.request !== AGENT_REQUEST) await pickRequest(s, AGENT_REQUEST, { stay: true });
-        s.phone.reqFocus = null;
-        await closeRequestSheet(s);
-        await callTaxi(s);
-      },
+      act: async (s) => { await callTaxi(s); },
       apply: (s) => { s.phone.pin = ""; s.phone.sheet = "pin"; },
-    }] : []),
+    },
     {
       // [직접조작] 결제 비밀번호: 자동결제라 호출 전에 참가자가 [화면 열기] → 택시 앱 화면에서 직접 입력
       id: "password",
