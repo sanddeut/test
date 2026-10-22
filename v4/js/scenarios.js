@@ -571,7 +571,7 @@ function buildSteps(complexity, session = 1) {
     ...(session === 1 ? [{
       id: "request",
       kind: "error_request",
-      label: "[세션1 오류] 기사님 요청사항 임의 선택",
+      label: "기사님 요청사항 묻기",
       guide: `호출 확인 화면에서 에이전트가 사용자에게 묻지 않고 기사님 요청사항을 ‘${REQUESTS[AGENT_REQUEST]}’로 선택한 단계. 고를 수 있는 요청사항: ${REQUEST_CHOICES.map((k) => REQUESTS[k]).join(", ")} (요청사항 없이 호출할 수도 있음)`,
       low: { messages: (s) => lines("request", s, { request: AGENT_REQUEST }), options: APPROVE, reject: "request" },
       high: { messages: msg("request") },

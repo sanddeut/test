@@ -1181,3 +1181,6 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 /* 말풍선 사이 간격 넓힘 (「되돌리기」가 들어가도 답답하지 않게) */
 .chat { gap: 18px; }
 .undo-link { margin-top: -12px; }
+
+/* 거부 후 추천 선택지: 대화창 안 목록 */
+.chat > .reject-picks { flex-shrink: 0; align-self: stretch; }

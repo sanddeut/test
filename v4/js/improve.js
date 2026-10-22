@@ -315,7 +315,7 @@ runStepAt = async function (i, step) {
   (S.snaps ||= [])[i] = snapState();
   const redo = S.redoIdx === i;
   S.redoIdx = null;
-  const work = redo ? runLowStep(step) : _runStepAt(i, step);
+  const work = step.id === "request" ? askRequest(step) : redo ? runLowStep(step) : _runStepAt(i, step);
   const undo = new Promise((res) => { S.undoResolve = res; });
   const r = await Promise.race([work, undo]);
   S.undoResolve = null;
@@ -325,7 +325,8 @@ runStepAt = async function (i, step) {
   Object.assign(S, structuredClone(S.snaps[t]));
   S.waiter = null; S.ivWaiter = null;
   // 멈춰 있던 이전 진행은 버리고 다시 시작
-  S.resumeWaiters = []; S.paused = false; S.manual = false; S.backPaused = false;
+  S.resumeWaiters = []; S.paused = false; S.manual = false; S.backPaused = false; S.inReject = false; S.pickOut = null;
+  document.querySelectorAll(".reject-picks").forEach((x) => x.remove());
   if (typeof setActing === "function") setActing(false);
   syncControls();
   const c = $("#run-card");
@@ -411,6 +412,142 @@ function setupUndo() {
   let last = -2;
   setInterval(() => { if (S && S.stepIdx !== last) { last = S.stepIdx; refreshUndoLink(); } }, 300);
 }
+
+// =====================================================================
+// [가이드라인 20] 기사님 요청사항: AI가 임의로 고르지 않고 먼저 물음 (낮은·높은 자동화 모두)
+// 요청사항 목록을 열어 둔 채 묻고, 사용자가 고른 것을 실행화면에서 선택
+// =====================================================================
+const REQ_OPTIONS = () => [...REQUEST_CHOICES, "none"].map((id) => ({ id, label: REQUESTS[id] }));
+
+async function openRequestList(s) {
+  const p = s.phone;
+  if (!["confirm", "request"].includes(p.sheet)) {
+    if (p.sheet) { p.sheet = null; renderPhone(); await actSleep(300); }
+    await tap(".tx-call");
+    p.sheet = "confirm";
+    renderPhone();
+    await actSleep(500);
+  }
+  if (p.sheet !== "request") {
+    p.focus = "request";
+    renderPhone();
+    await tap(".tx-req");
+    p.focus = null;
+    p.sheet = "request";
+    renderPhone();
+    await actSleep(500);
+  }
+}
+
+async function askRequest(step) {
+  resetStatus();
+  setStatus("", true);
+  setActing(true);
+  try { await openRequestList(S); } finally { setActing(false); }
+  await dwell(150);
+  const ask = "기사님 요청사항을 선택할 수 있어요. 어떤 걸로 할까요?";
+  await agentSay(ask);
+  const hint = `고를 수 있는 기사님 요청사항은 ${REQUEST_CHOICES.map((k) => `${REQUESTS[k]}(${k})`).join(", ")}이고, 요청사항 없이 하려면 none이야. 사용자가 요청사항이나 '없음'을 말하면 set_request야. 말하지 않으면 reply로 어떤 요청사항으로 할지 되물어.`;
+  for (;;) {
+    const c = await askChoice(REQ_OPTIONS(), ask, ["set_request", "cancel"], hint);
+    if (c.id === "__reask") continue;
+    if (c.id === "cancel") { await cancelRide(); return false; }
+    const k = REQUESTS[c.id] ? c.id : c.out?.request;
+    if (!REQUESTS[k]) { if (c.out?.reply) await agentSay(c.out.reply, { talk: true }); continue; }
+    S.m.approvals++;
+    logEvent("request_chosen", { request: k, via: c.via });
+    S.userSet.request = true;
+    S.requestByUser = true;
+    resetStatus();
+    setStatus("", true);
+    setActing(true);
+    try {
+      if (k === "none") { S.form.request = "none"; renderPhone(); await actSleep(300); await closeRequestSheet(S); }
+      else await pickRequest(S, k);
+    } finally { setActing(false); }
+    renderPhone();
+    await agentSay(k === "none" ? "기사님 요청사항 없이 진행할게요." : `기사님 요청사항을 ‘${REQUESTS[k]}’로 정했어요.`);
+    await dwell();
+    return true;
+  }
+}
+
+// =====================================================================
+// [가이드라인 17] 거부한 뒤 되물을 때 고를 수 있는 추천 선택지 (말이나 글로 답해도 됨)
+// =====================================================================
+const CAR_PICKS = () => Object.keys(CAR_TYPES).map((k) => ({ label: CAR_TYPES[k].label, out: { intent: "set_car", car_type: k } }));
+const DIRECT = { label: "직접 입력", input: true };
+function rejectPicks() {
+  if (!S?.inReject) return null;
+  switch (S.steps[S.stepIdx]?.id) {
+    case "taxi_open": return [{ label: `${TAXI_APP} 실행`, out: { intent: "approve" } }, { label: "그만하기", cancel: true }];
+    case "origin": return [{ label: "현재 위치", out: { intent: "set_origin", origin: "current" } }, DIRECT];
+    case "car": return CAR_PICKS();
+    case "coupon": return [{ label: "쿠폰 적용", out: { intent: "set_coupon", coupon: true } }, { label: "적용 안 함", out: { intent: "continue" } }];
+    case "final": return [
+      { label: "출발지 바꾸기", ask: "출발지를 어디로 바꿀까요?", sub: [{ label: "현재 위치", out: { intent: "set_origin", origin: "current" } }, DIRECT] },
+      { label: "목적지 바꾸기", ask: "목적지를 어디로 바꿀까요?", sub: [DIRECT] },
+      ...(S.complexity === "B" ? [{ label: "택시 종류 바꾸기", ask: "어떤 택시로 바꿀까요?", sub: CAR_PICKS() }] : []),
+      { label: "호출 취소", cancel: true },
+    ];
+    default: return null;
+  }
+}
+
+function renderPicks(list, waiter) {
+  document.querySelectorAll(".reject-picks").forEach((x) => x.remove());
+  const box = document.createElement("div");
+  box.className = "choice-list reject-picks";
+  list.forEach((o) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "choice chip";
+    b.innerHTML = `<span class="c-main"><b>${esc(o.label)}</b></span><span class="ms c-go">chevron_right</span>`;
+    b.onclick = () => pickReject(o, waiter);
+    box.appendChild(b);
+  });
+  chat().insertBefore(box, $("#chips"));
+  scrollChat();
+}
+
+function pickReject(o, waiter) {
+  if (!S || S.paused || S.waiter !== waiter) return;
+  if (o.input) {
+    // 직접 입력: 글 입력창으로
+    if (inputMode.mode !== "text") setInputMode("text");
+    $("#msg").focus();
+    return;
+  }
+  document.querySelectorAll(".reject-picks").forEach((x) => x.remove());
+  appendBubble("user", o.label);
+  logEvent("user_button", { choice: o.label, via: "reject_pick" });
+  if (o.sub) { renderBubble("agent", o.ask); renderPicks(o.sub, waiter); return; }
+  S.waiter = null;
+  syncControls();
+  if (o.cancel) { cancelRide(); return; }
+  S.pickOut = o.out;
+  replyPause().then(() => waiter.resolve({ type: "text", text: o.label }));
+}
+
+const _waitText = waitText;
+waitText = function () {
+  const p = _waitText();
+  const list = rejectPicks();
+  if (list) renderPicks(list, S.waiter);
+  return p.then((t) => { document.querySelectorAll(".reject-picks").forEach((x) => x.remove()); return t; });
+};
+
+const _turn = turn;
+turn = async function (text, opts) {
+  if (S?.pickOut) { const o = S.pickOut; S.pickOut = null; return { reply: "", ...o }; }
+  return _turn(text, opts);
+};
+
+const _handleReject = handleReject;
+handleReject = async function (...args) {
+  S.inReject = true;
+  try { return await _handleReject(...args); } finally { if (S) S.inReject = false; }
+};
 
 // 새 세션을 시작할 때마다 처음 상태(눌러서 시작하기)로
 const _start = start;
