@@ -1269,3 +1269,10 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 
 /* 배차 완료 화면의 '호출 취소' (호출한 뒤 되돌리기에서 AI가 누름) */
 .tx-cancel-call { text-align: center; font-size: 13px; color: #8a8f99; padding: 12px 0 2px; }
+
+/* 첫 인사: 발화("무엇을 도와드릴까요?")를 주인공으로, 시작 안내 상자는 보조로 (굵기와 대비를 낮추고 발화와 간격을 넓힘) */
+.bubble.with-guide { font-weight: 600; gap: 16px; }
+.bubble.agent.with-guide .guide-box { background: rgba(255,255,255,.6); font-weight: 400; gap: 2px; }
+.bubble.with-guide .guide-title { font-size: 14px; font-weight: 500; color: #4a4f57; }
+.bubble.with-guide .guide-title .ms { font-size: 16px; }
+.bubble.with-guide .guide-box ol { font-size: 14px; color: #5f6470; }
