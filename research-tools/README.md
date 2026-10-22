@@ -25,6 +25,6 @@
 - `build.py` + `curate.py` + `template.html`: 연구1 화면 모음
 - `build3.py` + `template2.html`: 연구2 세 칸 비교 페이지
 - `build_guides.py` + `guides_tpl.html`: 연구2 가이드라인 적용 페이지 (내용은 `v4/guideline-log.md`의 가이드라인 문장과 `build_guides.py`의 항목별 설명)
-- `build_notion.py`: 올린 가이드라인 적용 페이지(`pages/연구2_가이드라인_적용/index.html`)를 노션용 마크다운(`notion.md`)으로 바꿈. 범주는 제목2, 소제목은 제목3, 가이드라인은 제목4 토글, 항목은 원안 → 개선안 캡처와 설명 불릿을 열로. 캡처는 깃허브 raw 주소. 페이지에서 고친 문구는 db를 내려받은 폴더를 인자로 주면 덮어씀
+- `build_notion.py`: 올린 가이드라인 적용 페이지(`pages/연구2_가이드라인_적용/index.html`)를 노션용 마크다운(`notion.md`)으로 바꿈. 범주는 제목2, 소제목은 제목3, 가이드라인은 토글, 항목은 원안 → 개선안 캡처와 설명 불릿을 열로. 캡처는 깃허브 raw 주소. 페이지에서 고친 문구는 db를 내려받은 폴더를 인자로 주면 덮어씀
 - `recent.json`: 비교 페이지에서 붉은 테두리로 표시할 캡처
 - `ideas.md`: 중간에 메모해 둔 아이디어
