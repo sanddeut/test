@@ -9,7 +9,7 @@
 // - 보내기 버튼은 화살표 대신 '보내기' 글자
 // =====================================================================
 const inputMode = { mode: "start" }; // start | pick | text | voice
-const TEXT_PLACEHOLDER = "여기에 글자로 적어 주세요";
+const TEXT_PLACEHOLDER = "여기에 적어 주세요";
 
 function setInputMode(mode) {
   inputMode.mode = mode;
