@@ -492,7 +492,7 @@ function queueFocus() {
   requestAnimationFrame(() => requestAnimationFrame(() => { focusQueued = false; applyFocus(); }));
 }
 
-const FADE = 116; // 현재 대화 위로 남겨 둘 높이 (바로 앞 말풍선과 「되돌리기」가 살짝 보이게)
+const FADE = 84; // 현재 대화 위로 남겨 둘 높이 (바로 앞 말풍선과 「되돌리기」가 살짝 보이게)
 function applyFocus() {
   const c = chat();
   if (!c || !S) return;
