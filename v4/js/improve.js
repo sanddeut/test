@@ -266,15 +266,49 @@ start = function () {
 // - 직접 조작 버튼을 화면 바로 아래로 옮겨 한 흐름에서 이해할 수 있게
 // =====================================================================
 function setupRunFrame() {
-  const box = $(".screen-box");
+  // 피그마 시안: 칩은 실행화면 위 가운데에 매달린 탭, 직접 조작 버튼은 실행화면 안 오른쪽 아래 빨간 「내가 조작하기」
+  const clip = $(".screen-clip");
+  const veil = document.createElement("div");
+  veil.className = "ai-veil"; // AI가 조작하는 동안 흰색 0.3 덮개로 조금 흐리게
+  clip.appendChild(veil);
   const chip = document.createElement("div");
   chip.className = "ai-live-chip";
-  chip.innerHTML = '<span class="ms fill">auto_awesome</span>AI가 앱 조작 중';
-  box.insertBefore(chip, box.firstChild);
+  chip.textContent = "AI가 앱 조작 중 ...";
+  clip.appendChild(chip);
   const btn = $("#btn-manual");
   btn.classList.add("frame-manual");
-  btn.innerHTML = '<span class="ms">back_hand</span>직접 조작';
-  box.appendChild(btn);
+  btn.innerHTML = '<span class="ms fill">back_hand</span>내가 조작하기';
+  clip.appendChild(btn);
+}
+
+// 내가 조작하기: 실행화면이 커지며 전체 화면을 덮고 → 흰 화면과 로딩 스피너 → 실제 앱 화면이 살짝 튕기며 나타남
+const _startManual = startManual;
+startManual = function () {
+  const fromRun = $(".phone").dataset.view === "progress";
+  const r = _startManual();
+  if (fromRun) playManualIntro();
+  return r;
+};
+
+function playManualIntro() {
+  const phone = $(".phone");
+  let load = $("#manual-loading");
+  if (!load) {
+    load = document.createElement("div");
+    load.id = "manual-loading";
+    load.innerHTML = '<span class="spinner"></span>';
+    phone.appendChild(load);
+  }
+  const zoomMs = 1100 * PACE; // 원안의 확대 애니메이션 시간과 같게
+  clearTimeout(playManualIntro.t1); clearTimeout(playManualIntro.t2);
+  playManualIntro.t1 = setTimeout(() => {
+    load.className = "on";
+    playManualIntro.t2 = setTimeout(() => {
+      load.className = "";
+      const clip = $(".screen-clip");
+      clip.classList.remove("bounce-in"); void clip.offsetWidth; clip.classList.add("bounce-in");
+    }, 900);
+  }, zoomMs);
 }
 
 // =====================================================================

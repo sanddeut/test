@@ -1043,21 +1043,28 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 /* 앱 종료 확인 */
 .bd-quit-yes { background: #c5221f; color: #fff; }
 .bd-quit-no { background: #fff; color: #3c4048; box-shadow: inset 0 0 0 1.5px #c9ced8; }
-/* 실행화면: 여러 색 그라데이션 테두리가 돌아가고, 위 가운데 'AI가 앱 조작 중' 칩, 아래 가운데 직접 조작 버튼 */
+/* 실행화면 (피그마 시안): 파랑·보라·분홍 그라데이션 테두리가 돌고, 흰색 0.3 덮개, 위 가운데 탭 모양 칩, 오른쪽 아래 빨간 「내가 조작하기」 */
 @property --ring { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
-.phone[data-view="progress"] .screen-box { flex-direction: column; }
 .phone[data-view="progress"] .screen-clip, .phone.acting[data-view="progress"] .screen-clip {
   border: 3px solid transparent; box-sizing: content-box;
-  background: linear-gradient(#fff, #fff) padding-box, conic-gradient(from var(--ring), #4c8df6, #a36bf5, #f06292, #ffb74d, #4dd0b5, #4c8df6) border-box;
-  animation: ring-spin 3s linear infinite; box-shadow: 0 4px 18px rgba(0,0,0,.10); }
+  background: linear-gradient(#fff, #fff) padding-box, conic-gradient(from var(--ring), #4c8df6, #a36bf5 72deg, #f06292 144deg, #4c8df6 360deg) border-box;
+  animation: ring-spin 3s linear infinite; box-shadow: 0 4px 20px rgba(0,0,0,.10); }
 @keyframes ring-spin { to { --ring: 360deg; } }
 @media (prefers-reduced-motion: reduce) { .phone[data-view="progress"] .screen-clip { animation: none; } }
-.ai-live-chip { display: none; position: relative; z-index: 3; margin-bottom: -14px; align-items: center; gap: 5px; background: linear-gradient(90deg, #4c8df6, #a36bf5); color: #fff; font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px; box-shadow: 0 2px 8px rgba(76,141,246,.35); white-space: nowrap; }
-.ai-live-chip .ms { font-size: 16px; vertical-align: 0; }
-.phone[data-view="progress"] .ai-live-chip { display: inline-flex; }
-.frame-manual { display: none !important; position: relative; z-index: 3; margin-top: -18px; align-items: center; gap: 4px; font-size: 15px !important; padding: 9px 18px !important; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
-.frame-manual .ms { font-size: 19px; vertical-align: 0; }
+.ai-veil { display: none; position: absolute; inset: 0; z-index: 8; background: rgba(255,255,255,.3); pointer-events: none; }
+.phone[data-view="progress"] .ai-veil { display: block; }
+.ai-live-chip { display: none; position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 10; background: linear-gradient(90deg, #4c8df6, #a36bf5); color: #fff; font-size: 12px; font-weight: 700; line-height: 20px; padding: 5px 12px; border-radius: 0 0 12px 12px; box-shadow: 0 2px 8px rgba(76,141,246,.35); white-space: nowrap; }
+.phone[data-view="progress"] .ai-live-chip { display: block; }
+.frame-manual { display: none !important; position: absolute; right: 14px; bottom: 14px; z-index: 10; pointer-events: auto; align-items: center; gap: 6px; border: 0; border-radius: 999px; background: #d93025 !important; color: #fff; font-size: 12.5px !important; font-weight: 700; padding: 7.5px 14px !important; box-shadow: 2px 2px 7px rgba(0,0,0,.35); }
+.frame-manual .ms { font-size: 16px; vertical-align: 0; }
 .phone[data-view="progress"] .frame-manual { display: inline-flex !important; }
+/* 내가 조작하기 → 흰 화면과 로딩 스피너 → 앱 화면이 살짝 튕기며 */
+#manual-loading { position: absolute; inset: 0; z-index: 60; background: #fff; display: grid; place-items: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
+#manual-loading.on { opacity: 1; pointer-events: auto; }
+#manual-loading .spinner { width: 36px; height: 36px; border-radius: 50%; border: 3.5px solid #dfe3ea; border-top-color: #0b57d0; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.screen-clip.bounce-in { animation: bounce-in .55s cubic-bezier(.3,1.4,.5,1) both; }
+@keyframes bounce-in { 0% { transform: scale(.94); opacity: .6; } 60% { transform: scale(1.015); opacity: 1; } 100% { transform: scale(1); } }
 /* 진행 현황: 지나간 대화는 흐리게(아래쪽으로 오면 진하게), 지나간 AI 말풍선에 작게 '완료' */
 #chat-spacer { flex: none; }
 .chat > .past { opacity: .4; transition: opacity .3s; }
