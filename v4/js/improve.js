@@ -359,8 +359,9 @@ function lastDoneStep() {
 }
 
 // 이미 끝난 단계(지금 단계보다 앞)의 마지막 AI 말풍선: 낮은 자동화는 승인한 질문, 높은 자동화는 "~했어요" 결과
+// 승인/거부로 답한 단계는 사용자 말풍선, 답할 일이 없던 단계(높은 자동화)는 AI 말풍선
 function lastDoneBubble() {
-  return [...chat().querySelectorAll(":scope > .bubble.agent[data-step]")].filter((x) => Number(x.dataset.step) < S.stepIdx).at(-1) || null;
+  return [...chat().querySelectorAll(":scope > .bubble[data-step]")].filter((x) => Number(x.dataset.step) < S.stepIdx).at(-1) || null;
 }
 
 function requestUndo(target = lastDoneStep(), via = "back") {
@@ -390,7 +391,7 @@ function refreshUndoLink() {
   if (!canUndoNow()) return;
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = "undo-link";
+  btn.className = "undo-link" + (b.classList.contains("user") ? " on-user" : "");
   btn.innerHTML = '<span class="ms">undo</span>되돌리기';
   btn.onclick = () => requestUndo(Number(b.dataset.step), "bubble");
   b.after(btn);
@@ -401,7 +402,7 @@ function setupUndo() {
   new MutationObserver((ms) => {
     let changed = false;
     for (const m of ms) for (const n of m.addedNodes) {
-      if (n.nodeType === 1 && n.classList.contains("bubble") && n.classList.contains("agent") && S?.running && n.dataset.step == null) { n.dataset.step = S.stepIdx; changed = true; }
+      if (n.nodeType === 1 && n.classList.contains("bubble") && S?.running && n.dataset.step == null && (n.classList.contains("agent") || n.querySelector(".ub-what"))) { n.dataset.step = S.stepIdx; changed = true; }
       if (n.nodeType === 1 && n.classList.contains("bubble")) changed = true;
     }
     if (changed) refreshUndoLink();
