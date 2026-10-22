@@ -1250,3 +1250,8 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 /* 권한 다이얼로그: 제목과 내용 사이를 넓게, 항목 이름은 한 단계 가늘게 */
 .perm-card > b { margin-bottom: 12px; }
 .perm-card li b { font-weight: 500; }
+
+/* 실행화면 테두리는 파랑과 보라 두 가지만, 아래 버튼 칸은 아주 살짝 더 색 있게, 버튼은 조금 작게 */
+.phone[data-view="progress"] .run-frame { background: linear-gradient(#efecfb, #efecfb) padding-box, conic-gradient(from var(--ring), #4c8df6, #a36bf5 180deg, #4c8df6 360deg) border-box; }
+.run-tray .frame-manual { padding: 7px 14px !important; font-size: 13.5px !important; }
+.run-tray .tray-stop { padding: 6px 14px; font-size: 13.5px; }
