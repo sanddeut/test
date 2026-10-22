@@ -1138,3 +1138,6 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .rc-body .rc-summary { padding: 4px 12px; }
 .rc-body .rc-summary div { padding: 6px 0; font-size: 13.5px; }
 .rc-body .rc-summary b { font-weight: 500; }
+
+/* 말로/글로 전환 버튼: 흰 배경에서 경계가 보이게 옅은 회색 테두리, 입력창과 조금 더 띄움 */
+.mode-fab { bottom: calc(100% + 14px); box-shadow: 0 0 0 1px #e3e6ea, 0 2px 8px rgba(0,0,0,.08); }
