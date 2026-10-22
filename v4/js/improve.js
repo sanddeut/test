@@ -304,10 +304,10 @@ ensureRunCard = function () {
 // =====================================================================
 // [되돌리기] 「방금 한 일 취소」(뒤로 가기 다이얼로그)와 AI 말풍선 아래 「되돌리기」
 // 바로 전에 끝낸 단계를 그 단계 시작 전 상태로 되돌리고, 그 단계를 다시 물음 (높은 자동화도 이 단계만은 물어봄)
-// 최종 호출 확인부터는 되돌릴 수 없음
+// 최종 호출 확인부터는 되돌릴 수 없음. 단, 호출한 뒤에는 호출 완료 안내 아래 '되돌리기'로 AI가 호출 취소를 시도함 (아래 [호출한 뒤])
 // =====================================================================
 const NO_UNDO = ["final", "password", "done", "reserve"];
-const undoable = (i) => i >= 0 && S?.steps[i] && !NO_UNDO.includes(S.steps[i].id);
+const undoable = (i) => i >= 0 && S?.steps[i] && (!NO_UNDO.includes(S.steps[i].id) || (S.postCall && S.steps[i].id === "done"));
 const stepName = (step) => step.label.replace(/^\[[^\]]*\]\s*/, "");
 
 function snapState() {
@@ -327,6 +327,7 @@ runStepAt = async function (i, step) {
   const r = await Promise.race([work, undo]);
   S.undoResolve = null;
   if (r !== "__undo") return r;
+  if (S.postCall) return cancelCall(null); // 호출한 뒤 되돌리기 = 호출 취소 시도
   // 되돌리기: 그 단계 시작 전 상태로 돌리고 다시 물음 (멈춰 둔 이전 진행은 버림)
   const t = S.undoTo;
   Object.assign(S, structuredClone(S.snaps[t]));
@@ -356,6 +357,7 @@ runStepAt = async function (i, step) {
 // 되돌릴 단계: 결과를 말한 마지막 AI 말풍선의 단계, 없으면 지금 단계 바로 전 단계
 // 최종 호출 확인에 답하기 전까지만 되돌릴 수 있음
 function canUndoNow() {
+  if (S.postCall) return true;
   const f = S.steps.findIndex((x) => x.id === "final");
   return f < 0 || S.stepIdx <= f;
 }
@@ -369,6 +371,7 @@ function lastDoneStep() {
 // 이미 끝난 단계(지금 단계보다 앞)의 마지막 AI 말풍선: 낮은 자동화는 승인한 질문, 높은 자동화는 "~했어요" 결과
 // 승인/거부로 답한 단계는 사용자 말풍선, 답할 일이 없던 단계(높은 자동화)는 AI 말풍선
 function lastDoneBubble() {
+  if (S?.postCall) return [...chat().querySelectorAll(":scope > .bubble.agent[data-step]")].filter((x) => S.steps[Number(x.dataset.step)]?.id === "done").at(-1) || null; // 호출 완료 안내 아래
   return [...chat().querySelectorAll(":scope > .bubble[data-step]")].filter((x) => Number(x.dataset.step) < S.stepIdx).at(-1) || null;
 }
 
@@ -492,6 +495,7 @@ async function askRequest(step) {
 const CAR_PICKS = () => Object.keys(CAR_TYPES).map((k) => ({ label: CAR_TYPES[k].label, out: { intent: "set_car", car_type: k } }));
 const DIRECT = { label: "직접 입력", input: true };
 function rejectPicks() {
+  if (S?.afterCancel) return AFTER_CANCEL_PICKS();
   if (!S?.inReject) return null;
   switch (S.steps[S.stepIdx]?.id) {
     case "taxi_open": return [{ label: `${TAXI_APP} 실행`, out: { intent: "approve" } }, { label: "그만하기", cancel: true }];
@@ -930,3 +934,164 @@ document.addEventListener("DOMContentLoaded", setupFocus);
 document.addEventListener("DOMContentLoaded", setupRunFrame);
 document.addEventListener("DOMContentLoaded", setupBackDialog);
 document.addEventListener("DOMContentLoaded", setupUndo);
+
+// =====================================================================
+// [호출한 뒤] 배차가 끝나도 대화를 끝내지 않고 호출 완료 안내 아래 '되돌리기'를 남겨 둠 (세션1)
+// - 되돌리기, '방금 한 일 취소': AI가 앱에서 '호출 취소'를 눌러 봄 → "호출을 취소했어요. 어디부터 다시 할까요?"
+// - 호출한 뒤 출발지, 목적지, 택시 종류, 요청사항, 쿠폰을 바꿔 달라고 하면: AI가 앱에서 바꿔 보다가 막힘
+//   → 앱이 보여 준 이유를 그대로 전하고, 호출을 취소하고 다시 부를지 물음
+// =====================================================================
+const AFTER_ITEMS = {
+  set_origin: { name: "출발지를", row: "출발" },
+  set_dest: { name: "목적지를", row: "도착" },
+  set_car: { name: "택시 종류를", row: "택시 종류" },
+  set_request: { name: "기사님 요청사항을", row: "기사님 요청사항" },
+  set_coupon: { name: "쿠폰을", row: "쿠폰" },
+};
+const AFTER_INTENTS = ["set_origin", "set_dest", "set_car", "set_request", "set_coupon"];
+const AFTER_CANCEL_PICKS = () => [
+  { label: "출발지", ask: "출발지를 어디로 바꿀까요?", sub: [{ label: "현재 위치", out: { intent: "set_origin", origin: "current" } }, DIRECT] },
+  { label: "목적지", ask: "목적지를 어디로 바꿀까요?", sub: [DIRECT] },
+  { label: "택시 종류", ask: "어떤 택시로 바꿀까요?", sub: CAR_PICKS() },
+  { label: "기사님 요청사항", ask: "기사님 요청사항을 어떤 걸로 할까요?", sub: REQ_OPTIONS().map((o) => ({ label: o.label, out: { intent: "set_request", request: o.id } })) },
+];
+
+// 배차 완료 화면: 항목마다 표시를 달고, 아래에 '호출 취소'
+const _taxiComplete = taxiComplete;
+taxiComplete = function () {
+  let h = _taxiComplete();
+  if (!S?.unified) return h;
+  for (const [k] of rideRows()) h = h.replace(`<div><span>${k}</span>`, `<div data-row="${k}"><span>${k}</span>`);
+  return h.replace("data-done-confirm>확인</div>", 'data-done-confirm>확인</div><div class="tx-cancel-call">호출 취소</div>');
+};
+
+const _finish = finish;
+finish = function (status) {
+  if (S && !S.finished && S.unified && S.rideDone && S.session === 1) {
+    if (status === "completed" && !S.postCall) return postCallWait();
+    if (S.postCall && status === "cancelled") status = "completed"; // 호출한 뒤 앱을 끝내도 호출은 된 것
+  }
+  return _finish(status);
+};
+
+async function postCallWait() {
+  S.postCall = true;
+  setChips([]);
+  refreshUndoLink();
+  for (;;) {
+    const text = await waitText();
+    const o = await turn(text, {
+      said: lastAgentText(),
+      freePlace: "any",
+      intents: [...AFTER_INTENTS, "cancel", "other"],
+      hint: "택시 호출이 끝나 기사님이 오고 있어. 출발지, 목적지, 택시 종류, 기사님 요청사항, 쿠폰을 바꾸라고 하면 그 의도야. 호출을 취소하라고 하면 cancel이야. 그 외에는 짧게 답해.",
+    });
+    if (o.intent === "cancel") return cancelCall(null);
+    if (AFTER_ITEMS[o.intent]) {
+      const r = await tryChangeAfterCall(o);
+      if (r) return r;
+      continue;
+    }
+    await agentSay(o.reply || "기사님이 오고 있어요.", { talk: true });
+  }
+}
+
+// 호출한 뒤 옵션 바꾸기: 앱에서 해 보고, 막힌 이유를 그대로 전함
+async function tryChangeAfterCall(o) {
+  const it = AFTER_ITEMS[o.intent];
+  logEvent("after_call_change", { what: o.intent });
+  await agentSay(`${it.name} 바꿔 볼게요.`);
+  setStatus("", true);
+  setActing(true);
+  try {
+    const row = `.done-box [data-row="${it.row}"]`;
+    await tap(document.querySelector(row) ? row : ".done-box");
+    S.phone.toast = `호출 후에는 ${it.name} 바꿀 수 없어요`;
+    renderPhone();
+    await actSleep(1600);
+  } finally { setActing(false); }
+  resetStatus();
+  await agentSay(`택시 앱에서 '${S.phone.toastShown || `호출 후에는 ${it.name} 바꿀 수 없어요`}'라고 해서 바꾸지 못했어요.`);
+  const ask = "바꾸려면 호출을 취소하고 다시 불러야 해요. 취소할까요?";
+  await agentSay(ask);
+  const opts = [{ id: "reject", label: "그대로 두기" }, { id: "approve", label: "호출 취소" }];
+  let c;
+  do { c = await askChoice(opts, ask, [], "호출을 취소하라고 하면 approve, 그대로 두라고 하면 reject야."); } while (c.id === "__reask");
+  logEvent("after_call_cancel_ask", { cancel: c.id === "approve", via: c.via });
+  if (c.id === "approve") return cancelCall(o);
+  await agentSay("호출을 그대로 둘게요.");
+  return null;
+}
+
+// 호출 취소: 앱에서 '호출 취소'를 누른 뒤 최종 호출 확인 직전 상태로 돌아가, 바꿀 것을 반영하고 다시 호출할지 물음
+async function cancelCall(change) {
+  const f = S.steps.findIndex((x) => x.id === "final");
+  S.waiter = null; S.ivWaiter = null;
+  S.resumeWaiters = []; S.paused = false; S.manual = false; S.backPaused = false; S.inReject = false; S.pickOut = null;
+  S.undoPending = false;
+  syncControls();
+  logEvent("after_call_cancel", { change: change?.intent || null });
+  await agentSay("호출을 취소해 볼게요.");
+  setStatus("", true);
+  setActing(true);
+  try {
+    await tap(".tx-cancel-call");
+    S.phone.toast = "호출을 취소했어요";
+    renderPhone();
+    await actSleep(1200);
+    Object.assign(S, structuredClone(S.snaps[f]));
+    S.rideDone = false;
+    S.postCall = false;
+    S.phone.sheet = null;
+    renderPhone();
+    await actSleep(400);
+  } finally { setActing(false); }
+  resetStatus();
+  if (!change) {
+    const ask = "호출을 취소했어요. 어디부터 다시 할까요?";
+    await agentSay(ask);
+    S.afterCancel = true;
+    try {
+      for (;;) {
+        const o = await turn(await waitText(), {
+          said: ask,
+          freePlace: "any",
+          intents: [...AFTER_INTENTS.filter((x) => x !== "set_coupon"), "other"],
+          hint: "택시 호출을 취소했어. 출발지, 목적지, 택시 종류, 기사님 요청사항 중 무엇을 바꿀지 말하면 그 의도야. 그 외에는 짧게 답하고 무엇을 바꿀지 다시 물어.",
+        });
+        if (await applyAfterCancel(o)) break;
+        await agentSay(o.reply || ask, { talk: true });
+      }
+    } finally { S.afterCancel = false; }
+  } else {
+    await agentSay("호출을 취소했어요.");
+    await applyAfterCancel(change);
+  }
+  S.undoTo = f;
+  S.redoIdx = f;
+  return "undo"; // 최종 호출 확인부터 다시
+}
+
+async function applyAfterCancel(o) {
+  if (o.intent === "set_origin" && namedOrigin(o)) { setOption("origin", namedOrigin(o), "after_call"); await sayKey("change.origin"); return true; }
+  if (o.intent === "set_dest" && namedDest(o)) {
+    const k = namedDest(o);
+    S.form.dest = k;
+    renderPhone();
+    await redoDest(k);
+    await sayKey("change.dest", { dest: k });
+    return true;
+  }
+  if (o.intent === "set_car" && CAR_TYPES[o.car_type]) { setOption("car", o.car_type, "after_call"); renderPhone(); await sayKey("change.car"); return true; }
+  if (o.intent === "set_coupon" && typeof o.coupon === "boolean") { setOption("coupon", o.coupon, "after_call"); await sayKey(o.coupon ? "change.coupon.on" : "change.coupon.off"); return true; }
+  if (o.intent === "set_request" && REQUESTS[o.request]) {
+    S.userSet.request = true;
+    S.requestByUser = true;
+    await redoRequest(o.request);
+    S.phone.sheet = null;
+    renderPhone();
+    await sayKey(o.request === "none" ? "change.request.none" : "change.request");
+    return true;
+  }
+  return false;
+}
