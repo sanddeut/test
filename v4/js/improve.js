@@ -83,16 +83,15 @@ function stopListening() { if (listening()) $("#mic").click(); }
 function renderVoice() {
   const v = $("#voice-btn");
   if (!v) return;
+  // 말로 하기: [눌러서 말하기 | 보내기]를 한 칸으로 묶음
+  // 듣기 시작하면 '듣고 있어요 …', 말이 받아 적히기 시작하면 그 글자가 작아지며 위로 올라가고 아래에 받아 적은 말이 채워짐
+  if (!v.querySelector(".vlabel")) v.innerHTML = '<span class="vlabel"></span><span class="vtext"></span>';
   const said = $("#msg").value.trim();
-  v.classList.toggle("on", listening());
-  // 말로 하기: 텍스트 필드 없이 [눌러서 말하기 | 보내기]. 듣는 중에는 '듣고 있어요 …', 말한 뒤에는 받아 적은 말
-  v.classList.toggle("on", listening());
-  v.classList.toggle("said", !listening() && Boolean(said));
-  v.innerHTML = listening()
-    ? `<span>듣고 있어요 …</span>`
-    : said
-      ? `<span>${esc(said)}</span>`
-      : `<span>눌러서 말하기</span>`;
+  const on = listening();
+  v.classList.toggle("on", on);
+  v.classList.toggle("has-text", Boolean(said));
+  v.querySelector(".vlabel").textContent = on ? "듣고 있어요 …" : said ? "" : "눌러서 말하기";
+  v.querySelector(".vtext").textContent = said;
 }
 
 // =====================================================================
