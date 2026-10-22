@@ -1075,3 +1075,7 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 /* 다이얼로그: 구분선 없이 요소 간 세로 간격을 넓게 */
 .bd-card { gap: 14px; padding: 28px 20px 14px; }
 .bd-card p { margin: -6px 0 6px; }
+/* 앱 종료 확인의 돌아가기: 앱 종료와 같은 회색 글자 버튼 */
+.bd-quit-no { background: none !important; box-shadow: none !important; color: #6b6f7a !important; height: 46px !important; font-size: 16px !important; }
+/* 실행화면 위 '작업 진행 중' 글자는 빼서 화면을 간결하게 */
+#pv-title { display: none; }
