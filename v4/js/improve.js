@@ -405,13 +405,11 @@ function refreshUndoLink() {
   b.after(btn);
 }
 
-// 미뤄 둔 요청은 다음에 입력을 기다릴 때 그 답으로 넘김
+// 미뤄 둔 요청은 화면 조작이 끝나면 바로 해석해서 반영 (지금 묻고 있는 질문과 상관없는 요청이어도)
 setInterval(() => {
-  if (!S?.queuedText || !S.waiter || S.paused || S.finished) return;
+  if (!S?.queuedText || S.paused || S.finished || $(".phone").classList.contains("acting")) return;
   const text = S.queuedText; S.queuedText = null;
-  const w = S.waiter; S.waiter = null;
-  setChips([]);
-  w.resolve({ type: "text", text });
+  handleInterjection(text);
 }, 200);
 
 function setupUndo() {
@@ -639,6 +637,13 @@ async function runAuto(step) {
 
 async function askCar(step) {
   await doPre(step);
+  // 이미 말한 택시 종류가 있으면 다시 묻지 않음
+  if (S.userSet?.car && CAR_TYPES[S.form.car]) {
+    await doApply(step, S.form.car);
+    await agentSay(`말씀하신 ${CAR_TYPES[S.form.car].label}로 할게요.`);
+    await dwell();
+    return true;
+  }
   const ask = "택시 종류를 고를 수 있어요. 어떤 택시로 할까요?";
   await agentSay(ask);
   const opts = Object.keys(CAR_TYPES).map((k) => ({ id: k, label: CAR_TYPES[k].label, price: won0(fareOf({ ...S.form, car: k })) }));
