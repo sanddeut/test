@@ -806,7 +806,7 @@ function openCoach() {
   phone.classList.add("coaching");
   const layer = document.createElement("div");
   layer.className = "coach";
-  layer.innerHTML = '<div class="coach-hole"></div><div class="coach-tip" role="dialog" aria-live="polite"><p></p><div class="coach-foot"><span class="coach-n"></span><button type="button" class="coach-next"></button></div></div>';
+  layer.innerHTML = '<div class="coach-hole"></div><div class="coach-tip" role="tooltip" aria-live="polite"><p></p></div><div class="coach-foot"><span class="coach-n"></span><button type="button" class="coach-next"></button></div>';
   phone.appendChild(layer);
   let i = 0;
   const show = () => {
@@ -818,15 +818,15 @@ function openCoach() {
     Object.assign(hole.style, { left: `${r.left - pr.left - pad}px`, top: `${r.top - pr.top - pad}px`, width: `${r.width + pad * 2}px`, height: `${r.height + pad * 2}px`, borderRadius: getComputedStyle(t).borderRadius });
     const tip = layer.querySelector(".coach-tip");
     tip.querySelector("p").textContent = COACH[i].text;
-    tip.querySelector(".coach-n").textContent = `${i + 1} / ${COACH.length}`;
-    tip.querySelector(".coach-next").textContent = i < COACH.length - 1 ? "다음" : "알겠어요";
-    // 짚은 곳 아래에 자리가 있으면 아래, 없으면 위
-    const below = r.bottom - pr.top + 14;
-    tip.style.top = "";
-    tip.style.bottom = "";
-    if (below + 150 < pr.height) tip.style.top = `${below}px`;
-    else tip.style.bottom = `${pr.bottom - r.top + 14}px`;
-    if (i === 0) { tip.style.top = `${r.top - pr.top + r.height * 0.4}px`; tip.style.bottom = ""; }
+    layer.querySelector(".coach-n").textContent = `${i + 1} / ${COACH.length}`;
+    layer.querySelector(".coach-next").textContent = i < COACH.length - 1 ? "다음" : "알겠어요";
+    // 말풍선: 짚은 곳 위(실행화면은 화면 안쪽 가운데), 꼬리는 짚은 곳 가운데를 가리킴
+    tip.classList.remove("up", "down", "inside");
+    tip.style.top = ""; tip.style.bottom = "";
+    if (i === 0) { tip.classList.add("inside"); tip.style.top = `${r.top - pr.top + r.height * 0.42}px`; }
+    else { tip.classList.add("down"); tip.style.bottom = `${pr.bottom - r.top + 16}px`; }
+    const cx = r.left - pr.left + r.width / 2;
+    tip.style.setProperty("--tail-x", `${Math.max(24, Math.min(pr.width - 24, cx)) - 20}px`);
   };
   layer.querySelector(".coach-next").onclick = () => {
     i++;

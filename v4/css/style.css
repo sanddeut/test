@@ -1255,3 +1255,11 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .phone[data-view="progress"] .run-frame { background: linear-gradient(#efecfb, #efecfb) padding-box, conic-gradient(from var(--ring), #4c8df6, #a36bf5 180deg, #4c8df6 360deg) border-box; }
 .run-tray .frame-manual { padding: 7px 14px !important; font-size: 13.5px !important; }
 .run-tray .tray-stop { padding: 6px 14px; font-size: 13.5px; }
+
+/* 「?」 안내: 말풍선 툴팁, 진행 표시와 다음 버튼은 어두운 배경 위 화면 아래쪽 */
+.coach-tip { left: 20px; right: 20px; padding: 12px 16px; border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+.coach-tip p { margin: 0; font-size: 15.5px; }
+.coach-tip.down::after { content: ""; position: absolute; bottom: -8px; left: var(--tail-x, 50%); width: 16px; height: 16px; background: #fff; transform: rotate(45deg); border-radius: 2px; }
+.coach-foot { position: absolute; left: 20px; right: 20px; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: space-between; }
+.coach-n { color: rgba(255,255,255,.85); font-size: 14px; }
+.coach-next { background: #fff; color: #1c1d21; }
