@@ -1911,6 +1911,11 @@ async function gAsk(key, vars, options, { extra = [], hint, turnOpts, ctx, undoa
   return c;
 }
 
+// 알리고 진행하는 단계의 읽을 시간 (멈추기·되돌리기를 누르면 그 자리에서 기다림)
+async function readWait() {
+  for (let t = 0; t < S.cfg.delay && S.jumpTo == null; t += 250) { await sleep(250); await gate(); }
+}
+
 const originChoice = (k) => (k === "current" ? "reject" : k === TARGET_ORIGIN ? "approve" : "custom");
 
 async function gOrigin(step) {
@@ -1919,6 +1924,20 @@ async function gOrigin(step) {
   if (r === false) return false;
   if (r !== "go") { markDone(step); return true; }
   await doPre(step);
+  if (S.cfg.scope === "narrow") {
+    // 되돌릴 수 있는 단계라 묻지 않고 먼저 알린 뒤 진행 (가이드라인 5·11·16). 멈추고 바꾸면 바꾼 곳으로
+    const k = S.originTarget || TARGET_ORIGIN;
+    gLog(["G5", "G11"], "guide_announce", { step: "origin" });
+    await sayKey("origin.auto", { origin: k }, { gated: true });
+    await readWait();
+    if (S.jumpTo != null) return true;
+    if (S.userSet.origin) { S.phone.taxiView = "home"; renderPhone(); }
+    else await doApply(step, originChoice(k), { announced: true });
+    markDone(step);
+    freezeQuestion();
+    addUndoLink(S.stepIdx);
+    return true;
+  }
   for (;;) {
     const k = S.originTarget || TARGET_ORIGIN;
     const c = await gAsk("origin", { origin: k }, [{ id: "reject", label: G_ASK.reject }, { id: "approve", label: G_ASK.approve }], {
@@ -1960,6 +1979,24 @@ async function gDest(step) {
   let pending = S.form.dest ?? S.userDest ?? AGENT_PLACE;
   S.phone.pendingDest = pending;
   renderPhone();
+  if (S.cfg.scope === "narrow") {
+    // 고르기 전에 "여기로 갈게요"라고 먼저 알리고, 읽을 시간 뒤 진행 (가이드라인 5·11). 멈추고 다른 곳을 말하면 그곳으로
+    gLog(["G5", "G11"], "guide_announce", { step: "dest" });
+    S.form.dest = null;
+    await sayKey("dest.auto", { dest: pending }, { gated: true });
+    await readWait();
+    if (S.jumpTo != null) return true;
+    pending = S.form.dest ?? S.manualDest ?? pending;
+    S.form.dest = pending;
+    S.phone.pendingDest = null;
+    S.m.destStepDecision = pending === AGENT_PLACE ? "agent" : "changed";
+    if (S.phone.taxiView === "search") await doApply(step, pending, { announced: true });
+    else { step.apply(S, pending); renderPhone(); }
+    markDone(step);
+    freezeQuestion();
+    addUndoLink(S.stepIdx);
+    return true;
+  }
   for (;;) {
     // 고르기 전에 "여기가 맞나요?" (가이드라인 5·14)
     const c = await gAsk("dest", { dest: pending }, [{ id: "reject", label: G_ASK.reject }, { id: "approve", label: G_ASK.approve }], {
@@ -2494,6 +2531,7 @@ function summary() {
     screen_taps: m.screenTaps,
     device_backs: m.backs,
     // 개선안 지표 (가이드라인이 작동한 횟수)
+    confirm_scope: S.guide ? S.cfg.scope : null,
     perm_location: S.guide ? S.perm.location : null,
     perm_history: S.guide ? S.perm.history : null,
     history_ask: m.historyAsk ?? null,
@@ -2594,6 +2632,8 @@ function readSetup() {
     complexity: radio("cx") || "B",
     version: guide ? "guide" : "base",
     order: radio("order") || "base_first",
+    // 개선안 확인 범위: narrow = 높은 자동화를 유지하고 비가역·선호·요청 외 결정만 확인 / wide = 피그마 상세 구현대로 출발지·목적지도 확인
+    scope: radio("scope") || "narrow",
     condition: condKey(radio("cx") || "B", guide),
     session: Number(radio("session") || 1),
     // 높은 자동화 단계 간격: 문구가 나온 뒤 다음 조작까지 기다리는 시간 (연구1과 같은 5초)
@@ -2667,7 +2707,7 @@ function start() {
   enterFullscreen();
   applyLLMSettings();
   const cfg = readSetup();
-  store.set("setup", { pid: cfg.pid, name: cfg.name, complexity: cfg.complexity, version: cfg.version, order: cfg.order, session: cfg.session });
+  store.set("setup", { pid: cfg.pid, name: cfg.name, complexity: cfg.complexity, version: cfg.version, order: cfg.order, session: cfg.session, scope: cfg.scope });
   S = newSession(cfg);
   promptGuide = S.guide;
   setPrompt(savedPrompt(S.guide));
@@ -3109,7 +3149,7 @@ function init() {
   const saved = store.get("setup", {});
   if (saved.pid) $("#pid").value = saved.pid;
   if (saved.name) $("#pname").value = saved.name;
-  for (const [name, v] of [["cx", saved.complexity], ["ver", saved.version], ["order", saved.order], ["session", saved.session]]) {
+  for (const [name, v] of [["cx", saved.complexity], ["ver", saved.version], ["order", saved.order], ["session", saved.session], ["scope", saved.scope]]) {
     const r = v != null && document.querySelector(`input[name="${name}"][value="${v}"]`);
     if (r) r.checked = true;
   }

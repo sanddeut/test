@@ -73,6 +73,14 @@
       </fieldset>
 
       <fieldset>
+        <legend>개선안 확인 범위 <small>개선안에만 적용</small></legend>
+        <div class="cond-grid">
+          <label class="cond"><input type="radio" name="scope" value="narrow" checked><b>좁게 (기본)</b><span>높은 자동화 유지. 택시 종류·요청사항·최종 호출·이용내역·예약만 확인</span></label>
+          <label class="cond"><input type="radio" name="scope" value="wide"><b>넓게</b><span>피그마대로 출발지·목적지도 확인</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
         <legend>세션 (연구1 오류 지점)</legend>
         <div class="cond-grid">
           <label class="cond"><input type="radio" name="session" value="1" checked><b>세션1</b><span>기사님 요청사항 (기존안: AI가 임의 선택)</span></label>
