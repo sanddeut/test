@@ -44,31 +44,11 @@
         </div>
       </fieldset>
 
-      <p class="hint">한 참가자가 기존안과 개선안을 모두 체험해요(참가자 내 설계). 자동화 수준은 <b>높음</b>, 과업은 <b>B (모범택시 + 쿠폰)</b>로 고정. 두 안에 같은 오류 2개(① 처음 요청을 두 번 알아듣지 못함 ② 하차 지점을 이유 없이 변경)가 들어가요.</p>
-
-      <fieldset>
-        <legend>진행 순서 <small>참가자마다 바꿔서 진행 (순서 효과 상쇄)</small></legend>
-        <div class="cond-grid">
-          <label class="cond"><input type="radio" name="order" value="base_first" checked><b>기존안 먼저</b><span>기존안 → 개선안</span></label>
-          <label class="cond"><input type="radio" name="order" value="guide_first"><b>개선안 먼저</b><span>개선안 → 기존안</span></label>
-        </div>
-        <div id="run-plan" class="run-plan"></div>
-        <p class="hint">줄을 누르면 아래 버전이 그 순서로 맞춰져요. 끝낸 체험에는 「완료」가 붙어요(이 브라우저 기록 기준).</p>
-      </fieldset>
-
       <fieldset>
         <legend>버전</legend>
         <div class="cond-grid">
-          <label class="cond"><input type="radio" name="ver" value="base" checked><b>기존안</b><span>연구1 높은 자동화 그대로</span></label>
-          <label class="cond"><input type="radio" name="ver" value="guide"><b>개선안</b><span>가이드라인 1~25 적용</span></label>
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>개선안 확인 범위 <small>개선안에만 적용</small></legend>
-        <div class="cond-grid">
-          <label class="cond"><input type="radio" name="scope" value="narrow" checked><b>좁게 (기본)</b><span>높은 자동화 유지. 택시 종류·최종 호출만 확인 (출발지·목적지는 알리고 진행)</span></label>
-          <label class="cond"><input type="radio" name="scope" value="wide"><b>넓게</b><span>피그마대로 출발지·목적지도 확인</span></label>
+          <label class="cond"><input type="radio" name="ver" value="base" checked><b>기존안</b><span>연구1 높은 자동화</span></label>
+          <label class="cond"><input type="radio" name="ver" value="guide"><b>개선안</b><span>가이드라인 적용</span></label>
         </div>
       </fieldset>
 

@@ -2749,7 +2749,7 @@ function runPlan() {
 }
 function renderPlan() {
   const box = $("#run-plan");
-  if (!box) return;
+  if (!box) return; // 설정 화면에서 진행 순서를 뺌 (버전만 고름)
   const pid = $("#pid").value.trim() || "P00";
   const done = store.get("sessions", []).map((x) => x.summary).filter((x) => x.participant_id === pid && x.status === "completed" && x.session === 0);
   const curV = radio("ver");
