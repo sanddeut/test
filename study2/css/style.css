@@ -1056,3 +1056,9 @@ body.guide .direct-bar .db-tag { color: #fff; background: #d93025; }
 /* 보기 전환 규칙(.only-chat 등)보다 hidden이 이기게 */
 .phone[data-view] .only-chat[hidden], .phone[data-view] .only-guide[hidden] { display: none !important; }
 body.talk-unstarted .phone[data-view] .composer.only-chat { display: none !important; }
+
+/* 개선안: 되돌리기 확인 창 */
+.undo-card p { margin: 0 0 4px; color: #5f6470; font-size: 15px; }
+.undo-btns { display: flex; gap: 8px; margin-top: 14px; }
+.undo-btns .perm-ok { margin-top: 0; flex: 1; }
+.undo-no { flex: 1; border: 0; background: #eef1f6; color: #1c1d21; border-radius: 999px; padding: 13px; font-size: 17px; font-weight: 600; }

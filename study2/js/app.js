@@ -445,7 +445,7 @@ function renderBubble(role, text, { ctx, undo } = {}) {
     b.className = "undo-link";
     b.dataset.step = undo;
     b.innerHTML = '<span class="ms">undo</span> 되돌리기';
-    b.onclick = () => requestUndo(undo, "bubble");
+    b.onclick = () => confirmUndo(undo);
     chat().insertBefore(b, $("#chips"));
   }
   chat().scrollTop = chat().scrollHeight;
@@ -2164,7 +2164,7 @@ function addUndoLink(idx) {
   b.type = "button";
   b.className = "undo-link";
   b.innerHTML = '<span class="ms">undo</span> 되돌리기';
-  b.onclick = () => requestUndo(idx, "bubble");
+  b.onclick = () => confirmUndo(idx);
   chat().insertBefore(b, $("#run-card") || $("#chips"));
   scrollChat();
 }
@@ -2216,6 +2216,29 @@ async function gReserve(step) {
 }
 
 // 되돌리기 요청: 지금 묻는 질문이 있으면 끝내고, 진행 엔진이 고른 단계로 돌아가게 함 (가이드라인 16)
+// 「되돌리기」를 누르면 진행을 잠시 멈추고 한 번 물은 뒤 취소 (실수로 누른 경우 대비)
+function confirmUndo(idx) {
+  if (!S?.guide || S.finished || idx == null || S.jumpTo != null) return;
+  if (S.manual || S.pinOpen || S.stopped || S.helpPause || S.undoPause) return;
+  const ride = S.rideDone;
+  const name = UNDO_NAME[S.steps[idx].id] || S.steps[idx].label;
+  const own = !S.paused;
+  if (own) { S.paused = true; S.undoPause = true; syncControls(); }
+  $("#undo-q").textContent = ride ? "호출을 취소할까요?" : "방금 한 일을 취소할까요?";
+  $("#undo-d").textContent = ride ? "앱에서 호출을 취소한 뒤, 어디부터 다시 할지 골라요." : `${name}부터 다시 해요.`;
+  const dlg = $("#undo-dlg");
+  dlg.hidden = false;
+  const close = (yes) => {
+    dlg.hidden = true;
+    logEvent("undo_confirm", { target: S.steps[idx].id, answer: yes ? "yes" : "no" });
+    S.undoPause = false;
+    if (yes) requestUndo(idx, "bubble", true);
+    if (own) resume();
+  };
+  $("#undo-yes").onclick = () => close(true);
+  $("#undo-no").onclick = () => close(false);
+}
+
 function requestUndo(idx, via) {
   if (!S?.guide || S.finished || idx == null || S.jumpTo != null) return;
   if (S.manual || S.pinOpen || S.stopped || S.helpPause) return;

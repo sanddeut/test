@@ -181,6 +181,14 @@
           <button type="button" id="perm-ok" class="perm-ok">확인</button>
         </div>
       </div>
+      <!-- 개선안: 「되돌리기」를 누르면 한 번 묻고 취소 (가이드라인 16) -->
+      <div id="undo-dlg" class="perm-dim" hidden>
+        <div class="perm-card undo-card">
+          <h3 id="undo-q">방금 한 일을 취소할까요?</h3>
+          <p id="undo-d"></p>
+          <div class="undo-btns"><button type="button" id="undo-no" class="undo-no">아니요</button><button type="button" id="undo-yes" class="perm-ok">취소하기</button></div>
+        </div>
+      </div>
       <!-- 개선안: '?' 안내 (가이드라인 12·13·23) -->
       <div id="help" class="help-ov" hidden><div class="help-hole"></div><div class="help-tip"><p></p><button type="button">다음</button></div></div>
     </div>
