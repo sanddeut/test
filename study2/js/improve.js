@@ -822,7 +822,8 @@ const _start = start;
 start = function () {
   document.body.classList.add("unified");
   setInputMode("start");
-  setTimeout(showPermDialog, 0); // 대화를 시작할 때 무엇을 허용할지 묻기
+  clearTimeout(start.permT);
+  start.permT = setTimeout(() => { if (S && !S.finished && !$("#perm-dlg")) showPermDialog(); }, 2000); // 앱에 들어오고 2초 뒤 스르르 (무엇을 허용할지 묻기)
   history.pushState({ v4: 1 }, ""); // 뒤로 가기를 눌러도 페이지를 나가지 않게
   return _start();
 };

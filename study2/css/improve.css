@@ -383,3 +383,9 @@
 .voice-btn.on.has-text .vcancel { top: 8px; right: 14px; }
 .voice-btn.on.has-text .vcancel .ms { font-size: 20px; }
 .voice-btn.on.has-text .vlabel { text-align: left; }
+
+/* 허용 팝업: 앱에 들어오고 2초 뒤 스르르 나타남 */
+.perm-dlg { animation: perm-fade .5s ease both; }
+.perm-dlg .perm-card { animation: perm-rise .5s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes perm-fade { from { opacity: 0; } }
+@keyframes perm-rise { from { opacity: 0; transform: translateY(12px) scale(.98); } }
