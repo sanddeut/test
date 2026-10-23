@@ -364,3 +364,11 @@
 @keyframes thinkshine { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 #rc-status .think-log { margin: 6px 0 2px 6px; padding-left: 12px; border-left: 2px solid #e3e6eb; }
 #rc-status .think-log p { margin: 0 0 4px; font-size: 13.5px; line-height: 1.5; color: #5f6470; }
+
+/* 연구2: 판단이 담긴 AI 말풍선 오른쪽 ›, 누르면 아래로 펼쳐지는 판단 이유 (가이드라인 10) */
+.has-more { cursor: pointer; position: relative; padding-right: 34px !important; }
+.has-more::after { content: "chevron_right"; font-family: "Material Symbols Rounded"; font-size: 20px; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #8a8f99; transition: transform .2s; font-weight: 400; line-height: 1; }
+.has-more.more-open::after { transform: translateY(-50%) rotate(90deg); }
+.bubble.agent.more-open { border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; margin-bottom: 0; }
+.more-box { align-self: flex-start; max-width: 86%; margin-top: -6px; background: #eef0f3; color: #6b6f7a; font-size: 14px; line-height: 1.5; padding: 8px 14px; border-radius: 0 0 14px 14px; }
+#rc-q + .more-box { max-width: none; margin: 4px 0 8px; border-radius: 12px; }

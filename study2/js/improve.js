@@ -286,7 +286,7 @@ setCard = function (opts = {}) {
   const st = c.querySelector("#rc-status");
   // 진행 문장은 대화에 이미 있으니, 작업 중에는 점만 보여 줌
   const working = Boolean(S?.running) && !S.finished && !S.stopped && !c.classList.contains("asking");
-  if (working) renderThink(st);
+  if (working) st.innerHTML = '<span class="dots" aria-label="작업 중"><i></i><i></i><i></i></span><span class="rc-sub">AI가 앱 조작 중</span>';
   c.classList.toggle("working", working);
 };
 
@@ -724,7 +724,10 @@ async function announceInner(step) {
   if (step.kind === "dest") S.form.dest = S.form.dest ?? S.userDest ?? AGENT_PLACE;
   const vars = step.id === "origin" ? { origin: S.originTarget || TARGET_ORIGIN } : step.kind === "dest" ? { dest: S.form.dest } : {};
   const n0 = S.log.filter((e) => e.type === "dest_changed").length;
-  for (const m of lines(`${step.id}.announce`, S, vars)) await agentSay(m, { gated: true });
+  const said = lines(`${step.id}.announce`, S, vars);
+  const why = reasonOf(step.id);
+  if (why) said.forEach((m) => ((S.reasons ||= {})[m.trim()] = why));
+  for (const m of said) await agentSay(m, { gated: true });
   if (step.id === "drop") {
     if (S.m.errorShownAt == null) S.m.errorShownAt = now();
     // 바꾸는 이유는 먼저 말하지 않고, 「AI가 ~하는 중」을 펼치면 볼 수 있음 (가이드라인 10)
@@ -1344,3 +1347,66 @@ function renderThink(st) {
   }
   btn.querySelector(".think-t").textContent = doing;
 }
+
+// =====================================================================
+// [판단 이유 펼쳐 보기] AI가 판단한 말풍선(사실을 알리는 말풍선은 제외) 오른쪽에 ›, 누르면 아래로 펼쳐져 판단 이유·부가 정보 (가이드라인 10)
+// 진행 카드에 떠 있을 때도, 대화 기록으로 옮겨진 뒤에도 같은 방식
+// =====================================================================
+function reasonOf(id) {
+  if (id === "origin") return `처음 말씀하신 출발지와 이름이 같은 곳을 골랐어요. 검색 결과: ${ORIGIN_RESULTS.map((r) => r.name || r).join(", ")}`;
+  if (id === "dest") { const d = PLACES[S.form.dest ?? AGENT_PLACE]?.name || ""; return `같은 이름의 지점 ${SEARCH_ORDER.length}곳(${SEARCH_ORDER.map((k) => PLACES[k].name.replace("담소한정식 ", "")).join(", ")}) 중 말씀하신 지점과 같은 ‘${d}’을 골랐어요.`; }
+  if (id === "drop") return `가게 앞은 차를 세우기 어려운 곳이라, 가장 가까운 ‘${PLACES[DROP_PLACE].name}’로 바꾸려고 해요.`;
+  return null;
+}
+function moreToggle(key, el) {
+  const open = !(S.moreOpen ||= {})[key];
+  S.moreOpen[key] = open;
+  if (open) {
+    S.m.moreOpens = (S.m.moreOpens || 0) + 1;
+    if (S.reasons[key] === reasonOf("drop")) S.m.whyOpened = (S.m.whyOpened || 0) + 1;
+    gLog("G10", "reason_open", { text: key });
+  }
+  decorateMore();
+  el?.scrollIntoView?.({ block: "nearest" });
+}
+function moreBox(key) {
+  const d = document.createElement("div");
+  d.className = "more-box";
+  d.dataset.key = key;
+  d.textContent = S.reasons[key];
+  return d;
+}
+function decorateOne(el, key) {
+  const has = Boolean(S.reasons?.[key]);
+  el.classList.toggle("has-more", has);
+  if (!has) return;
+  const open = Boolean(S.moreOpen?.[key]);
+  el.classList.toggle("more-open", open);
+  if (!el.dataset.moreBound) {
+    el.dataset.moreBound = "1";
+    el.setAttribute("role", "button");
+    el.addEventListener("click", () => { const k = el.dataset.moreKey; if (k && S.reasons?.[k]) moreToggle(k, el); });
+  }
+  el.dataset.moreKey = key;
+  const next = el.nextElementSibling;
+  const box = next?.classList.contains("more-box") ? next : null;
+  if (open && !box) el.after(moreBox(key));
+  if (!open && box) box.remove();
+  if (open && box && box.dataset.key !== key) { box.remove(); el.after(moreBox(key)); }
+}
+function decorateMore() {
+  if (!S?.reasons) return;
+  const keyOf = (t) => Object.keys(S.reasons).find((k) => t === k || t.startsWith(k)) || t; // 말풍선에 '완료' 같은 작은 표시가 붙어도 찾음
+  chat().querySelectorAll(":scope > .bubble.agent").forEach((b) => decorateOne(b, keyOf(b.textContent.trim())));
+  const q = $("#run-card #rc-q");
+  if (q) {
+    const key = !q.hidden ? q.textContent.trim() : "";
+    if (S.reasons[key]) decorateOne(q, key);
+    else {
+      q.classList.remove("has-more", "more-open");
+      q.dataset.moreKey = "";
+      if (q.nextElementSibling?.classList.contains("more-box")) q.nextElementSibling.remove();
+    }
+  }
+}
+setInterval(decorateMore, 200);
