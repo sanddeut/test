@@ -1411,3 +1411,10 @@ function decorateMore() {
   }
 }
 setInterval(decorateMore, 200);
+
+// [실행 전 알림] 무엇을 하려는지 구체적으로: 어떤 앱을 열어 대신 쓰는지 (가이드라인 5). 기존안은 연구1 문구 그대로
+const _lines = lines;
+lines = function (key, s, vars) {
+  if (s?.unified && key === "taxi_open") return [`${TAXI_APP} 앱을 열어서 사용할게요.`];
+  return _lines(key, s, vars);
+};
