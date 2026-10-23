@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#f7f8fa">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>연구2 택시 호출 에이전트</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..600,0..1,0&display=block" rel="stylesheet">
+  <!-- 실제 지도 (Leaflet) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <!-- 배포 후 휴대폰에 예전 파일이 남지 않도록 CSS·JS는 항상 새로 받음 -->
+  <script>window.__V = Date.now(); document.write('<link rel="stylesheet" href="css/style.css?v=' + window.__V + '">');</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">연구2 · 기존안 vs 개선안 (택시 호출)</div>
+    <div class="top-right">
+      <span id="llm-chip" class="chip-status">규칙 기반 해석</span>
+      <button id="btn-researcher" type="button" class="btn-ghost" title="Ctrl + .">연구자 패널</button>
+    </div>
+  </header>
+
+  <!-- ============ 설정 화면 (연구자용) ============ -->
+  <main id="setup" class="setup">
+    <form id="setup-form" class="card setup-card">
+      <div class="setup-head"><h1>세션 설정</h1></div>
+
+      <fieldset>
+        <legend>참가자</legend>
+        <div class="grid2">
+          <label>참가자 ID<input id="pid" placeholder="P01" autocomplete="off"></label>
+          <label>이름<input id="pname" placeholder="홍길동" autocomplete="off"></label>
+        </div>
+      </fieldset>
+
+      <p class="hint">한 참가자가 기존안과 개선안을 모두 체험해요(참가자 내 설계). 자동화 수준은 <b>높음으로 고정</b>이고, 과업·시나리오·오류는 연구1과 같아요.</p>
+
+      <fieldset>
+        <legend>과업</legend>
+        <div class="cond-grid">
+          <label class="cond"><input type="radio" name="cx" value="A"><b>A</b><span>낮은 복잡도 (택시 호출)</span></label>
+          <label class="cond"><input type="radio" name="cx" value="B" checked><b>B</b><span>높은 복잡도 (모범택시 + 쿠폰)</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>진행 순서 <small>참가자마다 바꿔서 진행 (순서 효과 상쇄)</small></legend>
+        <div class="cond-grid">
+          <label class="cond"><input type="radio" name="order" value="base_first" checked><b>기존안 먼저</b><span>기존안 → 개선안</span></label>
+          <label class="cond"><input type="radio" name="order" value="guide_first"><b>개선안 먼저</b><span>개선안 → 기존안</span></label>
+        </div>
+        <div id="run-plan" class="run-plan"></div>
+        <p class="hint">줄을 누르면 아래 버전·세션이 그 순서로 맞춰져요. 끝낸 체험에는 「완료」가 붙어요(이 브라우저 기록 기준).</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>버전</legend>
+        <div class="cond-grid">
+          <label class="cond"><input type="radio" name="ver" value="base" checked><b>기존안</b><span>연구1 높은 자동화 그대로</span></label>
+          <label class="cond"><input type="radio" name="ver" value="guide"><b>개선안</b><span>가이드라인 1~25 적용</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>세션 (연구1 오류 지점)</legend>
+        <div class="cond-grid">
+          <label class="cond"><input type="radio" name="session" value="1" checked><b>세션1</b><span>기사님 요청사항 (기존안: AI가 임의 선택)</span></label>
+          <label class="cond"><input type="radio" name="session" value="2"><b>세션2</b><span>이용내역 열람 + 예약 (기존안: 묻지 않고 열람·예약)</span></label>
+        </div>
+      </fieldset>
+      <div id="paste-key" class="paste-key" hidden>
+        <p class="hint">받으신 공유 링크를 붙여넣으면 API 키가 저장돼요.</p>
+        <div class="paste-row"><input id="paste-link" placeholder="받은 링크 붙여넣기" autocomplete="off" spellcheck="false"><button id="btn-paste-key" type="button" class="btn-ghost">적용</button></div>
+      </div>
+
+
+      <details class="acc">
+        <summary>시나리오 문구</summary>
+        <p class="hint">에이전트가 정해진 순서대로 말하는 문구예요. 조건을 골라 고치면 이 브라우저에 바로 저장돼요. 한 줄이 말풍선 하나예요. 자리표시자 <code>{목적지}</code> <code>{택시종류}</code> <code>{결제}</code> <code>{쿠폰}</code> <code>{요금}</code> <code>{요청사항}</code> <code>{이름}</code>는 진행 중 실제 값으로 바뀌어요.</p>
+        <div class="seg-tabs" id="script-tabs">
+          <button type="button" data-cond="A2">A 기존안</button><button type="button" data-cond="B2" class="on">B 기존안</button><button type="button" data-cond="A2G">A 개선안</button><button type="button" data-cond="B2G">B 개선안</button>
+        </div>
+        <div id="script-list" class="script-list"></div>
+      </details>
+      <details class="acc">
+        <summary>프롬프트</summary>
+        <p class="hint">참가자가 예상 밖의 말을 했을 때 에이전트가 어떻게 답할지 정하는 프롬프트예요. 위에서 고른 <b>버전</b>의 프롬프트가 보여요(개선안은 조건 유지 규칙만 가이드라인에 맞게 다름). 고치면 이 브라우저에 바로 저장돼요. 응답 형식(JSON) 지시는 자동으로 뒤에 붙어요.</p>
+        <textarea id="prompt" class="prompt-box" rows="16" spellcheck="false"></textarea>
+      </details>
+
+      <label class="big-toggle"><span><b>큰 글씨 모드</b><small>글씨를 조금 더 크고 굵게 보여줘요</small></span><input type="checkbox" id="big-text" role="switch"><i></i></label>
+      <!-- 웹에서 보기 = 이 브라우저에서 세션 시작 / 앱 설치 = 홈 화면에 설치 -->
+      <div class="start-btns">
+        <button type="submit" id="btn-web" class="btn-ghost">웹에서 보기</button>
+        <button type="button" id="btn-install-big" class="btn-install"><span class="ms">install_mobile</span> 앱 설치</button>
+      </div>
+      <p id="install-hint" class="hint" hidden></p>
+    </form>
+    <p class="llm-status" id="llm-status-text">Gemini 연결 확인 중…</p>
+    <label class="src-toggle setup-src"><input type="checkbox" id="show-src-setup"> 응답 출처 표시</label>
+  </main>
+
+  <!-- 실험 종료 화면 (모든 단계가 끝나면 전체 화면) -->
+  <div id="end-screen" class="end-screen" hidden><p></p></div>
+
+  <!-- ============ 실험 화면 ============ -->
+  <main id="stage" class="app-shell" hidden>
+    <!-- 상황·과업 카드: 데스크톱에서는 옆에, 모바일에서는 하단 시트 -->
+    <div id="task-dim" class="task-dim"></div>
+    <aside id="task-card" class="task-card">
+      <div class="cond-title" id="cond-title"></div>
+      <h2>상황</h2>
+      <div id="task-situation"></div>
+      <h2>과업 <small>AI에게 아래 과업을 요청해주세요</small></h2>
+      <ul id="task-list"></ul>
+      <button type="button" id="btn-task-close" class="task-close">확인</button>
+    </aside>
+
+    <div class="phone" data-view="chat">
+      <!-- 진행 화면 헤더 -->
+      <div class="pv-head only-progress">
+        <button type="button" id="btn-back" class="pv-back" title="대화창으로"><span class="ms">arrow_back_ios_new</span></button>
+        <b id="pv-title" class="secret">작업 진행 중</b>
+        <button type="button" id="btn-help" class="pv-help only-guide" title="도움말"><span class="ms">help</span></button>
+      </div>
+      <!-- 직접 작업 안내 -->
+      <div class="direct-bar only-direct">
+        <button type="button" id="btn-manual-done" class="pv-back" title="대화로 돌아가기"><span class="ms">arrow_back_ios_new</span></button>
+        <span class="db-app"><span class="tx-logo sm"><span class="ms fill">local_taxi</span></span><b>마음택시</b></span>
+        <span class="db-tag">직접 조작 중</span>
+      </div>
+      <!-- 대화창 헤더 -->
+      <div class="chat-head only-chat">
+        <span class="agent-avatar">AI</span><b class="secret">AI 도우미</b>
+      </div>
+
+      <div class="screen-box only-screen"><div class="screen-clip"><div id="screen" class="screen"></div><div id="touch-layer" class="touch-layer"></div></div>
+        <!-- 개선안: AI가 조작하는 실시간 화면임을 알림 (가이드라인 6·23) -->
+        <div class="ai-chip only-guide"><span class="dots"><i></i><i></i><i></i></span> AI가 앱 조작 중</div>
+        <div id="screen-toast" class="screen-toast" hidden>AI가 조작하는 화면이라 누를 수 없어요.<br>직접 하려면 ‘내가 조작하기’를 눌러 주세요.</div>
+      </div>
+
+      <!-- 진행 문구 + 선택지: 높이를 고정해 축소 화면 크기가 바뀌지 않게 함 -->
+      <div class="pv-panel only-progress">
+        <div id="pv-status" class="pv-status" aria-live="polite"></div>
+        <div id="pv-chips" class="pv-chips"></div>
+      </div>
+      <div class="pv-bottom only-progress">
+        <button id="btn-stop" type="button" class="txt-btn">중지</button>
+        <button id="btn-manual" type="button" class="primary-btn">직접 조작</button>
+      </div>
+
+      <div id="chat" class="chat only-chat" aria-live="polite"><div id="chips" class="chips"></div></div>
+      <!-- 개선안: 입력 방법을 명시적으로 (가이드라인 1) -->
+      <div id="start-talk" class="start-talk only-chat" hidden>
+        <button type="button" id="btn-start-talk" class="start-big">눌러서 대화 시작</button>
+        <div class="talk-modes" hidden>
+          <button type="button" id="btn-mode-voice"><span class="ms">mic</span> 말로 하기</button>
+          <button type="button" id="btn-mode-text"><span class="ms">keyboard</span> 글로 하기</button>
+        </div>
+      </div>
+      <!-- 개선안: 입력 피드백 (가이드라인 2) -->
+      <div id="listen-bar" class="listen-bar only-chat" hidden><i></i><span>듣고 있어요 …</span></div>
+      <div id="unsent-hint" class="unsent-hint only-chat" hidden><span class="ms">info</span> 아직 전달되지 않았어요. ‘보내기’를 눌러야 AI에게 전달돼요.</div>
+      <form id="composer" class="composer only-chat" autocomplete="off">
+        <button id="mic" type="button" class="mic" title="음성 입력"><span class="ms">mic</span></button>
+        <textarea id="msg" rows="1" placeholder="AI에게 말하기…" enterkeyhint="send"></textarea>
+        <button id="send" type="submit" class="send" title="보내기"><span class="ms">arrow_upward</span></button>
+      </form>
+
+      <!-- 개선안: 시작할 때 정보 접근 허용 (가이드라인 21·22) -->
+      <div id="perm" class="perm-dim" hidden>
+        <div class="perm-card">
+          <h3>AI와의 대화에서 무엇을 허용할까요?</h3>
+          <label class="perm-row"><span><b>앱 대신 조작하기 <em>필수</em></b><small>택시를 부르려고 택시 앱을 대신 눌러요</small></span><input type="checkbox" data-perm="app" checked disabled><i></i></label>
+          <label class="perm-row"><span><b>위치 정보</b><small>출발지를 찾을 때 써요</small></span><input type="checkbox" data-perm="location" checked><i></i></label>
+          <label class="perm-row"><span><b>택시 이용내역</b><small>자주 가는 곳을 알려 드릴 때 써요</small></span><input type="checkbox" data-perm="history" checked><i></i></label>
+          <button type="button" id="perm-ok" class="perm-ok">확인</button>
+        </div>
+      </div>
+      <!-- 개선안: '?' 안내 (가이드라인 12·13·23) -->
+      <div id="help" class="help-ov" hidden><div class="help-hole"></div><div class="help-tip"><p></p><button type="button">다음</button></div></div>
+    </div>
+  </main>
+
+  <!-- ============ 연구자 패널 ============ -->
+  <aside class="drawer">
+    <div class="drawer-head">
+      <b>연구자 패널</b>
+      <button id="btn-close-drawer" type="button" class="btn-ghost">닫기</button>
+    </div>
+    <label class="src-toggle"><input type="checkbox" id="show-src"> 응답 출처 표시</label>
+    <h3>진행 단계</h3>
+    <ol id="stepper" class="stepper"></ol>
+    <h3>요약</h3>
+    <div id="summary" class="summary"></div>
+    <div class="btn-row wrap">
+      <button id="btn-json" type="button" class="btn-ghost">이 세션 JSON</button>
+      <button id="btn-csv" type="button" class="btn-ghost">이 세션 이벤트 CSV</button>
+      <button id="btn-all" type="button" class="btn-ghost">전체 세션 요약 CSV (<span id="session-count">0</span>)</button>
+      <button id="btn-clear" type="button" class="btn-ghost danger">기록 지우기</button>
+      <button id="btn-reset" type="button" class="btn-ghost">설정으로 / 새 세션</button>
+    </div>
+    <h3>프롬프트 <small id="prompt-live-meta"></small></h3>
+    <textarea id="prompt-live" class="prompt-box" rows="10" spellcheck="false"></textarea>
+    <div class="btn-row"><button id="btn-prompt-apply" type="button" class="btn-ghost">적용 (다음 응답부터)</button><span id="prompt-apply-msg" class="test-out"></span></div>
+    <h3>이벤트 로그</h3>
+    <div id="log-wrap" class="log-wrap">
+      <table id="log"><thead><tr><th>초</th><th>단계</th><th>이벤트</th><th>내용</th></tr></thead><tbody></tbody></table>
+    </div>
+  </aside>
+
+  <script>["scenarios", "llm", "phone", "app"].forEach(function (n) { document.write('<script src="js/' + n + '.js?v=' + window.__V + '"><\/script>'); });</script>
+</body>
+</html>
