@@ -1322,7 +1322,7 @@ async function run() {
     if (o.origin && ORIGINS[o.origin]) S.req.origin = o.origin;
     else if (o.origin_name) { S.req.origin = null; S.req.originName = o.origin_name; }
     if (o.car_type && CAR_TYPES[o.car_type]) S.req.car = o.car_type;
-    if (o.wants_coupon) { S.req.coupon = true; S.m.couponMentioned = true; }
+    if (o.wants_coupon) S.m.couponMentioned = true; // 기록만 함 (적용은 쿠폰 단계에서 직접)
     // 처음 요청에서 말한 목적지: 강남점이면 그대로(에이전트가 찾음), 다른 지점이나 다른 곳이면 그곳으로
     // 담소한정식 지점을 말해도 에이전트는 강남구청점을 고름 ([상황①] 목적지 오인식). 전혀 다른 장소를 말했으면 그곳으로
     { const k = namedDest(o); if (k === "custom") S.userDest = k; }
@@ -2551,7 +2551,7 @@ function summary() {
     dest_fixed_via: S.log.find((e) => e.type === "dest_changed" && e.dest === TARGET_PLACE)?.via ?? null,
     // [상황②] 쿠폰 단계: 처음 요청에서 말했는지 / 최종 적용 / 어디서 바꿨는지
     coupon_mentioned: Boolean(m.couponMentioned),
-    coupon_outcome: S.form.coupon ? (m.couponMentioned && !S.log.some((e) => e.type === "coupon_chosen") ? "applied_from_request" : "applied_by_user") : "not_applied",
+    coupon_outcome: S.form.coupon ? "applied_by_user" : "not_applied",
     coupon_changed_at: S.log.find((e) => e.type === "coupon_chosen" && e.coupon === true)?.step ?? null,
     // 두 버전 공통으로 비교하는 지표
     screen_taps: m.screenTaps,
@@ -2576,12 +2576,12 @@ function renderSummary() {
   if (!el || !S) return;
   const s = summary();
   const label = { accepted: "그대로 (강남구청점)", corrected: "바로잡음 (강남점)", cancelled: "호출 취소", exited: "앱 종료" };
-  const cpn = { applied_from_request: "미리 말해서 적용", applied_by_user: "직접 바꿔 적용", not_applied: "적용 안 됨" };
+  const cpn = { applied_by_user: "직접 바꿔 적용", not_applied: "적용 안 됨" };
   const items = [
     ["조건", CONDITIONS[S.cond].title],
     ["해석", s.llm],
     ["① 목적지 오인식", `${label[s.error_outcome] || "-"}${s.dest_fixed_at ? ` · ${s.dest_fixed_at}에서 ${s.dest_fixed_via || ""}` : ""}`],
-    ["② 쿠폰", `${cpn[s.coupon_outcome]}${s.coupon_changed_at ? ` · ${s.coupon_changed_at}에서` : ""}`],
+    ["② 쿠폰", `${cpn[s.coupon_outcome]}${s.coupon_changed_at ? ` · ${s.coupon_changed_at}에서` : ""} · 처음에 ${s.coupon_mentioned ? "말함" : "말 안 함"}`],
     ["개입 방식", s.correction_via || "-"],
     ["오류→반응", s.error_response_ms != null ? `${(s.error_response_ms / 1000).toFixed(1)}초` : "-"],
     ["최종 출발지", ORIGINS[s.final_origin].name],

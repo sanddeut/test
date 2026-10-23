@@ -442,8 +442,8 @@ const line = (key, s, vars) => lines(key, s, vars).join("\n");
 const isAgentRequest = (s, k) => k === AGENT_REQUEST && s.form.request === AGENT_REQUEST && !s.requestByUser && !s.userSet?.request;
 
 // 쿠폰 단계의 선택 → 적용 여부 ("on"이면 적용, 선택이 없으면 참가자가 직접 정한 값 또는 기본값 '적용 안 함')
-// 처음 요청에서 쿠폰을 쓰라고 말했으면 적용 (연구1 프로토타입은 반영하지 못했음 → 연구2에서 두 안 모두 고침)
-const couponChoice = (s, choice) => (choice === "on" ? true : choice === "off" ? false : s.userSet?.coupon ? s.form.coupon : Boolean(s.req?.coupon));
+// [상황②] 처음 요청에서 쿠폰을 말했어도 연구1처럼 기본은 적용 안 함 (쿠폰 단계에서 직접 바꿔야 함)
+const couponChoice = (s, choice) => (choice === "on" ? true : choice === "off" ? false : s.userSet?.coupon ? s.form.coupon : false);
 
 // 택시 종류: 참가자가 이미 직접 바꿨으면 그 값, 처음 요청에서 말했으면 그 값, 아니면 기본 일반택시
 const carTarget = (s) => (s.userSet?.car ? s.form.car : s.req?.car || "normal");
@@ -634,7 +634,7 @@ function buildSteps(complexity, session = 1, guide = false) {
       guide: `예상 금액을 확인하는 단계(카드에 예상 금액과 '쿠폰 적용 안 함 · 보유 1장'이 보임). 기본은 쿠폰 적용 안 함이고, 쓸 수 있는 쿠폰은 ‘${COUPON.name}’(${won0(COUPON.amount)} 할인) 하나. 에이전트가 먼저 쿠폰을 쓰자고 권하지 않음`,
       // 선택: "on"=쿠폰 적용 / 그 외(승인·높은 자동화 기본)=적용 안 함. 참가자가 이미 직접 정했으면 그 값 유지
       low: { messages: msg("coupon"), options: APPROVE, reject: "coupon" },
-      high: { messages: (s) => (s.form.coupon && (s.userSet?.coupon || s.req?.coupon) ? lines("change.coupon.on", s) : lines("coupon", s)), applyFirst: true },
+      high: { messages: (s) => (s.userSet?.coupon && s.form.coupon ? lines("change.coupon.on", s) : lines("coupon", s)), applyFirst: true },
       pre: async (s) => {
         if (s.phone.sheet === "coupon") return;
         await tap(".tx-coupon");
