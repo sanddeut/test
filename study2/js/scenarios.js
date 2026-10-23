@@ -316,7 +316,8 @@ function scriptDefaults(cond) {
   add("done.busy", "완료 안내", "진행 문구 (택시를 찾는 동안)", "택시를 찾고 있어요 …");
   add("done", "완료 안내", "안내", "{택시종류}를 호출했어요. 기사님이 3분 뒤 도착해요.");
   add("done.multi", "완료 안내", "안내 (호출 대수가 2대 이상)", "{택시종류} {대수}대를 호출했어요. 기사님이 3분 뒤 도착해요.");
-  add("count", "[오류] 택시 2대로 잘못 이해", "최종 호출 확인 직전 (처음 요청을 2대로 잘못 알아들음)", "처음에 말씀하신 대로 택시 {대수}대를 부를게요.");
+  add("count", "[오류] 택시 2대로 잘못 이해", "예상 금액 확인 직전 (처음 요청을 2대로 잘못 알아들음)", "처음에 말씀하신 대로 택시 {대수}대를 부를게요.");
+  add("count.announce", "[오류] 택시 2대로 잘못 이해 (개선안)", "예상 금액 확인 직전 · 알리고 읽을 시간 뒤 진행 (G5·G11·G16)", `처음에 말씀하신 대로 택시 ${WRONG_COUNT}대를 부를게요.`);
   add("change.count", "중지·수정", "호출 대수를 바꿨을 때", "택시를 {대수}대로 바꿨어요.");
 
   // [세션2 오류] 이용내역 열람 + 예약 호출
@@ -394,7 +395,8 @@ function guideScriptDefaults(cond) {
   add("done.busy", "완료 안내", "진행 문구 (택시를 찾는 동안)", "택시를 찾고 있어요 …");
   add("done", "완료 안내", "안내", "{택시종류}를 호출했어요. 기사님이 3분 뒤 도착해요.");
   add("done.multi", "완료 안내", "안내 (호출 대수가 2대 이상)", "{택시종류} {대수}대를 호출했어요. 기사님이 3분 뒤 도착해요.");
-  add("count", "[오류] 택시 2대로 잘못 이해", "최종 호출 확인 직전 (처음 요청을 2대로 잘못 알아들음)", "처음에 말씀하신 대로 택시 {대수}대를 부를게요.");
+  add("count", "[오류] 택시 2대로 잘못 이해", "예상 금액 확인 직전 (처음 요청을 2대로 잘못 알아들음)", "처음에 말씀하신 대로 택시 {대수}대를 부를게요.");
+  add("count.announce", "[오류] 택시 2대로 잘못 이해 (개선안)", "예상 금액 확인 직전 · 알리고 읽을 시간 뒤 진행 (G5·G11·G16)", `처음에 말씀하신 대로 택시 ${WRONG_COUNT}대를 부를게요.`);
   add("change.count", "중지·수정", "호출 대수를 바꿨을 때", "택시를 {대수}대로 바꿨어요.");
 
   add("history.ask", "[세션2] 추천 전에 묻기 (G18 요청 외 행동 · G21 무엇을 왜 보는지)", "확인 요청 ([거부] / [허용])", "최근 3개월 택시 이용내역을 보고 다음 이용을 추천해 드려도 될까요?");
@@ -457,7 +459,7 @@ function lines(key, s, vars = {}) {
     나중단계: vars.later ?? "",
     값: vars.value ?? "",
     하차: PLACES[DROP_PLACE].name,
-    대수: String(f.count || 1),
+    대수: String(vars.count ?? f.count ?? 1),
   };
   return scriptText(s.cond, key)
     .split("\n")
@@ -639,6 +641,23 @@ function buildSteps(complexity, session = 1, guide = false) {
     });
   }
 
+  // 연구2 오류 ②: 처음 요청을 '택시 2대'로 잘못 알아들은 것이 예상 금액 확인 직전에 드러남 (이후 예상 금액·최종 확인 모두 2대 기준)
+  // 참가자가 이미 대수를 정했거나 되돌렸으면 바꾸지 않음
+  if (session === 0) steps.push({
+    id: "count",
+    kind: "error_count",
+    label: "[오류②·2대로 잘못 이해] 호출 대수", // 참가자에게는 '호출 대수'만 보임 (되돌리기 안내)
+    guide: `처음 요청을 '택시 ${WRONG_COUNT}대'로 잘못 알아들어 호출 대수를 ${WRONG_COUNT}대로 정하는 단계. 사용자가 1대라고 하면 1대로 바꿈`,
+    high: { messages: (s) => (s.userSet?.count || s.countBlocked ? [] : lines("count", s, { count: WRONG_COUNT })), applyFirst: true },
+    apply: (s) => {
+      if (s.userSet?.count || s.countBlocked || s.countApplied) return;
+      s.countApplied = true;
+      s.form.count = WRONG_COUNT;
+      logEvent("count_misheard", { count: WRONG_COUNT });
+      renderPhone();
+    },
+  });
+
   if (B && USE_PAY_STEP) {
     steps.push({
       id: "pay",
@@ -716,18 +735,9 @@ function buildSteps(complexity, session = 1, guide = false) {
     id: "final",
     label: "최종 호출 확인",
     guide: `호출 내용을 최종 확인하는 단계. 목적지·결제 방식${B ? "·택시 종류·쿠폰" : ""}을 바꿀 수 있음`,
-    // 연구2 오류 ②: 호출 확인 화면을 열 때 처음 요청을 '택시 2대'로 잘못 알아들은 것이 드러남 (한 번만, 참가자가 이미 대수를 정했으면 생략)
-    low: { messages: (s) => [...(s.countShownNow ? lines("count", s) : []), ...lines("final", s)], options: APPROVE, reject: "final", ask: "final.ask" },
-    high: { messages: (s) => [...(s.countShownNow ? lines("count", s) : []), ...lines("final", s)] },
+    low: { messages: msg("final"), options: APPROVE, reject: "final", ask: "final.ask" },
+    high: { messages: msg("final") },
     pre: async (s) => {
-      s.countShownNow = false;
-      if (session === 0 && !s.countApplied && !s.userSet?.count) {
-        s.countApplied = true;
-        s.countShownNow = true;
-        s.form.count = WRONG_COUNT;
-        if (s.m.errorShownAt == null) s.m.errorShownAt = now();
-        logEvent("count_misheard", { count: WRONG_COUNT });
-      }
       if (s.phone.sheet === "confirm") return;
       if (s.phone.sheet) { s.phone.sheet = null; renderPhone(); await actSleep(300); }
       await tap(".tx-call");

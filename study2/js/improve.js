@@ -392,7 +392,16 @@ function lastDoneBubble() {
     if (b) b.dataset.step = d;
     return b;
   }
-  return [...chat().querySelectorAll(":scope > .bubble[data-step]")].filter((x) => Number(x.dataset.step) < S.stepIdx).at(-1) || null;
+  const done = [...chat().querySelectorAll(":scope > .bubble[data-step]")].filter((x) => Number(x.dataset.step) < S.stepIdx);
+  // 오류 ② 택시 2대: 예상 금액(되돌릴 수 없는 알림)이 끝난 뒤에도 최종 호출 전까지 '2대를 부를게요' 아래에 「되돌리기」를 남김 (가이드라인 16)
+  // (말풍선 번호는 대화 기록으로 옮겨질 때 붙어 예상 금액 단계로 잡힐 수 있으므로 문구로 찾음)
+  const ci = S.steps.findIndex((x) => x.id === "count");
+  if (ci >= 0 && S.stepIdx > ci && ["coupon", "final"].includes(S.steps[S.stepIdx]?.id) && S.countApplied && !S.countBlocked && !S.userSet?.count) {
+    const said = lines("count.announce", S).join(" ").trim();
+    const cnt = done.filter((x) => x.classList.contains("agent") && x.textContent.trim().startsWith(said)).at(-1);
+    if (cnt) { cnt.dataset.step = ci; return cnt; }
+  }
+  return done.at(-1) || null;
 }
 
 function requestUndo(target = lastDoneStep(), via = "back") {
@@ -623,7 +632,7 @@ handleReject = async function (...args) {
 // - 세션2: 이용내역을 보기 전에 이유와 함께 허용을 묻고, 예약도 먼저 물음
 // =====================================================================
 // 연구2: 높은 자동화를 유지하고 G18·G20에 따라 택시 종류·최종 호출만 먼저 물음. 출발지·목적지·하차 지점은 먼저 알리고 읽을 시간 뒤 진행
-const STEP_POLICY = { taxi_open: "auto", origin: "announce", dest: "announce", car: "list", coupon: "auto", pay: "auto", drop: "announce", request: "list", reserve: "consent" };
+const STEP_POLICY = { taxi_open: "auto", origin: "announce", dest: "announce", car: "list", count: "announce", coupon: "auto", pay: "auto", drop: "announce", request: "list", reserve: "consent" };
 const READ_MS = 8000; // 알리고 진행하는 단계의 읽을 시간 (가이드라인 11)
 
 const _newSession = newSession;
@@ -717,6 +726,7 @@ async function askReserve(step) {
 // 먼저 알리고("~할게요") 읽을 시간 뒤 진행 (가이드라인 5·11). 진행한 뒤에는 「되돌리기」 (가이드라인 16)
 async function announceStep(step) {
   if (step.id === "drop" && (S.dropBlocked || S.form.dest !== TARGET_PLACE)) return true;
+  if (step.id === "count" && (S.userSet?.count || S.countBlocked)) return true;
   const prev = S.automation;
   S.automation = "high"; // 알리고 진행하는 단계는 높은 자동화와 같은 방식으로 말풍선을 남김
   try { return await announceInner(step); } finally { S.automation = prev; }
@@ -734,6 +744,7 @@ async function announceInner(step) {
   const why = reasonOf(step.id);
   if (why) said.forEach((m) => ((S.reasons ||= {})[m.trim()] = why));
   for (const m of said) await agentSay(m, { gated: true });
+  if (step.id === "count" && S.m.errorShownAt == null) S.m.errorShownAt = now();
   if (step.id === "drop") {
     if (S.m.errorShownAt == null) S.m.errorShownAt = now();
     // 바꾸는 이유는 먼저 말하지 않고, 「AI가 ~하는 중」을 펼치면 볼 수 있음 (가이드라인 10)
@@ -768,6 +779,8 @@ function runByPolicy(step, redo) {
     return askAppPermission().then((ok) => (ok ? runAuto(step) : ok));
   }
   if (p === "announce") {
+    // 오류 ② 택시 2대: 되돌리면 1대로 두고 다시 바꾸지 않음
+    if (step.id === "count") { if (redo) { S.countBlocked = true; logEvent("count_changed", { value: 1, via: "undo" }); return Promise.resolve(true); } return announceStep(step); }
     if (step.id === "drop") { if (redo) { S.dropBlocked = true; return Promise.resolve(true); } return announceStep(step); }
     return redo ? runLowStep(step) : announceStep(step); // 되돌린 뒤에는 맞는지 물음
   }
@@ -1361,6 +1374,7 @@ function renderThink(st) {
 function reasonOf(id) {
   if (id === "origin") return `처음 말씀하신 출발지와 이름이 같은 곳을 골랐어요. 검색 결과: ${ORIGIN_RESULTS.map((r) => r.name || r).join(", ")}`;
   if (id === "dest") { const d = PLACES[S.form.dest ?? AGENT_PLACE]?.name || ""; return `같은 이름의 지점 ${SEARCH_ORDER.length}곳(${SEARCH_ORDER.map((k) => PLACES[k].name.replace("담소한정식 ", "")).join(", ")}) 중 말씀하신 지점과 같은 ‘${d}’을 골랐어요.`; }
+  if (id === "count") return `처음 요청을 ‘택시 ${WRONG_COUNT}대를 불러 달라’는 뜻으로 알아들었어요.`;
   if (id === "drop") return `가게 앞은 차를 세우기 어려운 곳이라, 가장 가까운 ‘${PLACES[DROP_PLACE].name}’로 바꾸려고 해요.`;
   return null;
 }
