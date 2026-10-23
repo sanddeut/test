@@ -738,7 +738,7 @@ async function announceInner(step) {
 async function askAppPermission() {
   const ask = "택시를 부르려면 제가 택시 앱을 열고 대신 눌러야 해요. ‘앱 대신 조작하기’를 허용해 주시겠어요?";
   await agentSay(ask);
-  const opts = [{ id: "reject", label: "허용 안 함" }, { id: "approve", label: "허용" }];
+  const opts = [{ id: "approve", label: "허용" }]; // 실험 진행을 위해 허용만 둠
   for (;;) {
     const c = await askChoice(opts, ask, ["cancel"], "앱 대신 조작하기를 허용하면 approve, 허용하지 않으면 reject야.");
     if (c.id === "__reask") continue;
