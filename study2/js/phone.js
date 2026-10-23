@@ -273,6 +273,7 @@ function rideRows() {
     ["출발", originLabel(f.origin, S.geo)],
     ["도착", PLACES[f.dest || TARGET_PLACE].name],
     ["택시 종류", CAR_TYPES[f.car].label],
+    ["호출 대수", `${f.count || 1}대`],
     ["결제", `${PAY[f.pay].label} · ${PAY[f.pay].desc}`],
     ...((S.complexity === "B" && USE_COUPON) || f.coupon ? [["쿠폰", f.coupon ? `${COUPON.name}` : "적용 안 함"]] : []),
     ...(f.request && f.request !== "none" ? [["기사님 요청사항", REQUESTS[f.request]]] : []),

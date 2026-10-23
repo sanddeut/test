@@ -114,8 +114,10 @@ const TARGET_PLACE = "gangnam"; // 참가자가 요청하는 목적지
 const AGENT_PLACE = TARGET_PLACE; // 목적지는 정상으로 찾음
 // 연구2 오류 ① 잘못 알아들음: 처음 요청의 앞 두 번은 무슨 말을 하든 알아듣지 못함 (두 안 동일)
 const MISHEAR_COUNT = 2;
-// 연구2 오류 ② 블랙박스: 예상 금액 다음, 이유를 말하지 않고 하차 지점을 ‘역삼역 2번 출구’로 바꿈 (두 안 동일)
-const DROP_PLACE = "drop";
+const DROP_PLACE = "drop"; // (이전 설계: 하차 지점 변경. 지금은 쓰지 않음)
+const USE_DROP = false;
+// 연구2 오류 ② 잘못 실행: 처음 요청을 '택시 2대'로 잘못 알아들어, 최종 호출 확인 때 드러남 (두 안 동일)
+const WRONG_COUNT = 2;
 // 연구2 기존안: 택시 종류·최종 호출은 개선안과 같은 단계에서 묻되, 연구1 낮은 자동화 문구 그대로 (app.js ASK_STEPS)
 const BASE_ASKS = true;
 
@@ -124,7 +126,7 @@ const BASE_ASKS = true;
 // - 세션2: 호출 완료 후, 묻지 않고 최근 3개월 이용내역을 열람하고 다음 주 토요일 같은 시간 예약 호출을 제안·등록
 const SESSIONS = {
   // 연구2: 두 안에 같은 통제감 상실 유발 상황 2개 (연구1의 세션1·2 오류 단계는 쓰지 않음)
-  0: { title: "연구2 · 잘못 알아들음 + 하차 지점 변경", error: "mishear_drop" },
+  0: { title: "연구2 · 잘못 알아들음 + 택시 2대로 잘못 이해", error: "mishear_count" },
   1: { title: "세션1 · 기사님 요청사항 임의 선택", error: "request" },
   2: { title: "세션2 · 이용내역 열람 + 예약 호출", error: "reserve" },
 };
@@ -205,7 +207,7 @@ function fareOf(f, destKey = f.dest) {
   const km = distKm(f.origin || "current", destKey || TARGET_PLACE, typeof S !== "undefined" ? S?.geo : null);
   const base = 4800 + Math.max(0, km - 1.6) * (11200 / 19.6);
   const fare = Math.round(base / 100) * 100 + CAR_TYPES[f.car].extra;
-  return Math.max(0, fare - (f.coupon ? COUPON.amount : 0));
+  return Math.max(0, fare * (f.count || 1) - (f.coupon ? COUPON.amount : 0)); // 호출 대수만큼 (쿠폰은 한 번)
 }
 
 // 승인/거부 버튼 순서: 거부(왼쪽) · 승인(오른쪽)
@@ -313,6 +315,9 @@ function scriptDefaults(cond) {
   add("password", "[직접조작] 결제 비밀번호", "안내", "결제를 위해 결제 비밀번호 입력이 필요해요. 택시 앱을 열어 직접 입력해주세요.");
   add("done.busy", "완료 안내", "진행 문구 (택시를 찾는 동안)", "택시를 찾고 있어요 …");
   add("done", "완료 안내", "안내", "{택시종류}를 호출했어요. 기사님이 3분 뒤 도착해요.");
+  add("done.multi", "완료 안내", "안내 (호출 대수가 2대 이상)", "{택시종류} {대수}대를 호출했어요. 기사님이 3분 뒤 도착해요.");
+  add("count", "[오류] 택시 2대로 잘못 이해", "최종 호출 확인 직전 (처음 요청을 2대로 잘못 알아들음)", "처음에 말씀하신 대로 택시 {대수}대를 부를게요.");
+  add("change.count", "중지·수정", "호출 대수를 바꿨을 때", "택시를 {대수}대로 바꿨어요.");
 
   // [세션2 오류] 이용내역 열람 + 예약 호출
   if (low) {
@@ -388,6 +393,9 @@ function guideScriptDefaults(cond) {
   add("password", "[직접조작] 결제 비밀번호", "안내", "결제를 위해 결제 비밀번호 입력이 필요해요. 택시 앱을 열어 직접 입력해주세요.");
   add("done.busy", "완료 안내", "진행 문구 (택시를 찾는 동안)", "택시를 찾고 있어요 …");
   add("done", "완료 안내", "안내", "{택시종류}를 호출했어요. 기사님이 3분 뒤 도착해요.");
+  add("done.multi", "완료 안내", "안내 (호출 대수가 2대 이상)", "{택시종류} {대수}대를 호출했어요. 기사님이 3분 뒤 도착해요.");
+  add("count", "[오류] 택시 2대로 잘못 이해", "최종 호출 확인 직전 (처음 요청을 2대로 잘못 알아들음)", "처음에 말씀하신 대로 택시 {대수}대를 부를게요.");
+  add("change.count", "중지·수정", "호출 대수를 바꿨을 때", "택시를 {대수}대로 바꿨어요.");
 
   add("history.ask", "[세션2] 추천 전에 묻기 (G18 요청 외 행동 · G21 무엇을 왜 보는지)", "확인 요청 ([거부] / [허용])", "최근 3개월 택시 이용내역을 보고 다음 이용을 추천해 드려도 될까요?");
   add("history.no", "[세션2] 추천 전에 묻기 (G18 요청 외 행동 · G21 무엇을 왜 보는지)", "거부했을 때", "알겠어요. 이용내역은 보지 않고, 추천도 하지 않을게요.");
@@ -449,12 +457,13 @@ function lines(key, s, vars = {}) {
     나중단계: vars.later ?? "",
     값: vars.value ?? "",
     하차: PLACES[DROP_PLACE].name,
+    대수: String(f.count || 1),
   };
   return scriptText(s.cond, key)
     .split("\n")
     .map((t) => t.trim())
     .filter(Boolean)
-    .map((t) => t.replace(/\{(출발지|목적지|택시종류|결제|쿠폰|요금|요청사항|이름|단계|지금단계|나중단계|값|하차)\}/g, (_, k) => map[k]))
+    .map((t) => t.replace(/\{(출발지|목적지|택시종류|결제|쿠폰|요금|요청사항|이름|단계|지금단계|나중단계|값|하차|대수)\}/g, (_, k) => map[k]))
     .map((t) => t.replace(/([가-힣\w]+)’?\(으\)로/g, (m, w) => (m.includes("’") ? `${euro(w).slice(0, w.length)}’${euro(w).slice(w.length)}` : euro(w))))
     .map(fixJosa);
 }
@@ -687,7 +696,7 @@ function buildSteps(complexity, session = 1, guide = false) {
   }
 
   // 연구2 오류 ② 블랙박스: 이유를 말하지 않고 하차 지점을 바꿈. 참가자가 이미 되돌렸으면 바꾸지 않음
-  if (session === 0) steps.push({
+  if (USE_DROP && session === 0) steps.push({
     id: "drop",
     kind: "error_drop",
     label: "[오류] 하차 지점 변경",
@@ -707,9 +716,18 @@ function buildSteps(complexity, session = 1, guide = false) {
     id: "final",
     label: "최종 호출 확인",
     guide: `호출 내용을 최종 확인하는 단계. 목적지·결제 방식${B ? "·택시 종류·쿠폰" : ""}을 바꿀 수 있음`,
-    low: { messages: msg("final"), options: APPROVE, reject: "final", ask: "final.ask" },
-    high: { messages: msg("final") },
+    // 연구2 오류 ②: 호출 확인 화면을 열 때 처음 요청을 '택시 2대'로 잘못 알아들은 것이 드러남 (한 번만, 참가자가 이미 대수를 정했으면 생략)
+    low: { messages: (s) => [...(s.countShownNow ? lines("count", s) : []), ...lines("final", s)], options: APPROVE, reject: "final", ask: "final.ask" },
+    high: { messages: (s) => [...(s.countShownNow ? lines("count", s) : []), ...lines("final", s)] },
     pre: async (s) => {
+      s.countShownNow = false;
+      if (session === 0 && !s.countApplied && !s.userSet?.count) {
+        s.countApplied = true;
+        s.countShownNow = true;
+        s.form.count = WRONG_COUNT;
+        if (s.m.errorShownAt == null) s.m.errorShownAt = now();
+        logEvent("count_misheard", { count: WRONG_COUNT });
+      }
       if (s.phone.sheet === "confirm") return;
       if (s.phone.sheet) { s.phone.sheet = null; renderPhone(); await actSleep(300); }
       await tap(".tx-call");
@@ -802,8 +820,8 @@ function buildSteps(complexity, session = 1, guide = false) {
       kind: "done",
       busy: "done.busy",
       label: "완료 안내",
-      low: { messages: msg("done"), applyFirst: true },
-      high: { messages: msg("done"), applyFirst: true },
+      low: { messages: (s) => lines((s.form.count || 1) > 1 ? "done.multi" : "done", s), applyFirst: true },
+      high: { messages: (s) => lines((s.form.count || 1) > 1 ? "done.multi" : "done", s), applyFirst: true },
       // 주변 택시를 찾는 화면을 잠시 보여준 뒤 배차 완료
       act: async () => { await actSleep(2600); },
       apply: (s) => { s.phone.sheet = null; s.phone.taxiView = "complete"; s.phone.focus = null; },

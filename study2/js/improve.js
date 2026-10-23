@@ -523,6 +523,7 @@ function rejectPicks() {
       { label: "출발지 바꾸기", ask: "출발지를 어디로 바꿀까요?", sub: [{ label: "현재 위치", out: { intent: "set_origin", origin: "current" } }, DIRECT] },
       { label: "목적지 바꾸기", ask: "목적지를 어디로 바꿀까요?", sub: [DIRECT] },
       ...(S.complexity === "B" ? [{ label: "택시 종류 바꾸기", ask: "어떤 택시로 바꿀까요?", sub: CAR_PICKS() }] : []),
+      ...(S.session === 0 ? [{ label: "호출 대수 바꾸기", ask: "택시를 몇 대 부를까요?", sub: [1, 2].map((n) => ({ label: `${n}대`, out: { intent: "set_count", count: n } })) }] : []),
       { label: "호출 취소", cancel: true },
     ];
     default: return null;
@@ -1416,5 +1417,8 @@ setInterval(decorateMore, 200);
 const _lines = lines;
 lines = function (key, s, vars) {
   if (s?.unified && key === "taxi_open") return [`${TAXI_APP} 앱을 열어서 사용할게요.`];
-  return _lines(key, s, vars);
+  const r = _lines(key, s, vars);
+  // 오류 ② 택시 2대로 잘못 이해: 판단 근거는 말풍선 ›를 눌렀을 때 (가이드라인 10)
+  if (s?.unified && key === "count") r.forEach((m) => ((s.reasons ||= {})[m.trim()] = `처음 요청을 ‘택시 ${s.form.count || 1}대를 불러 달라’는 뜻으로 알아들었어요.`));
+  return r;
 };

@@ -40,7 +40,7 @@ function newSession(cfg) {
     reserveCancelled: false, // 참가자가 예약을 막거나 취소함
     rideDone: false,
     stepIdx: -1,
-    form: { origin: "current", dest: null, car: "normal", pay: "auto", coupon: false, request: "none", reserved: false },
+    form: { origin: "current", dest: null, car: "normal", pay: "auto", coupon: false, request: "none", reserved: false, count: 1 },
     geo: null, // 휴대폰 현재 위치 (locate)
     userSet: {}, // 참가자가 직접 바꾼 항목 (높은 자동화에서 과업 값으로 덮어쓰지 않게)
     pinResolve: null,
@@ -1004,7 +1004,7 @@ function requestOptions() {
 }
 
 function changeIntents() {
-  return [...(stepIdNow() === "request" || (S.guide && S.session === 1 && !S.rideDone) ? ["set_request"] : []), "set_origin", "set_dest", ...(S.complexity === "B" ? ["set_car"] : []), ...(USE_PAY_STEP ? ["set_pay"] : []), ...(S.complexity === "B" && USE_COUPON ? ["set_coupon"] : [])];
+  return [...(stepIdNow() === "request" || (S.guide && S.session === 1 && !S.rideDone) ? ["set_request"] : []), "set_origin", "set_dest", ...(S.complexity === "B" ? ["set_car"] : []), ...(USE_PAY_STEP ? ["set_pay"] : []), ...(S.complexity === "B" && USE_COUPON ? ["set_coupon"] : []), ...(S.session === 0 ? ["set_count"] : [])];
 }
 
 // 높은 자동화에서 말한 내용 해석. 수정 요청은 반영하고, 그 외에는 짧게 응답한 뒤 진행 상황을 알리고 계속 진행
@@ -1051,6 +1051,11 @@ async function applyHighChange(o, via) {
   if (o.intent === "set_coupon" && typeof o.coupon === "boolean") {
     setOption("coupon", o.coupon, via);
     await sayKey(o.coupon ? "change.coupon.on" : "change.coupon.off");
+    return true;
+  }
+  if (o.intent === "set_count" && o.count >= 1) {
+    setOption("count", o.count, via);
+    await sayKey("change.count");
     return true;
   }
   return false;
@@ -1671,7 +1676,7 @@ async function handleReject(step, c, said) {
         freePlace: "any",
         said: ask,
         intents: [...changeIntents(), "continue", "cancel", "other"],
-        hint: "바꿀 수 있는 것은 출발지, 목적지" + (USE_PAY_STEP ? ", 결제 방식" : "") + (S.complexity === "B" ? ", 택시 종류" + (USE_COUPON ? ", 쿠폰" : "") : "") + "이야. 그 외 요청이면 짧게 답하고 최종 확인 단계로 자연스럽게 돌아와.",
+        hint: "바꿀 수 있는 것은 출발지, 목적지" + (USE_PAY_STEP ? ", 결제 방식" : "") + (S.complexity === "B" ? ", 택시 종류" + (USE_COUPON ? ", 쿠폰" : "") : "") + (S.session === 0 ? ", 호출 대수(한 대만·1대 → set_count count=1)" : "") + "이야. 그 외 요청이면 짧게 답하고 최종 확인 단계로 자연스럽게 돌아와.",
       });
     }
     // 거부 후 말한 수정은 반영한 뒤 다시 묻지 않고 바로 진행
@@ -1692,6 +1697,7 @@ async function handleReject(step, c, said) {
     if (o.intent === "set_car" && CAR_TYPES[o.car_type]) { setOption("car", o.car_type, "final"); return proceed("change.car"); }
     if (o.intent === "set_pay" && PAY[o.pay_method]) { setOption("pay", o.pay_method, "final"); return proceed("change.pay"); }
     if (o.intent === "set_coupon" && typeof o.coupon === "boolean") { setOption("coupon", o.coupon, "final"); return proceed(o.coupon ? "change.coupon.on" : "change.coupon.off"); }
+    if (o.intent === "set_count" && o.count >= 1) { setOption("count", o.count, "final"); return proceed("change.count"); }
     if (o.intent === "cancel") { await cancelRide(); return "cancel"; }
     if (o.intent !== "continue") await agentSay(o.reply, { talk: true });
     return "reask";
@@ -2523,7 +2529,8 @@ function finish(status) {
   S.running = false;
   S.m.finalDest = S.form.dest;
   // 오류(목적지 오인식): 최종 목적지가 강남점이면 바로잡음. 쿠폰은 오류가 아니고 결과만 기록 (summary의 coupon_outcome)
-  if (status === "completed" && S.m.errorOutcome == null) S.m.errorOutcome = S.form.dest === TARGET_PLACE ? "corrected" : "accepted";
+  // 오류 ② 택시 2대로 잘못 이해: 최종 호출 대수가 1대면 바로잡음
+  if (status === "completed" && S.m.errorOutcome == null) S.m.errorOutcome = (S.form.count || 1) === 1 ? "corrected" : "accepted";
   if (status === "cancelled" || status === "exited") S.m.errorOutcome = S.m.errorOutcome ?? status;
   S.m.finishedAt = now();
   logEvent("session_end", { status, summary: summary() });
@@ -2641,7 +2648,11 @@ function summary() {
     drop_reason_opened: S.guide || S.unified ? m.whyOpened || 0 : null,
     think_opened: S.unified ? m.thinkOpens || 0 : null, // 개선안: 「AI가 ~하는 중」을 펼쳐 본 횟수 (모든 단계)
     mishear_recover_ms: m.mishearAt != null && m.mishearRecoveredAt != null ? m.mishearRecoveredAt - m.mishearAt : null,
-    // 오류 ② 하차 지점 변경: 어디서 바로잡았는지 (dest=목적지 단계, final=최종 확인, done=호출 뒤 되돌리기 등)
+    // 오류 ② 택시 2대로 잘못 이해: 최종 호출 대수, 어디서 바로잡았는지
+    final_count: S.form.count || 1,
+    count_fixed_at: S.log.find((e) => e.type === "count_changed" && e.value === 1)?.step ?? null,
+    count_fixed_via: S.log.find((e) => e.type === "count_changed" && e.value === 1)?.via ?? null,
+    // (이전 설계) 하차 지점 변경: 어디서 바로잡았는지 (dest=목적지 단계, final=최종 확인, done=호출 뒤 되돌리기 등)
     dest_fixed_at: S.log.find((e) => e.type === "dest_changed" && e.dest === TARGET_PLACE)?.step ?? null,
     dest_fixed_via: S.log.find((e) => e.type === "dest_changed" && e.dest === TARGET_PLACE)?.via ?? null,
     // 쿠폰 (오류 아님): 처음 요청에서 말했는지 / 최종 적용 / 어디서 바꿨는지
@@ -2670,13 +2681,13 @@ function renderSummary() {
   const el = $("#summary");
   if (!el || !S) return;
   const s = summary();
-  const label = { accepted: "그대로 (역삼역 2번 출구)", corrected: "바로잡음 (강남점)", cancelled: "호출 취소", exited: "앱 종료" };
+  const label = { accepted: "그대로 (2대 호출)", corrected: "바로잡음 (1대)", cancelled: "호출 취소", exited: "앱 종료" };
   const cpn = { applied_from_request: "미리 말해서 적용", applied_by_user: "직접 바꿔 적용", not_applied: "적용 안 됨" };
   const items = [
     ["조건", CONDITIONS[S.cond].title],
     ["해석", s.llm],
     ["오류 ① 잘못 알아들음", `${s.mishear_count}번 못 알아들음${s.mishear_recover_ms != null ? ` · ${Math.round(s.mishear_recover_ms / 1000)}초 뒤 다시 말함` : ""}`],
-    ["오류 ② 하차 지점 변경", `${label[s.error_outcome] || "-"}${s.dest_fixed_at ? ` · ${s.dest_fixed_at}에서 ${s.dest_fixed_via || ""}` : ""}`],
+    ["오류 ② 택시 2대로 잘못 이해", `${label[s.error_outcome] || "-"}${s.count_fixed_at ? ` · ${s.count_fixed_at}에서 ${s.count_fixed_via || ""}` : ""}`],
     ["쿠폰 (오류 아님)", `${cpn[s.coupon_outcome]}${s.coupon_changed_at ? ` · ${s.coupon_changed_at}에서` : ""} · 처음에 ${s.coupon_mentioned ? "말함" : "말 안 함"}`],
     ["개입 방식", s.correction_via || "-"],
     ["오류→반응", s.error_response_ms != null ? `${(s.error_response_ms / 1000).toFixed(1)}초` : "-"],

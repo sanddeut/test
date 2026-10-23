@@ -113,6 +113,7 @@ const OUTPUT_FORMAT = `# 출력 형식
 - car_type: 일반택시 → normal, 모범택시 → deluxe, 대형택시 → large.
 - pay_method: 자동결제(카드) → auto, 직접결제(현금·기사님께) → direct.
 - coupon: 쿠폰을 적용하라고 하면 true, 빼라고 하면 false.
+- count: 호출할 택시 대수를 말하면 그 숫자(한 대만·1대 → 1, 두 대 → 2). 말하지 않으면 null.
 - reply: 위 원칙에 따라 에이전트가 할 말. intent가 other이거나 "이번 턴 지침"이 응답을 요구할 때 화면에 출력돼.`;
 
 const LLM_TASKS = {
@@ -135,6 +136,7 @@ const REQUEST_SCHEMA = sch("OBJECT", {
     car_type: sch("STRING", { nullable: true, enum: ["normal", "deluxe", "large"] }),
     pay_method: sch("STRING", { nullable: true, enum: ["auto", "direct"] }),
     wants_coupon: sch("BOOLEAN"),
+    count: sch("INTEGER", { nullable: true }),
     clarification: sch("STRING", { nullable: true }),
   },
   required: ["is_ride_request", "destination", "origin", "origin_name", "place", "place_name", "car_type", "pay_method", "wants_coupon", "clarification"],
@@ -152,9 +154,10 @@ function turnSchema(intentIds) {
       car_type: sch("STRING", { nullable: true, enum: ["normal", "deluxe", "large"] }),
       pay_method: sch("STRING", { nullable: true, enum: ["auto", "direct"] }),
       coupon: sch("BOOLEAN", { nullable: true }),
+      count: sch("INTEGER", { nullable: true }),
       reply: sch("STRING"),
     },
-    required: ["intent", "request", "origin", "origin_name", "place", "place_name", "car_type", "pay_method", "coupon", "reply"],
+    required: ["intent", "request", "origin", "origin_name", "place", "place_name", "car_type", "pay_method", "coupon", "count", "reply"],
   });
 }
 
@@ -173,6 +176,7 @@ const INTENT_MEANINGS = {
   set_car: "택시 종류를 바꾸라고 함 (car_type 채움)",
   set_pay: "결제 방식을 바꾸라고 함 (pay_method 채움)",
   set_coupon: "쿠폰을 적용하거나 빼라고 함 (coupon 채움)",
+  set_count: "호출할 택시 대수를 바꾸라고 함 (count 채움, 예: 한 대만 → 1)",
   unsuitable_app: "지정된 앱이 아닌 다른 앱(다른 택시 앱, 전화, 카메라 등)을 말함",
   pause: "바꿀 값 없이 진행을 멈추라고 하거나 무언가 잘못됐다고 지적함 (멈춰, 기다려, 잘못했잖아, 이상해 등)",
   continue: "바꿀 것 없이 그대로(하던 대로) 진행하라고 함. 예: '그냥 해', '하던 거 해', '괜찮아 계속해', '없어'",
@@ -496,6 +500,8 @@ const Rules = {
     if (car && allowed.has("set_car")) return out("set_car", { car_type: car });
     if (pay && allowed.has(pay)) return out(pay);
     if (pay && allowed.has("set_pay")) return out("set_pay", { pay_method: pay });
+    const cnt = /(한|1)\s?대|하나만|한 대만/.test(t) ? 1 : /(두|2)\s?대/.test(t) ? 2 : null;
+    if (cnt && allowed.has("set_count")) return out("set_count", { count: cnt });
     if (couponWord && allowed.has("set_coupon")) return out("set_coupon", { coupon: !/(빼|말고|안\s?써|취소|없이)/.test(t) });
     if (allowed.has("cancel") && /(취소|그만|안\s?갈|부르지\s?마|(예약|호출)\s?하지\s?(마|말)|예약\s?(안\s?해|말아))/.test(t)) return out("cancel");
     if (allowed.has("reject") && NO.test(t)) return out("reject");
