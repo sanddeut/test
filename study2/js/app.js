@@ -2530,8 +2530,22 @@ function finish(status) {
   if (S.guide && $("#rc-who")) $("#rc-who").textContent = status === "completed" ? "작업을 마쳤어요" : "작업을 멈췄어요";
   syncControls();
   saveSession();
+  autoSaveLog();
   scheduleEndScreen();
   return false;
+}
+
+// 체험이 끝나면 이 세션 기록(요약 + 이벤트)을 기기에 파일로 자동 저장. 파일명: 날짜_시간.json (예: 2026-10-23_22-41-05.json)
+function autoSaveLog() {
+  try {
+    const d = new Date();
+    const p2 = (n) => String(n).padStart(2, "0");
+    const name = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}_${p2(d.getHours())}-${p2(d.getMinutes())}-${p2(d.getSeconds())}.json`;
+    download(name, JSON.stringify({ summary: summary(), log: S.log }, null, 2), "application/json");
+    logEvent("log_saved", { file: name });
+  } catch (e) {
+    console.warn("auto save failed", e);
+  }
 }
 
 // 모든 단계가 끝나면 마지막 문구를 잠시 읽게 한 뒤 전체 화면을 파랗게 덮고 "실험N이 끝났습니다. 수고하셨습니다!"
