@@ -1349,7 +1349,11 @@ async function run() {
     const step = S.steps[i];
     logEvent("step_start", { label: step.label });
     renderStepper();
-    const ok = S.guide ? await runGuideStep(step) : S.automation === "low" ? await runLowStep(step) : await runHighStep(step);
+    // 연구2 기존안: 개선안과 같은 단계(택시 종류, 최종 호출)에서 같은 횟수로 묻되, 연구1 낮은 자동화 방식 그대로 물음 (G18·G20은 두 안 공통 선행조건)
+    const askHere = !S.guide && S.session === 0 && S.automation === "high" && ASK_STEPS.includes(step.id);
+    let ok;
+    if (askHere) { S.automation = "low"; try { ok = await runLowStep(step); } finally { S.automation = "high"; } }
+    else ok = S.guide ? await runGuideStep(step) : S.automation === "low" ? await runLowStep(step) : await runHighStep(step);
     if (S.guide && S.jumpTo != null && !S.finished) {
       // 개선안 되돌리기: 고른 단계부터 다시 진행 (가이드라인 16)
       i = (await rewindTo(S.jumpTo)) - 1;
@@ -1857,6 +1861,7 @@ const DEST_OPTS = () => SEARCH_ORDER.map((k) => ({ id: k, label: PLACES[k].name,
 const CAR_OPTS = () => Object.keys(CAR_TYPES).map((k) => ({ id: k, label: CAR_TYPES[k].label, desc: CAR_TYPES[k].desc, price: won0(fareOf({ ...S.form, car: k })) }));
 const REQ_OPTS = () => ["none", ...REQUEST_CHOICES].map((k) => ({ id: k, label: REQUESTS[k] }));
 // 되돌릴 수 있는 단계와 이름
+const ASK_STEPS = ["car", "final"]; // 두 안 모두 먼저 묻는 단계
 const UNDO_NAME = { origin: "출발지", dest: "목적지", car: "택시 종류", request: "기사님 요청사항" };
 // 진행 중 요청을 나중에 반영할 때 쓰는 말 (가이드라인 3)
 const NOW_PHRASE = { taxi_open: "택시 앱을 여는", origin: "출발지를 정하는", dest: "목적지를 찾는", car: "택시 종류를 고르는", coupon: "예상 금액을 확인하는", request: "요청사항을 정하는", final: "호출 내용을 확인하는" };
@@ -3154,7 +3159,7 @@ function setupInstall() {
 
 // 코드의 기본 문구(시나리오 문구·프롬프트)를 새로 정리하면 이 값을 바꿈
 // → 브라우저에 저장된 예전 수정본을 지우고 최신 기본값을 쓰게 함 (이후 새로 고친 내용은 다시 저장됨)
-const CONTENT_VERSION = "s2-taxi-2026-10-23c";
+const CONTENT_VERSION = "s2-taxi-2026-10-23d";
 function resetOldContent() {
   if (store.get("content_version", null) === CONTENT_VERSION) return;
   store.del("script_overrides");
