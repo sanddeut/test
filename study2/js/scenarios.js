@@ -9,6 +9,8 @@ const PLACES = {
   gangnam: { name: "담소한정식 강남점", addr: "서울 강남구 테헤란로 152", lat: 37.50007, lng: 127.03651, road: 21.2 },
   gucheong: { name: "담소한정식 강남구청점", addr: "서울 강남구 학동로 426", lat: 37.51729, lng: 127.04736, road: 23.5 },
   yeoksam: { name: "담소한정식 역삼점", addr: "서울 강남구 논현로 508", lat: 37.50375, lng: 127.03983, road: 21.9 },
+  // 연구2 오류: 에이전트가 고르는 완전히 다른 지역의 지점
+  busan: { name: "담소한정식 부산 서면점", addr: "부산 부산진구 중앙대로 680", lat: 35.15766, lng: 129.05962, road: 395.4 },
 };
 
 // 출발지: 기본은 휴대폰 GPS의 현재 위치, 과업에서 ‘신분당선 동천역’으로 바꿈
@@ -106,11 +108,11 @@ function distKm(originKey, destKey, geo) {
   return Math.max(0.5, Math.round(2 * R * Math.asin(Math.sqrt(a)) * 1.35 * 10) / 10);
 }
 const distText = (originKey, destKey, geo) => `${distKm(originKey, destKey, geo).toFixed(1)}km`;
-const SEARCH_ORDER = ["gucheong", "gangnam", "yeoksam"]; // 검색 결과 순서 (에이전트는 맨 위 강남구청점을 고름)
+const SEARCH_ORDER = ["busan", "gangnam", "gucheong", "yeoksam"]; // 검색 결과 순서 (에이전트는 맨 위 부산 서면점을 고름)
 const SEARCH_QUERY = "담소한정식";
 const TARGET_PLACE = "gangnam"; // 참가자가 요청하는 목적지
-// 연구2 오류: 목적지 오인식: 두 안 모두 에이전트가 같은 이름의 강남구청점을 골라 진행 (참가자가 강남점을 말해도)
-const AGENT_PLACE = "gucheong";
+// 연구2 오류: 목적지 오인식: 두 안 모두 에이전트가 완전히 다른 지역의 ‘담소한정식 부산 서면점’을 골라 진행 (참가자가 강남점을 말해도)
+const AGENT_PLACE = "busan";
 // 연구2 기존안: 택시 종류·최종 호출은 개선안과 같은 단계에서 묻되, 연구1 낮은 자동화 문구 그대로 (app.js ASK_STEPS)
 const BASE_ASKS = true;
 
@@ -530,7 +532,7 @@ function buildSteps(complexity, session = 1, guide = false) {
     kind: "dest",
     busy: "dest.busy",
     label: "목적지 설정",
-    guide: `목적지를 검색해 고르는 단계. 검색 결과는 ${SEARCH_ORDER.map((k) => PLACES[k].name).join(", ")} 세 곳이고, 에이전트는 ‘${PLACES[AGENT_PLACE].name}’을 목적지로 고름`,
+    guide: `목적지를 검색해 고르는 단계. 검색 결과는 ${SEARCH_ORDER.map((k) => PLACES[k].name).join(", ")} 네 곳이고, 에이전트는 ‘${PLACES[AGENT_PLACE].name}’을 목적지로 고름`,
     low: { messages: (s) => lines("dest", s, { dest: s.userDest ?? AGENT_PLACE }), options: APPROVE, reject: "dest" },
     high: { messages: (s) => lines("dest", s, { dest: s.form.dest ?? AGENT_PLACE }), applyFirst: true },
     correction: {

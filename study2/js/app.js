@@ -1324,7 +1324,7 @@ async function run() {
     if (o.car_type && CAR_TYPES[o.car_type]) S.req.car = o.car_type;
     if (o.wants_coupon) { S.req.coupon = true; S.m.couponMentioned = true; }
     // 처음 요청에서 말한 목적지: 강남점이면 그대로(에이전트가 찾음), 다른 지점이나 다른 곳이면 그곳으로
-    // 담소한정식 지점을 말해도 에이전트는 강남구청점을 고름 (오류: 목적지 오인식). 전혀 다른 장소를 말했으면 그곳으로
+    // 담소한정식 지점을 말해도 에이전트는 부산 서면점을 고름 (오류: 목적지 오인식). 전혀 다른 장소를 말했으면 그곳으로
     { const k = namedDest(o); if (k === "custom") S.userDest = k; }
     if (o.is_ride_request && !(o.destination == null && o.clarification)) {
       S.m.request = { text, ...o };
@@ -2580,7 +2580,7 @@ function renderSummary() {
   const el = $("#summary");
   if (!el || !S) return;
   const s = summary();
-  const label = { accepted: "그대로 (강남구청점)", corrected: "바로잡음 (강남점)", cancelled: "호출 취소", exited: "앱 종료" };
+  const label = { accepted: "그대로 (부산 서면점)", corrected: "바로잡음 (강남점)", cancelled: "호출 취소", exited: "앱 종료" };
   const cpn = { applied_from_request: "미리 말해서 적용", applied_by_user: "직접 바꿔 적용", not_applied: "적용 안 됨" };
   const items = [
     ["조건", CONDITIONS[S.cond].title],
@@ -3159,7 +3159,7 @@ function setupInstall() {
 
 // 코드의 기본 문구(시나리오 문구·프롬프트)를 새로 정리하면 이 값을 바꿈
 // → 브라우저에 저장된 예전 수정본을 지우고 최신 기본값을 쓰게 함 (이후 새로 고친 내용은 다시 저장됨)
-const CONTENT_VERSION = "s2-taxi-2026-10-23f";
+const CONTENT_VERSION = "s2-taxi-2026-10-23g";
 function resetOldContent() {
   if (store.get("content_version", null) === CONTENT_VERSION) return;
   store.del("script_overrides");
