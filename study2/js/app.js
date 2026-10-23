@@ -365,7 +365,7 @@ function ensureRunCard() {
     <div id="rc-q" class="rc-q" hidden></div>
     <div id="rc-choices" class="rc-choices"></div>
     <button type="button" id="rc-open" class="rc-open"><span class="ms">open_in_full</span> 실행화면 보기</button>
-    <button type="button" id="rc-manual" class="rc-manual">직접 조작하기</button>`;
+    <button type="button" id="rc-manual" class="rc-manual">${S?.guide ? "내가 앱 조작하기" : "직접 조작하기"}</button>`;
   chat().insertBefore(c, $("#chips"));
   c.querySelector("#rc-open").onclick = () => showRun(true);
   // 질문 카드 아래 작은 링크 (chatGPT의 "Sign in manually instead"처럼) → 앱 화면에서 직접 조작
@@ -1104,7 +1104,7 @@ async function handleStop(via, { back = false } = {}) {
   // 개선안: 멈춘 뒤 고를 수 있는 것 (계속하기 · 방금 한 일 취소 · 내가 조작하기 / 뒤로 가기는 앱 종료) (가이드라인 12·16·25)
   const guideOpts = back
     ? [{ id: "resume", label: "계속하기" }, { id: "undo", label: "방금 한 일 취소" }, { id: "exit", label: "앱 종료" }]
-    : [{ id: "undo", label: "방금 한 일 취소" }, { id: "manual", label: "내가 조작하기" }, { id: "resume", label: "계속하기" }];
+    : [{ id: "undo", label: "방금 한 일 취소" }, { id: "manual", label: "내가 앱 조작하기" }, { id: "resume", label: "계속하기" }];
   for (;;) {
     setChips(S.guide ? guideOpts : [...(stepIdNow() === "request" ? requestOptions() : []), { id: "manual", label: "직접 조작" }, { id: "resume", label: "계속하기" }], (o) => {
       if (!S.ivWaiter) return;
@@ -1322,8 +1322,10 @@ async function run() {
     if (o.origin && ORIGINS[o.origin]) S.req.origin = o.origin;
     else if (o.origin_name) { S.req.origin = null; S.req.originName = o.origin_name; }
     if (o.car_type && CAR_TYPES[o.car_type]) S.req.car = o.car_type;
+    if (o.wants_coupon) { S.req.coupon = true; S.m.couponMentioned = true; }
     // 처음 요청에서 말한 목적지: 강남점이면 그대로(에이전트가 찾음), 다른 지점이나 다른 곳이면 그곳으로
-    { const k = namedDest(o); if (k && k !== AGENT_PLACE) S.userDest = k; }
+    // 담소한정식 지점을 말해도 에이전트는 강남구청점을 고름 ([상황①] 목적지 오인식). 전혀 다른 장소를 말했으면 그곳으로
+    { const k = namedDest(o); if (k === "custom") S.userDest = k; }
     if (o.is_ride_request && !(o.destination == null && o.clarification)) {
       S.m.request = { text, ...o };
       showTyping(true);
@@ -2421,16 +2423,8 @@ function finish(status) {
   S.finished = true;
   S.running = false;
   S.m.finalDest = S.form.dest;
-  // 오류 결과 확정: 세션1은 에이전트가 고른 요청사항이 그대로 남았는지, 세션2는 예약이 등록된 채 끝났는지
-  if (status === "completed" && S.m.errorOutcome == null && !S.guide) {
-    if (S.session === 1) S.m.errorOutcome = S.form.request === AGENT_REQUEST && !S.requestByUser ? "accepted" : "corrected";
-    else if (S.errorIdx >= 0 && S.stepIdx >= S.errorIdx) S.m.errorOutcome = S.form.reserved ? "accepted" : "corrected";
-  }
-  // 개선안: AI가 임의로 정하지 않고 먼저 물었으므로 연구1의 오류는 생기지 않음 → 참가자가 무엇을 골랐는지를 남김
-  if (status === "completed" && S.m.errorOutcome == null && S.guide) {
-    if (S.session === 1) S.m.errorOutcome = `asked:${S.form.request}`;
-    else S.m.errorOutcome = S.m.historyAsk === "no_permission" ? "no_access" : S.m.historyAsk === "declined" ? "recommend_declined" : S.form.reserved ? "reserved" : "reserve_declined";
-  }
+  // [상황①] 목적지 오인식: 최종 목적지가 강남점이면 바로잡음 / [상황②] 쿠폰: 최종 적용 여부 (summary의 coupon_outcome)
+  if (status === "completed" && S.m.errorOutcome == null) S.m.errorOutcome = S.form.dest === TARGET_PLACE ? "corrected" : "accepted";
   if (status === "cancelled" || status === "exited") S.m.errorOutcome = S.m.errorOutcome ?? status;
   S.m.finishedAt = now();
   logEvent("session_end", { status, summary: summary() });
@@ -2499,7 +2493,7 @@ function summary() {
     condition: S.cond,
     version: S.guide ? "guide" : "base",
     session: S.session,
-    error_type: SESSIONS[S.session].error,
+    error_type: SESSIONS[S.session]?.error ?? null,
     complexity: S.complexity,
     automation: S.automation,
     llm: LLM.enabled ? LLM.model : "rules",
@@ -2529,6 +2523,13 @@ function summary() {
     llm_calls: m.llmCalls,
     llm_fallbacks: m.llmFallbacks,
     total_ms: m.finishedAt,
+    // [상황①] 목적지 오인식: 어디서 바로잡았는지 (dest=목적지 단계, final=최종 확인, done=호출 뒤 되돌리기 등)
+    dest_fixed_at: S.log.find((e) => e.type === "dest_changed" && e.dest === TARGET_PLACE)?.step ?? null,
+    dest_fixed_via: S.log.find((e) => e.type === "dest_changed" && e.dest === TARGET_PLACE)?.via ?? null,
+    // [상황②] 쿠폰 단계: 처음 요청에서 말했는지 / 최종 적용 / 어디서 바꿨는지
+    coupon_mentioned: Boolean(m.couponMentioned),
+    coupon_outcome: S.form.coupon ? (m.couponMentioned && !S.log.some((e) => e.type === "coupon_chosen") ? "applied_from_request" : "applied_by_user") : "not_applied",
+    coupon_changed_at: S.log.find((e) => e.type === "coupon_chosen" && e.coupon === true)?.step ?? null,
     // 두 버전 공통으로 비교하는 지표
     screen_taps: m.screenTaps,
     device_backs: m.backs,
@@ -2551,15 +2552,13 @@ function renderSummary() {
   const el = $("#summary");
   if (!el || !S) return;
   const s = summary();
-  const label = S.guide
-    ? { [`asked:${S.form.request}`]: `먼저 물음 → ‘${REQUESTS[S.form.request]}’`, no_access: "이용내역 접근 꺼 둠 (추천 없음)", recommend_declined: "추천 받기 거부", reserved: "추천 허용 → 예약함", reserve_declined: "추천 허용 → 예약 안 함", cancelled: "호출 취소", exited: "앱 종료" }
-    : S.session === 1
-      ? { accepted: "수용 (에이전트가 고른 요청사항 그대로)", corrected: "거부·수정", cancelled: "취소" }
-      : { accepted: "수용 (예약됨)", corrected: "거부·취소", cancelled: "호출 취소" };
+  const label = { accepted: "그대로 (강남구청점)", corrected: "바로잡음 (강남점)", cancelled: "호출 취소", exited: "앱 종료" };
+  const cpn = { applied_from_request: "미리 말해서 적용", applied_by_user: "직접 바꿔 적용", not_applied: "적용 안 됨" };
   const items = [
-    ["조건", `${CONDITIONS[S.cond].title} · 세션${S.session}`],
+    ["조건", CONDITIONS[S.cond].title],
     ["해석", s.llm],
-    ["오류 결과 (최종)", label[s.error_outcome] || "-"],
+    ["① 목적지 오인식", `${label[s.error_outcome] || "-"}${s.dest_fixed_at ? ` · ${s.dest_fixed_at}에서 ${s.dest_fixed_via || ""}` : ""}`],
+    ["② 쿠폰", `${cpn[s.coupon_outcome]}${s.coupon_changed_at ? ` · ${s.coupon_changed_at}에서` : ""}`],
     ["개입 방식", s.correction_via || "-"],
     ["오류→반응", s.error_response_ms != null ? `${(s.error_response_ms / 1000).toFixed(1)}초` : "-"],
     ["최종 출발지", ORIGINS[s.final_origin].name],
@@ -2631,13 +2630,13 @@ function readSetup() {
   return {
     pid: $("#pid").value.trim() || "P00",
     name: $("#pname").value.trim() || "OOO",
-    complexity: radio("cx") || "B",
+    complexity: "B", // 연구2: 높은 복잡도 하나로 고정
     version: guide ? "guide" : "base",
     order: radio("order") || "base_first",
     // 개선안 확인 범위: narrow = 높은 자동화를 유지하고 비가역·선호·요청 외 결정만 확인 / wide = 피그마 상세 구현대로 출발지·목적지도 확인
     scope: radio("scope") || "narrow",
-    condition: condKey(radio("cx") || "B", guide),
-    session: Number(radio("session") || 1),
+    condition: condKey("B", guide),
+    session: 0, // 연구2: 연구1의 세션1·2 오류 단계 없이, 두 안에 같은 상황 2개
     // 높은 자동화 단계 간격: 문구가 나온 뒤 다음 조작까지 기다리는 시간 (연구1과 같은 5초)
     // 개선안은 알아서 하는 단계의 결과를 더 오래 보여 줌 (가이드라인 11)
     delay: guide ? 8000 : 5000,
@@ -2646,26 +2645,22 @@ function readSetup() {
   };
 }
 
-// 참가자별 진행 순서: 기존안·개선안 × 세션1·2 (순서는 참가자마다 바꿔 진행)
+// 참가자별 진행 순서: 기존안 1회 + 개선안 1회 (순서는 참가자마다 바꿔 진행)
 function runPlan() {
-  const order = radio("order") === "guide_first" ? ["guide", "base"] : ["base", "guide"];
-  return order.flatMap((v) => [1, 2].map((n) => ({ v, n })));
+  return radio("order") === "guide_first" ? ["guide", "base"] : ["base", "guide"];
 }
 function renderPlan() {
   const box = $("#run-plan");
   if (!box) return;
   const pid = $("#pid").value.trim() || "P00";
-  const cx = radio("cx") || "B";
-  const done = store.get("sessions", []).map((x) => x.summary).filter((x) => x.participant_id === pid && x.status === "completed" && x.complexity === cx);
+  const done = store.get("sessions", []).map((x) => x.summary).filter((x) => x.participant_id === pid && x.status === "completed" && x.session === 0);
   const curV = radio("ver");
-  const curN = Number(radio("session") || 1);
-  box.innerHTML = runPlan().map(({ v, n }, i) => {
-    const ok = done.some((x) => x.version === v && x.session === n);
-    return `<button type="button" class="plan-row ${v === curV && n === curN ? "on" : ""}" data-v="${v}" data-n="${n}"><span class="plan-no">${i + 1}</span><span>${v === "guide" ? "개선안" : "기존안"} · 세션${n}<small>${n === 1 ? "기사님 요청사항" : "이용내역·예약"}</small></span>${ok ? '<span class="plan-ok"><span class="ms">check_circle</span> 완료</span>' : ""}</button>`;
+  box.innerHTML = runPlan().map((v, i) => {
+    const ok = done.some((x) => x.version === v);
+    return `<button type="button" class="plan-row ${v === curV ? "on" : ""}" data-v="${v}"><span class="plan-no">${i + 1}</span><span>${v === "guide" ? "개선안" : "기존안"}<small>${v === "guide" ? "가이드라인 적용" : "연구1 높은 자동화"}</small></span>${ok ? '<span class="plan-ok"><span class="ms">check_circle</span> 완료</span>' : ""}</button>`;
   }).join("");
   box.querySelectorAll(".plan-row").forEach((b) => (b.onclick = () => {
     document.querySelector(`input[name="ver"][value="${b.dataset.v}"]`).checked = true;
-    document.querySelector(`input[name="session"][value="${b.dataset.n}"]`).checked = true;
     onSetupChange();
   }));
 }
@@ -2715,8 +2710,9 @@ function start() {
   setPrompt(savedPrompt(S.guide));
   document.body.classList.toggle("guide", S.guide);
   $("#btn-stop").textContent = S.guide ? "멈추기" : "중지";
-  $("#btn-manual").textContent = S.guide ? "내가 조작하기" : "직접 조작";
-  $(".db-tag").textContent = S.guide ? "내가 조작 중" : "직접 조작 중";
+  $("#btn-manual").textContent = S.guide ? "내가 앱 조작하기" : "직접 조작";
+  $(".db-tag").textContent = S.guide ? "내가 앱 조작 중" : "직접 조작 중";
+  document.querySelector("#rc-manual") && ($("#rc-manual").textContent = S.guide ? "내가 앱 조작하기" : "직접 조작하기");
   $("#mic").innerHTML = S.guide ? '<span class="ms">mic</span> 눌러서 말하기' : '<span class="ms">mic</span>';
   $("#send").dataset.mode = "";
   $("#perm").hidden = true;
@@ -2730,7 +2726,7 @@ function start() {
   $("#task-card").hidden = !cfg.showTask;
   $("#task-situation").innerHTML = sit.situation.map((t) => `<p>${esc(t)}</p>`).join("");
   $("#task-list").innerHTML = sit.task.map((t) => `<li>${esc(t.replace("OOO", cfg.name))}</li>`).join("");
-  $("#cond-title").textContent = `과업 ${S.complexity} · 세션${S.session}`; // 참가자에게는 기존안/개선안을 드러내지 않음
+  $("#cond-title").textContent = "택시 호출"; // 참가자에게는 기존안/개선안을 드러내지 않음
 
   chat().querySelectorAll(".bubble, #run-card, .undo-link, #chat-spacer").forEach((b) => b.remove());
   $("#chips").innerHTML = "";
@@ -2945,7 +2941,7 @@ function armUnsent() {
 const HELP_STEPS = [
   { sel: ".screen-clip", text: "AI가 지금 내 앱을 대신 조작하는 실시간 화면이에요. 이 화면은 누를 수 없어요." },
   { sel: "#btn-stop", text: "‘멈추기’를 누르면 AI가 하던 일을 멈춰요. 멈춘 뒤 계속하거나, 방금 한 일을 취소할 수 있어요." },
-  { sel: "#btn-manual", text: "‘내가 조작하기’를 누르면 AI는 기다리고, 내가 앱을 직접 조작해요. 왼쪽 위 ‹를 누르면 다시 AI에게 맡겨요." },
+  { sel: "#btn-manual", text: "‘내가 앱 조작하기’를 누르면 AI는 기다리고, 내가 앱을 직접 조작해요. 왼쪽 위 ‹를 누르면 다시 AI에게 맡겨요." },
 ];
 function openHelp() {
   if (!S?.guide) return;
@@ -3135,7 +3131,7 @@ function setupInstall() {
 
 // 코드의 기본 문구(시나리오 문구·프롬프트)를 새로 정리하면 이 값을 바꿈
 // → 브라우저에 저장된 예전 수정본을 지우고 최신 기본값을 쓰게 함 (이후 새로 고친 내용은 다시 저장됨)
-const CONTENT_VERSION = "s2-taxi-2026-10-23b";
+const CONTENT_VERSION = "s2-taxi-2026-10-23c";
 function resetOldContent() {
   if (store.get("content_version", null) === CONTENT_VERSION) return;
   store.del("script_overrides");
@@ -3151,7 +3147,7 @@ function init() {
   const saved = store.get("setup", {});
   if (saved.pid) $("#pid").value = saved.pid;
   if (saved.name) $("#pname").value = saved.name;
-  for (const [name, v] of [["cx", saved.complexity], ["ver", saved.version], ["order", saved.order], ["session", saved.session], ["scope", saved.scope]]) {
+  for (const [name, v] of [["ver", saved.version], ["order", saved.order], ["scope", saved.scope]]) {
     const r = v != null && document.querySelector(`input[name="${name}"][value="${v}"]`);
     if (r) r.checked = true;
   }

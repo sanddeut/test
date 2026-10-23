@@ -44,15 +44,7 @@
         </div>
       </fieldset>
 
-      <p class="hint">한 참가자가 기존안과 개선안을 모두 체험해요(참가자 내 설계). 자동화 수준은 <b>높음으로 고정</b>이고, 과업·시나리오·오류는 연구1과 같아요.</p>
-
-      <fieldset>
-        <legend>과업</legend>
-        <div class="cond-grid">
-          <label class="cond"><input type="radio" name="cx" value="A"><b>A</b><span>낮은 복잡도 (택시 호출)</span></label>
-          <label class="cond"><input type="radio" name="cx" value="B" checked><b>B</b><span>높은 복잡도 (모범택시 + 쿠폰)</span></label>
-        </div>
-      </fieldset>
+      <p class="hint">한 참가자가 기존안과 개선안을 모두 체험해요(참가자 내 설계). 자동화 수준은 <b>높음</b>, 과업은 <b>B (모범택시 + 쿠폰)</b>로 고정. 두 안에 같은 상황 2개(① 목적지 오인식 ② 쿠폰 단계)가 들어가요.</p>
 
       <fieldset>
         <legend>진행 순서 <small>참가자마다 바꿔서 진행 (순서 효과 상쇄)</small></legend>
@@ -61,7 +53,7 @@
           <label class="cond"><input type="radio" name="order" value="guide_first"><b>개선안 먼저</b><span>개선안 → 기존안</span></label>
         </div>
         <div id="run-plan" class="run-plan"></div>
-        <p class="hint">줄을 누르면 아래 버전·세션이 그 순서로 맞춰져요. 끝낸 체험에는 「완료」가 붙어요(이 브라우저 기록 기준).</p>
+        <p class="hint">줄을 누르면 아래 버전이 그 순서로 맞춰져요. 끝낸 체험에는 「완료」가 붙어요(이 브라우저 기록 기준).</p>
       </fieldset>
 
       <fieldset>
@@ -75,18 +67,11 @@
       <fieldset>
         <legend>개선안 확인 범위 <small>개선안에만 적용</small></legend>
         <div class="cond-grid">
-          <label class="cond"><input type="radio" name="scope" value="narrow" checked><b>좁게 (기본)</b><span>높은 자동화 유지. 택시 종류·요청사항·최종 호출·이용내역·예약만 확인</span></label>
+          <label class="cond"><input type="radio" name="scope" value="narrow" checked><b>좁게 (기본)</b><span>높은 자동화 유지. 택시 종류·최종 호출만 확인 (출발지·목적지는 알리고 진행)</span></label>
           <label class="cond"><input type="radio" name="scope" value="wide"><b>넓게</b><span>피그마대로 출발지·목적지도 확인</span></label>
         </div>
       </fieldset>
 
-      <fieldset>
-        <legend>세션 (연구1 오류 지점)</legend>
-        <div class="cond-grid">
-          <label class="cond"><input type="radio" name="session" value="1" checked><b>세션1</b><span>기사님 요청사항 (기존안: AI가 임의 선택)</span></label>
-          <label class="cond"><input type="radio" name="session" value="2"><b>세션2</b><span>이용내역 열람 + 예약 (기존안: 묻지 않고 열람·예약)</span></label>
-        </div>
-      </fieldset>
       <div id="paste-key" class="paste-key" hidden>
         <p class="hint">받으신 공유 링크를 붙여넣으면 API 키가 저장돼요.</p>
         <div class="paste-row"><input id="paste-link" placeholder="받은 링크 붙여넣기" autocomplete="off" spellcheck="false"><button id="btn-paste-key" type="button" class="btn-ghost">적용</button></div>
@@ -156,7 +141,7 @@
       <div class="screen-box only-screen"><div class="screen-clip"><div id="screen" class="screen"></div><div id="touch-layer" class="touch-layer"></div></div>
         <!-- 개선안: AI가 조작하는 실시간 화면임을 알림 (가이드라인 6·23) -->
         <div class="ai-chip only-guide"><span class="dots"><i></i><i></i><i></i></span> AI가 앱 조작 중</div>
-        <div id="screen-toast" class="screen-toast" hidden>AI가 조작하는 화면이라 누를 수 없어요.<br>직접 하려면 ‘내가 조작하기’를 눌러 주세요.</div>
+        <div id="screen-toast" class="screen-toast" hidden>AI가 조작하는 화면이라 누를 수 없어요.<br>직접 하려면 ‘내가 앱 조작하기’를 눌러 주세요.</div>
       </div>
 
       <!-- 진행 문구 + 선택지: 높이를 고정해 축소 화면 크기가 바뀌지 않게 함 -->
@@ -193,7 +178,6 @@
           <h3>AI와의 대화에서 무엇을 허용할까요?</h3>
           <label class="perm-row"><span><b>앱 대신 조작하기 <em>필수</em></b><small>택시를 부르려고 택시 앱을 대신 눌러요</small></span><input type="checkbox" data-perm="app" checked disabled><i></i></label>
           <label class="perm-row"><span><b>위치 정보</b><small>출발지를 찾을 때 써요</small></span><input type="checkbox" data-perm="location" checked><i></i></label>
-          <label class="perm-row"><span><b>택시 이용내역</b><small>자주 가는 곳을 알려 드릴 때 써요</small></span><input type="checkbox" data-perm="history" checked><i></i></label>
           <button type="button" id="perm-ok" class="perm-ok">확인</button>
         </div>
       </div>

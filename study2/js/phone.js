@@ -437,6 +437,7 @@ function manualCoupon() {
   if (!S?.manual) return;
   S.form.coupon = !S.form.coupon;
   (S.userSet ||= {}).coupon = true;
+  logEvent("coupon_chosen", { coupon: S.form.coupon, via: "manual" });
   if (curStepId() === "coupon") manualMark("coupon", "approve"); // 참가자가 직접 정한 값(userSet)을 그대로 씀
   renderPhone();
 }
