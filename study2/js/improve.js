@@ -991,6 +991,7 @@ function queueFocus() {
 }
 
 const FADE = 84; // 현재 대화 위로 남겨 둘 높이 (바로 앞 말풍선과 「되돌리기」가 살짝 보이게)
+const UNDO_PEEK = 43; // 「되돌리기」 위로 남겨 둘 높이 (보통 때 FADE와 같은 위치: 되돌리기는 현재 대화 41px 위)
 function applyFocus() {
   const c = chat();
   if (!c || !S) return;
@@ -1003,9 +1004,18 @@ function applyFocus() {
     const top = cur.offsetTop - c.offsetTop;
     const contentEnd = spacer.offsetTop - c.offsetTop;
     // 위쪽 흐림 띠(FADE) 아래에 현재 대화가 오도록
-    const need = c.clientHeight - (contentEnd - top) - FADE;
+    let at = top - FADE;
+    // 맨 위의 정의: 「되돌리기」가 보이고 그 위 말풍선 끝이 살짝 보이게. 되돌리기가 현재 대화보다 멀리 위에 있으면(사이에 말풍선이 있으면) 그만큼 덜 올림
+    // (현재 대화가 화면 아래로 잘리지 않는 한에서)
+    const link = c.querySelector(":scope > .undo-link");
+    if (link && link.offsetTop < cur.offsetTop) {
+      const byLink = link.offsetTop - c.offsetTop - UNDO_PEEK;
+      const fit = top + cur.offsetHeight - c.clientHeight + 12;
+      at = Math.min(at, Math.max(byLink, fit));
+    }
+    const need = c.clientHeight - (contentEnd - at);
     spacer.style.height = `${Math.max(0, need)}px`;
-    c.scrollTop = Math.max(0, top - FADE);
+    c.scrollTop = Math.max(0, at);
     c.classList.toggle("scrolled", c.scrollTop > 4);
   }
 }
