@@ -2175,10 +2175,11 @@ async function gReserve(step) {
     S.m.historyAsk = "no_permission";
     return true;
   }
+  // 추천 자체가 요청 외 행동이므로, 추천하기 전에 무엇을 보고 왜 추천하는지 알리고 먼저 물음 (가이드라인 18·21)
   S.m.errorShownAt = now(); // 연구1 오류가 나던 지점
   const c = await gAsk("history.ask", {}, [{ id: "reject", label: "거부" }, { id: "approve", label: "허용" }], {
-    extra: ["cancel_reserve"], ctx: "이용내역 보기", noPreview: true, g: ["G18", "G19", "G21"],
-    hint: "이용내역을 볼지 묻는 중이야. 보라고 하면 approve, 보지 말라고 하면 reject야.",
+    extra: ["cancel_reserve"], ctx: "이용내역 보고 추천", noPreview: true, g: ["G18", "G19", "G21"],
+    hint: "이용내역을 보고 다음 이용을 추천해도 될지 묻는 중이야. 해도 된다고 하면 approve, 하지 말라고 하면 reject야. 아직 아무것도 추천하지 마.",
   });
   if (c.id === "__undo") return true;
   S.m.errorResponseMs = now() - S.m.errorShownAt;
@@ -2187,6 +2188,7 @@ async function gReserve(step) {
   if (c.id !== "approve") {
     S.reserveCancelled = true;
     await sayKey("history.no", undefined, { talk: true });
+    await dwell(2000);
     return true;
   }
   await doPre(step);
@@ -2427,7 +2429,7 @@ function finish(status) {
   // 개선안: AI가 임의로 정하지 않고 먼저 물었으므로 연구1의 오류는 생기지 않음 → 참가자가 무엇을 골랐는지를 남김
   if (status === "completed" && S.m.errorOutcome == null && S.guide) {
     if (S.session === 1) S.m.errorOutcome = `asked:${S.form.request}`;
-    else S.m.errorOutcome = S.m.historyAsk === "no_permission" ? "no_access" : S.m.historyAsk === "declined" ? "history_declined" : S.form.reserved ? "reserved" : "reserve_declined";
+    else S.m.errorOutcome = S.m.historyAsk === "no_permission" ? "no_access" : S.m.historyAsk === "declined" ? "recommend_declined" : S.form.reserved ? "reserved" : "reserve_declined";
   }
   if (status === "cancelled" || status === "exited") S.m.errorOutcome = S.m.errorOutcome ?? status;
   S.m.finishedAt = now();
@@ -2550,7 +2552,7 @@ function renderSummary() {
   if (!el || !S) return;
   const s = summary();
   const label = S.guide
-    ? { [`asked:${S.form.request}`]: `먼저 물음 → ‘${REQUESTS[S.form.request]}’`, no_access: "이용내역 접근 안 함", history_declined: "이용내역 열람 거부", reserved: "물은 뒤 예약함", reserve_declined: "물은 뒤 예약 안 함", cancelled: "호출 취소", exited: "앱 종료" }
+    ? { [`asked:${S.form.request}`]: `먼저 물음 → ‘${REQUESTS[S.form.request]}’`, no_access: "이용내역 접근 꺼 둠 (추천 없음)", recommend_declined: "추천 받기 거부", reserved: "추천 허용 → 예약함", reserve_declined: "추천 허용 → 예약 안 함", cancelled: "호출 취소", exited: "앱 종료" }
     : S.session === 1
       ? { accepted: "수용 (에이전트가 고른 요청사항 그대로)", corrected: "거부·수정", cancelled: "취소" }
       : { accepted: "수용 (예약됨)", corrected: "거부·취소", cancelled: "호출 취소" };
@@ -3133,7 +3135,7 @@ function setupInstall() {
 
 // 코드의 기본 문구(시나리오 문구·프롬프트)를 새로 정리하면 이 값을 바꿈
 // → 브라우저에 저장된 예전 수정본을 지우고 최신 기본값을 쓰게 함 (이후 새로 고친 내용은 다시 저장됨)
-const CONTENT_VERSION = "s2-taxi-2026-10-23";
+const CONTENT_VERSION = "s2-taxi-2026-10-23b";
 function resetOldContent() {
   if (store.get("content_version", null) === CONTENT_VERSION) return;
   store.del("script_overrides");
