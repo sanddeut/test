@@ -9,8 +9,8 @@ const PLACES = {
   gangnam: { name: "담소한정식 강남점", addr: "서울 강남구 테헤란로 152", lat: 37.50007, lng: 127.03651, road: 21.2 },
   gucheong: { name: "담소한정식 강남구청점", addr: "서울 강남구 학동로 426", lat: 37.51729, lng: 127.04736, road: 23.5 },
   yeoksam: { name: "담소한정식 역삼점", addr: "서울 강남구 논현로 508", lat: 37.50375, lng: 127.03983, road: 21.9 },
-  // 연구2 오류: 에이전트가 고르는 완전히 다른 지역의 지점
-  busan: { name: "담소한정식 부산 서면점", addr: "부산 부산진구 중앙대로 680", lat: 35.15766, lng: 129.05962, road: 395.4 },
+  // 연구2 오류: 에이전트가 잘못 알아듣고 고르는 완전히 다른 곳
+  busan: { name: "부산역", addr: "부산 동구 중앙대로 206", lat: 35.11517, lng: 129.04218, road: 396.8 },
 };
 
 // 출발지: 기본은 휴대폰 GPS의 현재 위치, 과업에서 ‘신분당선 동천역’으로 바꿈
@@ -108,10 +108,11 @@ function distKm(originKey, destKey, geo) {
   return Math.max(0.5, Math.round(2 * R * Math.asin(Math.sqrt(a)) * 1.35 * 10) / 10);
 }
 const distText = (originKey, destKey, geo) => `${distKm(originKey, destKey, geo).toFixed(1)}km`;
-const SEARCH_ORDER = ["busan", "gangnam", "gucheong", "yeoksam"]; // 검색 결과 순서 (에이전트는 맨 위 부산 서면점을 고름)
+const SEARCH_ORDER = ["gangnam", "gucheong", "yeoksam"]; // '담소한정식' 검색 결과 순서
+const AGENT_QUERY = "부산역"; // 연구2 오류: 에이전트가 잘못 알아듣고 입력하는 검색어 (결과: 부산역)
 const SEARCH_QUERY = "담소한정식";
 const TARGET_PLACE = "gangnam"; // 참가자가 요청하는 목적지
-// 연구2 오류: 목적지 오인식: 두 안 모두 에이전트가 완전히 다른 지역의 ‘담소한정식 부산 서면점’을 골라 진행 (참가자가 강남점을 말해도)
+// 연구2 오류: 목적지 오인식: 두 안 모두 에이전트가 잘못 알아듣고 ‘부산역’을 검색해 골라 진행 (참가자가 강남점을 말해도)
 const AGENT_PLACE = "busan";
 // 연구2 기존안: 택시 종류·최종 호출은 개선안과 같은 단계에서 묻되, 연구1 낮은 자동화 문구 그대로 (app.js ASK_STEPS)
 const BASE_ASKS = true;
@@ -532,7 +533,7 @@ function buildSteps(complexity, session = 1, guide = false) {
     kind: "dest",
     busy: "dest.busy",
     label: "목적지 설정",
-    guide: `목적지를 검색해 고르는 단계. 검색 결과는 ${SEARCH_ORDER.map((k) => PLACES[k].name).join(", ")} 네 곳이고, 에이전트는 ‘${PLACES[AGENT_PLACE].name}’을 목적지로 고름`,
+    guide: `목적지를 검색해 고르는 단계. 에이전트는 잘못 알아듣고 ‘${AGENT_QUERY}’를 검색해 ‘${PLACES[AGENT_PLACE].name}’을 목적지로 고름. ‘${SEARCH_QUERY}’를 검색하면 ${SEARCH_ORDER.map((k) => PLACES[k].name).join(", ")}이 나옴`,
     low: { messages: (s) => lines("dest", s, { dest: s.userDest ?? AGENT_PLACE }), options: APPROVE, reject: "dest" },
     high: { messages: (s) => lines("dest", s, { dest: s.form.dest ?? AGENT_PLACE }), applyFirst: true },
     correction: {
@@ -543,14 +544,14 @@ function buildSteps(complexity, session = 1, guide = false) {
     // 검색창을 누르고 가게 이름을 입력 → 검색 결과가 나옴
     pre: async (s) => {
       const p = s.phone;
-      if (p.taxiView === "search" && p.searchTyped === SEARCH_QUERY) return;
-      p.searchList = null;
+      if (p.taxiView === "search" && p.searchTyped === AGENT_QUERY) return;
+      p.searchList = [AGENT_PLACE];
       await tap(".tx-search");
       p.taxiView = "search";
       p.searchTyped = "";
       renderPhone();
       await actSleep(400);
-      await typeText((v) => (p.searchTyped = v), SEARCH_QUERY, 170);
+      await typeText((v) => (p.searchTyped = v), AGENT_QUERY, 170);
       await actSleep(500);
       p.results = true;
       renderPhone();
@@ -564,6 +565,16 @@ function buildSteps(complexity, session = 1, guide = false) {
         p.results = false;
         p.searchList = ["custom"];
         await typeText((v) => (p.searchTyped = v), PLACES.custom.name, 150);
+        await actSleep(400);
+        p.results = true;
+        renderPhone();
+        await actSleep(500);
+      }
+      if (p.taxiView === "search" && k !== "custom" && !(p.searchList || SEARCH_ORDER).includes(k)) {
+        // 다른 지점으로 바꾼 경우: '담소한정식'으로 다시 검색 → 결과에서 고름
+        p.results = false;
+        p.searchList = null;
+        await typeText((v) => (p.searchTyped = v), SEARCH_QUERY, 150);
         await actSleep(400);
         p.results = true;
         renderPhone();
