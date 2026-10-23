@@ -382,3 +382,9 @@
 .voice-btn.on .vcancel { position: absolute; right: 14px; top: 11px; margin: 0; }
 .voice-btn.on.has-text .vcancel { top: 4px; right: 8px; }
 .voice-btn.on .vlabel { padding-right: 44px; }
+
+/* 받아 적는 중에도 '듣고 있어요' 붉은 띠는 입력칸 끝까지, 오른쪽 끝에 ✕ */
+.voice-btn.on.has-text .vlabel { width: 100%; box-sizing: border-box; padding: 4px 40px 4px 12px; }
+.voice-btn.on.has-text .vcancel { top: 8px; right: 14px; }
+.voice-btn.on.has-text .vcancel .ms { font-size: 20px; }
+.voice-btn.on.has-text .vlabel { text-align: left; }

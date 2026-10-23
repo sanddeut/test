@@ -3158,8 +3158,7 @@ function setupMic() {
   };
   let listenUi = () => {};
   btn.onclick = () => {
-    // 기존안: 듣는 중 다시 누르면(✕) 받아 적은 말을 지우고 끝냄. 개선안은 ✕가 따로 있음
-    if (want) { window.stopMic(Boolean(S && !S.guide && !S.unified)); return; }
+    if (want) { window.stopMic(false); return; } // ✕: 듣기만 끝내고 받아 적은 말은 남김
     want = true;
     startText = input.value.trim();
     startRec();
@@ -3176,7 +3175,7 @@ function setupMic() {
     const listen = (on) => {
       if (S) S.listening = on;
       btn.classList.toggle("rec", on);
-      if (S && !S.guide && !S.unified) btn.innerHTML = `<span class="ms">${on ? "close" : "mic"}</span>`; // 기존안: 듣는 중에는 ✕ (취소)
+      if (S && !S.guide && !S.unified) btn.innerHTML = `<span class="ms">${on ? "close" : "mic"}</span>`; // 기존안: 듣는 중에는 ✕ (듣기 끝내기)
       if (S?.guide) {
         bar.hidden = !on;
         btn.innerHTML = on ? '<span class="ms">stop_circle</span> 말하기 끝내기' : '<span class="ms">mic</span> 눌러서 말하기';

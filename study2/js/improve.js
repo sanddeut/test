@@ -90,8 +90,8 @@ function renderVoice() {
   // 듣기 시작하면 '듣고 있어요 …', 말이 받아 적히기 시작하면 그 글자가 작아지며 위로 올라가고 아래에 받아 적은 말이 채워짐
   if (!v.querySelector(".vlabel")) {
     v.innerHTML = '<span class="vlabel"></span><span class="vtext"></span><span class="vcancel" role="button" aria-label="취소"><span class="ms">close</span></span>';
-    // 듣는 중 취소: 받아 적은 말을 지우고 듣기를 끝냄
-    v.querySelector(".vcancel").addEventListener("click", (e) => { e.stopPropagation(); window.stopMic?.(true); renderVoice(); });
+    // 듣는 중 ✕: 듣기를 끝냄
+    v.querySelector(".vcancel").addEventListener("click", (e) => { e.stopPropagation(); window.stopMic?.(false); renderVoice(); }); // 듣기만 끝냄 (받아 적은 말은 남김)
   }
   const said = $("#msg").value.trim();
   const on = listening();
