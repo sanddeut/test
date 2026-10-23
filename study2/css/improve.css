@@ -389,3 +389,12 @@
 .perm-dlg .perm-card { animation: perm-rise .5s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes perm-fade { from { opacity: 0; } }
 @keyframes perm-rise { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+
+/* 연구2: 못 알아들었을 때 내 말풍선 아래 [! 전달 실패] [다시 보내기], AI 말풍선 아래 알약 두 개 */
+.resend-row { align-self: flex-end; display: inline-flex; align-items: center; gap: 8px; margin-top: -8px; }
+.resend-row .send-fail { display: inline-flex; align-items: center; gap: 3px; color: #d93025; font-size: 13px; font-weight: 500; }
+.resend-row .send-fail .ms { font-size: 16px; vertical-align: 0; }
+.resend-row .resend { margin: 0; }
+.mis-pills { align-self: flex-start; display: flex; flex-wrap: wrap; gap: 8px; margin-top: -2px; }
+.mis-pills .mode-pill { margin: 0; }
+.perm-wait .start-wrap { pointer-events: none; }

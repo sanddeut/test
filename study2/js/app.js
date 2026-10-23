@@ -3174,7 +3174,8 @@ function setupMic() {
     rec = new SR();
     rec.lang = "ko-KR";
     rec.interimResults = true;
-    rec.continuous = true;
+    // 한 번에 한 마디씩 듣고(안드로이드 크롬은 continuous에서 같은 말을 겹쳐 돌려줌), 끝나면 받아 적은 글 뒤에 이어서 다시 들음
+    rec.continuous = false;
     // 받아 적기만 함: 보내기 버튼을 누를 때까지 보내지 않음 (이미 입력해 둔 글 뒤에 이어 씀)
     const base = input.value.trim();
     // 개선안: 듣는 중 표시와 받아 적는 내용을 바로 보여 줌 (가이드라인 2)

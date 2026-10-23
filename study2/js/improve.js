@@ -813,6 +813,7 @@ function showPermDialog() {
     const perm = Object.fromEntries([...d.querySelectorAll("[data-perm]")].map((x) => [x.dataset.perm, all && x.checked]));
     if (S) { S.perm = perm; logEvent("permissions", perm); }
     d.remove();
+    document.body.classList.remove("perm-wait");
   };
   d.querySelector(".perm-yes").onclick = () => close(true); // 켜고 끄는 건 토글로, 버튼은 확인 하나
 }
@@ -822,6 +823,7 @@ const _start = start;
 start = function () {
   document.body.classList.add("unified");
   setInputMode("start");
+  document.body.classList.add("perm-wait"); // 허용 팝업에 답하기 전에는 대화를 시작하지 않음
   clearTimeout(start.permT);
   start.permT = setTimeout(() => { if (S && !S.finished && !$("#perm-dlg")) showPermDialog(); }, 2000); // 앱에 들어오고 2초 뒤 스르르 (무엇을 허용할지 묻기)
   history.pushState({ v4: 1 }, ""); // 뒤로 가기를 눌러도 페이지를 나가지 않게
@@ -1218,39 +1220,51 @@ async function applyAfterCancel(o) {
 function onMishear(n, text) {
   const ub = [...chat().querySelectorAll(":scope > .bubble.user")].at(-1);
   const rc = ub?.querySelector(".receipt");
-  if (rc) {
-    rc.className = "receipt fail";
-    rc.title = "전달 안 됨";
-    rc.setAttribute("aria-label", "전달 안 됨");
-    rc.innerHTML = '<span class="ms">error</span><em>전달 안 됨</em>';
+  const resend = (via) => {
+    document.querySelectorAll(".resend-row, .resend-pill").forEach((x) => x.remove());
+    gLog("G2", "mishear_resend", { n, via });
+    $("#msg").value = text;
+    $("#composer").requestSubmit();
+  };
+  if (rc) rc.remove(); // 말풍선 옆 표시 대신 아래 줄에 [전달 실패 · 다시 보내기]
+  if (ub) {
+    // 말풍선 아래 오른쪽: [! 전달 실패] [다시 보내기]
+    const row = document.createElement("div");
+    row.className = "resend-row";
+    row.innerHTML = '<span class="send-fail" role="status"><span class="ms">error</span>전달 실패</span>';
     const again = document.createElement("button");
     again.type = "button";
     again.className = "resend";
     again.textContent = "다시 보내기";
-    again.onclick = () => {
-      again.remove();
-      gLog("G2", "mishear_resend", { n });
-      $("#msg").value = text;
-      $("#composer").requestSubmit();
-    };
-    ub.after(again);
+    again.onclick = () => resend("bubble");
+    row.appendChild(again);
+    ub.after(row);
   }
   gLog("G2", "mishear_mark", { n });
   if (n < 2) return;
   const ab = [...chat().querySelectorAll(":scope > .bubble.agent")].at(-1);
   if (!ab) return;
   const voice = inputMode.mode === "voice";
+  // AI 말풍선 아래: [말로(글로) 입력할 수도 있어요] [다시 보내기] (같은 알약 모양)
+  const pills = document.createElement("div");
+  pills.className = "mis-pills";
   const pill = document.createElement("button");
   pill.type = "button";
   pill.className = "mode-pill";
   pill.textContent = voice ? "글로 입력할 수도 있어요" : "말로 입력할 수도 있어요";
   pill.onclick = () => {
     gLog("G3", "mishear_switch_mode", { to: voice ? "text" : "voice" });
-    pill.remove();
+    pills.remove();
     if (inputMode.mode === "voice") { stopListening(); setInputMode("text"); $("#msg").focus(); }
     else { setInputMode("voice"); startListening(); }
   };
-  ab.after(pill);
+  const again2 = document.createElement("button");
+  again2.type = "button";
+  again2.className = "mode-pill resend-pill";
+  again2.textContent = "다시 보내기";
+  again2.onclick = () => { pills.remove(); resend("pill"); };
+  pills.append(pill, again2);
+  ab.after(pills);
   scrollChat();
 }
 
