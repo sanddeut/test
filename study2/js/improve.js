@@ -804,7 +804,7 @@ function showPermDialog() {
   d.id = "perm-dlg";
   d.className = "perm-dlg";
   d.innerHTML = `<div class="perm-card" role="dialog" aria-modal="true" aria-labelledby="perm-title">
-      <b id="perm-title">AI와의 대화에서 무엇을 허용할까요?</b>
+      <b id="perm-title">AI와의 대화를 위해 권한 허용을 문의드려요</b>
       <ul>${PERMS.map((p) => `<li><span><b>${p.name}</b><small>${p.why}</small></span><label class="perm-tgl"><input type="checkbox" data-perm="${p.id}" checked><i></i></label></li>`).join("")}</ul>
       <div class="perm-btns"><button type="button" class="perm-yes">확인</button></div>
     </div>`;
