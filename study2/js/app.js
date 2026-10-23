@@ -2639,6 +2639,7 @@ function summary() {
     // 오류 ① 잘못 알아들음: 몇 번 못 알아들었는지, 처음 실패부터 알아들을 때까지 걸린 시간
     mishear_count: m.mishears || 0,
     drop_reason_opened: S.guide || S.unified ? m.whyOpened || 0 : null,
+    think_opened: S.unified ? m.thinkOpens || 0 : null, // 개선안: 「AI가 ~하는 중」을 펼쳐 본 횟수 (모든 단계)
     mishear_recover_ms: m.mishearAt != null && m.mishearRecoveredAt != null ? m.mishearRecoveredAt - m.mishearAt : null,
     // 오류 ② 하차 지점 변경: 어디서 바로잡았는지 (dest=목적지 단계, final=최종 확인, done=호출 뒤 되돌리기 등)
     dest_fixed_at: S.log.find((e) => e.type === "dest_changed" && e.dest === TARGET_PLACE)?.step ?? null,

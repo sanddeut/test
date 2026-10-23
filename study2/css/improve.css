@@ -355,3 +355,12 @@
 /* 전달됨은 잠시 보인 뒤 사라짐 */
 .receipt { transition: opacity .6s; }
 .receipt.gone { opacity: 0; }
+
+/* 연구2: 「› AI가 ~하는 중…」 펼쳐서 작업 과정·판단 근거 보기 (가이드라인 10) */
+#rc-status .think { display: inline-flex; align-items: center; gap: 2px; border: 0; background: none; padding: 0; font: inherit; font-size: 13.5px; color: #5f6470; cursor: pointer; }
+#rc-status .think .ms { font-size: 18px; transition: transform .2s; }
+#rc-status .think.open .ms { transform: rotate(90deg); }
+#rc-status .think .think-t { background: linear-gradient(90deg, #8a8f99 0%, #c9ccd2 40%, #8a8f99 80%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: thinkshine 1.6s linear infinite; }
+@keyframes thinkshine { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+#rc-status .think-log { margin: 6px 0 2px 6px; padding-left: 12px; border-left: 2px solid #e3e6eb; }
+#rc-status .think-log p { margin: 0 0 4px; font-size: 13.5px; line-height: 1.5; color: #5f6470; }

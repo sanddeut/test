@@ -286,7 +286,7 @@ setCard = function (opts = {}) {
   const st = c.querySelector("#rc-status");
   // 진행 문장은 대화에 이미 있으니, 작업 중에는 점만 보여 줌
   const working = Boolean(S?.running) && !S.finished && !S.stopped && !c.classList.contains("asking");
-  if (working) st.innerHTML = '<span class="dots" aria-label="작업 중"><i></i><i></i><i></i></span><span class="rc-sub">AI가 앱 조작 중</span>';
+  if (working) renderThink(st);
   c.classList.toggle("working", working);
 };
 
@@ -727,7 +727,7 @@ async function announceInner(step) {
   for (const m of lines(`${step.id}.announce`, S, vars)) await agentSay(m, { gated: true });
   if (step.id === "drop") {
     if (S.m.errorShownAt == null) S.m.errorShownAt = now();
-    addWhyV4("drop.why", lines("drop.announce", S)[0] || ""); // 바꾸는 이유는 원할 때만 (가이드라인 10)
+    // 바꾸는 이유는 먼저 말하지 않고, 「AI가 ~하는 중」을 펼치면 볼 수 있음 (가이드라인 10)
   }
   for (let t = 0; t < READ_MS; t += 250) { await sleep(250 * PACE); await gate(); }
   // 읽는 동안 참가자가 목적지를 직접 바꿨으면 하차 지점은 바꾸지 않음
@@ -1293,3 +1293,54 @@ function settleWhy() {
   S.whyAnn = null;
 }
 setInterval(settleWhy, 250);
+
+// =====================================================================
+// [작업 과정 펼쳐 보기] 진행 카드 위 「› AI가 ~하는 중…」: 단계마다 문구가 바뀌고, 누르면 이 단계의 작업 과정과 판단 근거가 펼쳐짐
+// 핵심만 보여 주고 부가 정보는 원할 때 볼 수 있게 (가이드라인 10). 상용 AI의 '생각하는 중'처럼 모든 단계에 똑같이
+// =====================================================================
+const DOING = {
+  taxi_open: "택시 앱을 여는 중", origin: "출발지를 찾는 중", dest: "목적지를 찾는 중", car: "택시 종류를 확인하는 중",
+  coupon: "예상 금액을 확인하는 중", pay: "결제 방식을 확인하는 중", drop: "도착 위치를 확인하는 중", final: "호출 내용을 정리하는 중",
+  password: "결제를 준비하는 중", done: "택시를 찾는 중",
+};
+function traceOf(id) {
+  const f = S.form;
+  const car = CAR_TYPES[f.car]?.label || "일반택시";
+  switch (id) {
+    case "taxi_open": return [`휴대폰에서 택시를 부를 수 있는 ‘${TAXI_APP}’ 앱을 찾았어요.`, `${TAXI_APP} 앱을 열고 있어요.`];
+    case "origin": { const o = ORIGINS[S.originTarget || TARGET_ORIGIN]?.name || "출발지"; return ["출발지 칸을 눌러 검색했어요.", `검색 결과 중 ‘${o}’을 골랐어요. 말씀하신 출발지와 이름이 같아서예요.`]; }
+    case "dest": { const d = PLACES[f.dest ?? S.userDest ?? AGENT_PLACE]?.name || "목적지"; return [`검색창에 ‘${SEARCH_QUERY}’를 입력했어요.`, `같은 이름의 지점 ${SEARCH_ORDER.length}곳 중 ‘${d}’을 골랐어요. 말씀하신 지점 이름과 같아서예요.`]; }
+    case "car": return [`택시 종류 ${Object.keys(CAR_TYPES).length}가지와 종류별 예상 요금을 불러왔어요.`];
+    case "coupon": return [`${car} 기준으로 예상 요금을 계산했어요.`, `쓸 수 있는 쿠폰 1장이 있어요. 지금은 적용하지 않은 상태예요.`];
+    case "drop": return ["도착 위치 주변의 정차 정보를 확인했어요.", `가게 앞은 차를 세우기 어려운 곳이라, 가장 가까운 ‘${PLACES[DROP_PLACE].name}’로 바꾸려고 해요.`];
+    case "final": return ["출발지, 도착지, 택시 종류, 결제 방식, 쿠폰, 예상 요금을 한 화면에 모았어요."];
+    case "password": return ["결제하려면 결제 비밀번호가 필요해요. 비밀번호는 제가 대신 넣지 않아요."];
+    case "done": return ["호출 요청을 보냈고, 가까운 기사님을 찾고 있어요."];
+    default: return [];
+  }
+}
+function renderThink(st) {
+  const id = S.steps[S.stepIdx]?.id;
+  const doing = `AI가 ${DOING[id] || "앱을 조작하는 중"}…`;
+  let btn = st.querySelector(".think");
+  if (!btn || btn.dataset.step !== String(S.stepIdx)) {
+    st.innerHTML = `<button type="button" class="think" aria-expanded="false"><span class="ms">chevron_right</span><span class="think-t"></span></button><div class="think-log" hidden></div>`;
+    btn = st.querySelector(".think");
+    btn.dataset.step = String(S.stepIdx);
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const log = st.querySelector(".think-log");
+      const open = log.hidden;
+      log.hidden = !open;
+      btn.setAttribute("aria-expanded", String(open));
+      btn.classList.toggle("open", open);
+      if (open) {
+        log.innerHTML = traceOf(S.steps[S.stepIdx]?.id).map((t) => `<p>${esc(t)}</p>`).join("");
+        S.m.thinkOpens = (S.m.thinkOpens || 0) + 1;
+        if (S.steps[S.stepIdx]?.id === "drop") S.m.whyOpened = (S.m.whyOpened || 0) + 1;
+        gLog("G10", "think_open", { step: S.steps[S.stepIdx]?.id });
+      }
+    };
+  }
+  btn.querySelector(".think-t").textContent = doing;
+}
