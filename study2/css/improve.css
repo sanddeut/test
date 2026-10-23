@@ -398,3 +398,7 @@
 .mis-pills { align-self: flex-start; display: flex; flex-wrap: wrap; gap: 8px; margin-top: -2px; }
 .mis-pills .mode-pill { margin: 0; }
 .perm-wait .start-wrap { pointer-events: none; }
+
+/* 판단 이유 ›: 파일럿에서 잘 못 찾아서 더 크고 진하게 */
+.has-more { padding-right: 44px !important; }
+.has-more::after { font-size: 30px; right: 8px; color: #5f6470; font-weight: 500; }
