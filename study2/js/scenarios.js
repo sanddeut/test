@@ -9,8 +9,8 @@ const PLACES = {
   gangnam: { name: "담소한정식 강남점", addr: "서울 강남구 테헤란로 152", lat: 37.50007, lng: 127.03651, road: 21.2 },
   gucheong: { name: "담소한정식 강남구청점", addr: "서울 강남구 학동로 426", lat: 37.51729, lng: 127.04736, road: 23.5 },
   yeoksam: { name: "담소한정식 역삼점", addr: "서울 강남구 논현로 508", lat: 37.50375, lng: 127.03983, road: 21.9 },
-  // 연구2 오류: 에이전트가 잘못 알아듣고 고르는 완전히 다른 곳
-  busan: { name: "부산역", addr: "부산 동구 중앙대로 206", lat: 35.11517, lng: 129.04218, road: 396.8 },
+  // 연구2 오류(블랙박스): 에이전트가 이유를 말하지 않고 바꾸는 하차 지점
+  drop: { name: "역삼역 2번 출구", addr: "서울 강남구 테헤란로 지하 156", lat: 37.50069, lng: 127.03722, road: 21.0 },
 };
 
 // 출발지: 기본은 휴대폰 GPS의 현재 위치, 과업에서 ‘신분당선 동천역’으로 바꿈
@@ -108,12 +108,14 @@ function distKm(originKey, destKey, geo) {
   return Math.max(0.5, Math.round(2 * R * Math.asin(Math.sqrt(a)) * 1.35 * 10) / 10);
 }
 const distText = (originKey, destKey, geo) => `${distKm(originKey, destKey, geo).toFixed(1)}km`;
-const SEARCH_ORDER = ["gangnam", "gucheong", "yeoksam"]; // '담소한정식' 검색 결과 순서
-const AGENT_QUERY = "부산역"; // 연구2 오류: 에이전트가 잘못 알아듣고 입력하는 검색어 (결과: 부산역)
+const SEARCH_ORDER = ["gucheong", "gangnam", "yeoksam"]; // '담소한정식' 검색 결과 순서
 const SEARCH_QUERY = "담소한정식";
 const TARGET_PLACE = "gangnam"; // 참가자가 요청하는 목적지
-// 연구2 오류: 목적지 오인식: 두 안 모두 에이전트가 잘못 알아듣고 ‘부산역’을 검색해 골라 진행 (참가자가 강남점을 말해도)
-const AGENT_PLACE = "busan";
+const AGENT_PLACE = TARGET_PLACE; // 목적지는 정상으로 찾음
+// 연구2 오류 ① 잘못 알아들음: 처음 요청의 앞 두 번은 무슨 말을 하든 알아듣지 못함 (두 안 동일)
+const MISHEAR_COUNT = 2;
+// 연구2 오류 ② 블랙박스: 예상 금액 다음, 이유를 말하지 않고 하차 지점을 ‘역삼역 2번 출구’로 바꿈 (두 안 동일)
+const DROP_PLACE = "drop";
 // 연구2 기존안: 택시 종류·최종 호출은 개선안과 같은 단계에서 묻되, 연구1 낮은 자동화 문구 그대로 (app.js ASK_STEPS)
 const BASE_ASKS = true;
 
@@ -122,7 +124,7 @@ const BASE_ASKS = true;
 // - 세션2: 호출 완료 후, 묻지 않고 최근 3개월 이용내역을 열람하고 다음 주 토요일 같은 시간 예약 호출을 제안·등록
 const SESSIONS = {
   // 연구2: 두 안에 같은 통제감 상실 유발 상황 2개 (연구1의 세션1·2 오류 단계는 쓰지 않음)
-  0: { title: "연구2 · 목적지 오인식", error: "dest" },
+  0: { title: "연구2 · 잘못 알아들음 + 하차 지점 변경", error: "mishear_drop" },
   1: { title: "세션1 · 기사님 요청사항 임의 선택", error: "request" },
   2: { title: "세션2 · 이용내역 열람 + 예약 호출", error: "reserve" },
 };
@@ -227,6 +229,8 @@ function scriptDefaults(cond) {
   const add = (key, group, label, text) => L.push({ key, group, label, text });
 
   add("greet", "시작", "첫 인사", "무엇을 도와드릴까요?");
+  add("mishear", "[오류] 잘못 알아들음", "처음 요청의 1번째 입력", "죄송해요, 이해하지 못했어요. 다시 말해 주세요.");
+  add("mishear.2", "[오류] 잘못 알아들음", "처음 요청의 2번째 입력 (엉뚱한 답)", "오늘 서울은 맑고, 낮 최고 기온은 18도예요.");
 
   if (low) {
     add("taxi_open", "택시 앱 실행", "승인 요청", "택시 앱을 실행할까요?");
@@ -281,6 +285,7 @@ function scriptDefaults(cond) {
       add("coupon.on", "예상 금액 확인", "쿠폰을 적용하라고 했을 때 (다시 묻지 않고 진행)", "‘{쿠폰}’을 적용할게요.");
       add("coupon.skip", "예상 금액 확인", "그대로 진행할 때", "이대로 진행할게요.");
     } else add("coupon", "예상 금액 확인", "안내 (쿠폰은 기본 적용 안 함)", "예상 금액은 {요금}이에요.");
+  add("drop", "[오류] 하차 지점 변경", "안내 (바꾼 뒤 알림 · 이유 없음)", "하차 지점을 ‘{하차}’로 변경했어요.");
   }
 
   if (low || BASE_ASKS) {
@@ -334,6 +339,8 @@ function guideScriptDefaults(cond) {
   const add = (key, group, label, text) => L.push({ key, group, label, text });
 
   add("greet", "시작", "첫 인사", "무엇을 도와드릴까요?");
+  add("mishear", "[오류] 잘못 알아들음 (G3)", "처음 요청의 1번째 입력 (못 한 이유와 다시 할 방법)", "말씀을 알아듣지 못했어요. 어디에서 어디로 갈지 다시 말해 주세요.");
+  add("mishear.2", "[오류] 잘못 알아들음", "처음 요청의 2번째 입력 (엉뚱한 답 · 기존안과 같음)", "오늘 서울은 맑고, 낮 최고 기온은 18도예요.");
   add("greet.howto", "시작", "첫 말풍선 안 입력 방법 안내 (G1)", "이렇게 대화를 시작해 보세요\n1. 아래 ‘눌러서 대화 시작’을 눌러요\n2. 말로 할지, 글로 할지 골라요");
 
   add("taxi_open", "택시 앱 실행 (알리고 진행 · G18)", "안내", "택시 앱을 실행할게요.");
@@ -357,6 +364,8 @@ function guideScriptDefaults(cond) {
     add("car.set", "택시 종류 (먼저 물음 · G18·G20)", "택시 종류를 골랐을 때", "{택시종류}로 할게요.");
     add("car.req", "택시 종류 (먼저 물음 · G18·G20)", "처음 요청·진행 중에 미리 말했을 때", "말씀하신 {택시종류}로 할게요.");
     add("coupon", "예상 금액 (알리고 진행 · G18)", "안내 (쿠폰은 기본 적용 안 함)", "예상 금액은 {요금}이에요.");
+  add("drop", "[오류] 하차 지점 변경 (알리고 진행 · G5·G11·G16)", "바꾸기 전에 알림 → 읽을 시간 뒤 진행 (이유 없음)", "하차 지점을 ‘{하차}’로 변경할게요.");
+  add("drop.why", "[오류] 하차 지점 변경 (G10)", "「이유 보기」를 눌렀을 때 (원할 때만 부가 정보)", "가게 앞은 차를 세우기 어려워서, 가장 가까운 ‘{하차}’로 바꾸려고 해요.");
   }
 
   add("request", "[세션1] 기사님 요청사항 (먼저 물음 · G20)", "선택 요청 (AI가 고르지 않음)", "기사님께 전할 요청사항을 고를 수 있어요. 어떻게 할까요?");
@@ -432,12 +441,13 @@ function lines(key, s, vars = {}) {
     지금단계: vars.now ?? "",
     나중단계: vars.later ?? "",
     값: vars.value ?? "",
+    하차: PLACES[DROP_PLACE].name,
   };
   return scriptText(s.cond, key)
     .split("\n")
     .map((t) => t.trim())
     .filter(Boolean)
-    .map((t) => t.replace(/\{(출발지|목적지|택시종류|결제|쿠폰|요금|요청사항|이름|단계|지금단계|나중단계|값)\}/g, (_, k) => map[k]))
+    .map((t) => t.replace(/\{(출발지|목적지|택시종류|결제|쿠폰|요금|요청사항|이름|단계|지금단계|나중단계|값|하차)\}/g, (_, k) => map[k]))
     .map((t) => t.replace(/([가-힣\w]+)’?\(으\)로/g, (m, w) => (m.includes("’") ? `${euro(w).slice(0, w.length)}’${euro(w).slice(w.length)}` : euro(w))))
     .map(fixJosa);
 }
@@ -533,7 +543,7 @@ function buildSteps(complexity, session = 1, guide = false) {
     kind: "dest",
     busy: "dest.busy",
     label: "목적지 설정",
-    guide: `목적지를 검색해 고르는 단계. 에이전트는 잘못 알아듣고 ‘${AGENT_QUERY}’를 검색해 ‘${PLACES[AGENT_PLACE].name}’을 목적지로 고름. ‘${SEARCH_QUERY}’를 검색하면 ${SEARCH_ORDER.map((k) => PLACES[k].name).join(", ")}이 나옴`,
+    guide: `목적지를 검색해 고르는 단계. ‘${SEARCH_QUERY}’를 검색하면 ${SEARCH_ORDER.map((k) => PLACES[k].name).join(", ")}이 나오고, 에이전트는 ‘${PLACES[AGENT_PLACE].name}’을 목적지로 고름`,
     low: { messages: (s) => lines("dest", s, { dest: s.userDest ?? AGENT_PLACE }), options: APPROVE, reject: "dest" },
     high: { messages: (s) => lines("dest", s, { dest: s.form.dest ?? AGENT_PLACE }), applyFirst: true },
     correction: {
@@ -544,14 +554,14 @@ function buildSteps(complexity, session = 1, guide = false) {
     // 검색창을 누르고 가게 이름을 입력 → 검색 결과가 나옴
     pre: async (s) => {
       const p = s.phone;
-      if (p.taxiView === "search" && p.searchTyped === AGENT_QUERY) return;
-      p.searchList = [AGENT_PLACE];
+      if (p.taxiView === "search" && p.searchTyped === SEARCH_QUERY) return;
+      p.searchList = null;
       await tap(".tx-search");
       p.taxiView = "search";
       p.searchTyped = "";
       renderPhone();
       await actSleep(400);
-      await typeText((v) => (p.searchTyped = v), AGENT_QUERY, 170);
+      await typeText((v) => (p.searchTyped = v), SEARCH_QUERY, 170);
       await actSleep(500);
       p.results = true;
       renderPhone();
@@ -668,6 +678,23 @@ function buildSteps(complexity, session = 1, guide = false) {
       apply: (s, choice) => { s.form.coupon = couponChoice(s, choice); s.phone.sheet = null; },
     });
   }
+
+  // 연구2 오류 ② 블랙박스: 이유를 말하지 않고 하차 지점을 바꿈. 참가자가 이미 되돌렸으면 바꾸지 않음
+  if (session === 0) steps.push({
+    id: "drop",
+    kind: "error_drop",
+    label: "[오류] 하차 지점 변경",
+    guide: `에이전트가 이유를 말하지 않고 하차 지점을 ‘${PLACES[DROP_PLACE].name}’로 바꾸는 단계. 사용자가 이유를 물을 때만 '가게 앞은 차를 세우기 어려워서'라고 짧게 답함`,
+    high: { messages: msg("drop"), applyFirst: true },
+    act: async (s) => {
+      if (s.dropBlocked || s.form.dest !== TARGET_PLACE) return;
+      s.form.dest = DROP_PLACE;
+      s.dropApplied = true;
+      renderPhone();
+      await actSleep(500);
+    },
+    apply: (s) => { if (!s.dropBlocked && s.form.dest === TARGET_PLACE) { s.form.dest = DROP_PLACE; s.dropApplied = true; } },
+  });
 
   const finalStep = {
     id: "final",

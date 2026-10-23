@@ -1313,6 +1313,19 @@ async function run() {
   // 1) 과업 요청 해석
   for (;;) {
     const text = await waitText();
+    // 연구2 오류 ① 잘못 알아들음: 앞 두 번은 무슨 말을 하든 알아듣지 못함 (두 안 동일, 개선안은 못 한 이유와 다시 할 방법을 말함 · G3)
+    if (S.session === 0 && (S.m.mishears || 0) < MISHEAR_COUNT) {
+      S.m.mishears = (S.m.mishears || 0) + 1;
+      if (S.m.mishearAt == null) S.m.mishearAt = now();
+      logEvent("mishear", { n: S.m.mishears, text });
+      if (S.guide) gLog("G3", "mishear_reason");
+      showTyping(true);
+      await sleep(1500 * PACE);
+      showTyping(false);
+      await sayKey(S.m.mishears === 1 ? "mishear" : "mishear.2");
+      continue;
+    }
+    if (S.m.mishears && S.m.mishearRecoveredAt == null) { S.m.mishearRecoveredAt = now(); logEvent("mishear_recovered", { text }); }
     const res = await interpret("request", text, {
       condition: S.cond,
       scenario_task: SITUATION[S.complexity].task,
@@ -1324,8 +1337,7 @@ async function run() {
     if (o.car_type && CAR_TYPES[o.car_type]) S.req.car = o.car_type;
     if (o.wants_coupon) { S.req.coupon = true; S.m.couponMentioned = true; }
     // 처음 요청에서 말한 목적지: 강남점이면 그대로(에이전트가 찾음), 다른 지점이나 다른 곳이면 그곳으로
-    // 담소한정식 지점을 말해도 에이전트는 부산역을 고름 (오류: 목적지 오인식). 전혀 다른 장소를 말했으면 그곳으로
-    { const k = namedDest(o); if (k === "custom") S.userDest = k; }
+    { const k = namedDest(o); if (k && k !== AGENT_PLACE) S.userDest = k; }
     if (o.is_ride_request && !(o.destination == null && o.clarification)) {
       S.m.request = { text, ...o };
       showTyping(true);
@@ -1862,7 +1874,7 @@ const CAR_OPTS = () => Object.keys(CAR_TYPES).map((k) => ({ id: k, label: CAR_TY
 const REQ_OPTS = () => ["none", ...REQUEST_CHOICES].map((k) => ({ id: k, label: REQUESTS[k] }));
 // 되돌릴 수 있는 단계와 이름
 const ASK_STEPS = ["car", "final"]; // 두 안 모두 먼저 묻는 단계
-const UNDO_NAME = { origin: "출발지", dest: "목적지", car: "택시 종류", request: "기사님 요청사항" };
+const UNDO_NAME = { origin: "출발지", dest: "목적지", car: "택시 종류", drop: "하차 지점", request: "기사님 요청사항" };
 // 진행 중 요청을 나중에 반영할 때 쓰는 말 (가이드라인 3)
 const NOW_PHRASE = { taxi_open: "택시 앱을 여는", origin: "출발지를 정하는", dest: "목적지를 찾는", car: "택시 종류를 고르는", coupon: "예상 금액을 확인하는", request: "요청사항을 정하는", final: "호출 내용을 확인하는" };
 const LATER_PHRASE = { origin: "출발지를 정할", dest: "목적지를 정할", car: "택시 종류를 고를", coupon: "예상 금액을 확인할", request: "기사님 요청사항을 정할" };
@@ -1878,6 +1890,7 @@ async function runGuideStep(step) {
     case "done": return gDone(step);
     case "reserve": return gReserve(step);
     case "password": return runPassword(step, step.high);
+    case "drop": return gDrop(step);
     default: return runHighStep(step); // 택시 앱 실행·예상 금액: 알리고 진행
   }
 }
@@ -2164,6 +2177,57 @@ async function gDone(step) {
   return true;
 }
 
+// 연구2 오류 ② 블랙박스: 바꾸기 전에 알리고(이유는 말하지 않음) 읽을 시간 뒤 바꿈, 「되돌리기」 (가이드라인 5·11·16)
+async function gDrop(step) {
+  if (S.dropBlocked || S.form.dest !== TARGET_PLACE) { markDone(step); return true; }
+  await gate();
+  gLog(["G5", "G11"], "guide_announce", { step: "drop" });
+  const n0 = S.log.filter((e) => e.type === "dest_changed").length;
+  await sayKey("drop", {}, { gated: true });
+  if (S.m.errorShownAt == null) S.m.errorShownAt = now();
+  addWhyLink("drop.why");
+  await readWait();
+  if (S.jumpTo != null) return true;
+  // 읽는 동안 참가자가 목적지를 직접 말했으면 바꾸지 않음
+  if (S.log.filter((e) => e.type === "dest_changed").length === n0) { await doApply(step, undefined, { announced: true }); }
+  else S.dropBlocked = true;
+  markDone(step);
+  freezeQuestion();
+  // 아직 안 누른 「이유 보기」는 대화 기록으로 옮긴 알림 바로 아래로
+  { const w = $("#run-card .why-link"); if (w) $("#run-card").previousElementSibling?.after(w); }
+  addUndoLink(S.stepIdx);
+  return true;
+}
+
+// 개선안: 바꾼 이유는 먼저 말하지 않고, 원할 때 눌러서 볼 수 있게 (가이드라인 10)
+function addWhyLink(key) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "why-link";
+  b.innerHTML = '<span class="ms">help</span> 이유 보기';
+  b.onclick = () => {
+    S.m.whyOpened = (S.m.whyOpened || 0) + 1;
+    gLog("G10", "why_open", { key });
+    const card = $("#run-card");
+    let at = b;
+    if (card && card.contains(b)) { freezeQuestion(); at = card.previousElementSibling; } // 진행 카드의 알림을 대화 기록으로 옮긴 뒤 그 아래에
+    for (const t of lines(key, S)) {
+      const div = document.createElement("div");
+      div.className = "bubble agent";
+      div.textContent = t;
+      at.after(div);
+      at = div;
+    }
+    b.remove();
+    scrollChat();
+  };
+  const card = $("#run-card");
+  const q = card?.querySelector("#rc-q");
+  if (q && !q.hidden && q.textContent.trim()) q.after(b); // 알림이 진행 카드에 떠 있으면 그 바로 아래
+  else [...chat().querySelectorAll(".bubble.agent")].at(-1)?.after(b);
+  scrollChat();
+}
+
 function addUndoLink(idx) {
   const b = document.createElement("button");
   b.type = "button";
@@ -2330,6 +2394,7 @@ function resetFrom(idx) {
     S.userDest = null;
   }
   if (id === "car") { S.userSet.car = false; S.req.car = null; }
+  if (id === "drop") { S.dropBlocked = true; if (S.form.dest === DROP_PLACE) S.form.dest = TARGET_PLACE; } // 되돌리면 다시 바꾸지 않음
   if (id === "request") { S.userSet.request = false; S.form.request = "none"; }
   S.reserveCancelled = false;
   logEvent("rewind", { to: id });
@@ -2551,7 +2616,11 @@ function summary() {
     llm_calls: m.llmCalls,
     llm_fallbacks: m.llmFallbacks,
     total_ms: m.finishedAt,
-    // 오류(목적지 오인식): 어디서 바로잡았는지 (dest=목적지 단계, final=최종 확인, done=호출 뒤 되돌리기 등)
+    // 오류 ① 잘못 알아들음: 몇 번 못 알아들었는지, 처음 실패부터 알아들을 때까지 걸린 시간
+    mishear_count: m.mishears || 0,
+    drop_reason_opened: S.guide ? m.whyOpened || 0 : null,
+    mishear_recover_ms: m.mishearAt != null && m.mishearRecoveredAt != null ? m.mishearRecoveredAt - m.mishearAt : null,
+    // 오류 ② 하차 지점 변경: 어디서 바로잡았는지 (dest=목적지 단계, final=최종 확인, done=호출 뒤 되돌리기 등)
     dest_fixed_at: S.log.find((e) => e.type === "dest_changed" && e.dest === TARGET_PLACE)?.step ?? null,
     dest_fixed_via: S.log.find((e) => e.type === "dest_changed" && e.dest === TARGET_PLACE)?.via ?? null,
     // 쿠폰 (오류 아님): 처음 요청에서 말했는지 / 최종 적용 / 어디서 바꿨는지
@@ -2580,12 +2649,13 @@ function renderSummary() {
   const el = $("#summary");
   if (!el || !S) return;
   const s = summary();
-  const label = { accepted: "그대로 (부산역)", corrected: "바로잡음 (강남점)", cancelled: "호출 취소", exited: "앱 종료" };
+  const label = { accepted: "그대로 (역삼역 2번 출구)", corrected: "바로잡음 (강남점)", cancelled: "호출 취소", exited: "앱 종료" };
   const cpn = { applied_from_request: "미리 말해서 적용", applied_by_user: "직접 바꿔 적용", not_applied: "적용 안 됨" };
   const items = [
     ["조건", CONDITIONS[S.cond].title],
     ["해석", s.llm],
-    ["오류: 목적지 오인식", `${label[s.error_outcome] || "-"}${s.dest_fixed_at ? ` · ${s.dest_fixed_at}에서 ${s.dest_fixed_via || ""}` : ""}`],
+    ["오류 ① 잘못 알아들음", `${s.mishear_count}번 못 알아들음${s.mishear_recover_ms != null ? ` · ${Math.round(s.mishear_recover_ms / 1000)}초 뒤 다시 말함` : ""}`],
+    ["오류 ② 하차 지점 변경", `${label[s.error_outcome] || "-"}${s.dest_fixed_at ? ` · ${s.dest_fixed_at}에서 ${s.dest_fixed_via || ""}` : ""}`],
     ["쿠폰 (오류 아님)", `${cpn[s.coupon_outcome]}${s.coupon_changed_at ? ` · ${s.coupon_changed_at}에서` : ""} · 처음에 ${s.coupon_mentioned ? "말함" : "말 안 함"}`],
     ["개입 방식", s.correction_via || "-"],
     ["오류→반응", s.error_response_ms != null ? `${(s.error_response_ms / 1000).toFixed(1)}초` : "-"],
@@ -3159,7 +3229,7 @@ function setupInstall() {
 
 // 코드의 기본 문구(시나리오 문구·프롬프트)를 새로 정리하면 이 값을 바꿈
 // → 브라우저에 저장된 예전 수정본을 지우고 최신 기본값을 쓰게 함 (이후 새로 고친 내용은 다시 저장됨)
-const CONTENT_VERSION = "s2-taxi-2026-10-23g";
+const CONTENT_VERSION = "s2-taxi-2026-10-23h";
 function resetOldContent() {
   if (store.get("content_version", null) === CONTENT_VERSION) return;
   store.del("script_overrides");

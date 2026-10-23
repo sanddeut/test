@@ -1062,3 +1062,9 @@ body.talk-unstarted .phone[data-view] .composer.only-chat { display: none !impor
 .undo-btns { display: flex; gap: 8px; margin-top: 14px; }
 .undo-btns .perm-ok { margin-top: 0; flex: 1; }
 .undo-no { flex: 1; border: 0; background: #eef1f6; color: #1c1d21; border-radius: 999px; padding: 13px; font-size: 17px; font-weight: 600; }
+
+/* 개선안: 바꾼 이유를 원할 때 보기 (가이드라인 10) */
+.why-link { align-self: flex-start; margin-top: -6px; border: 0; background: none; color: #0b57d0; font-size: 13.5px; display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px; flex-shrink: 0; }
+.why-link .ms { font-size: 16px; }
+.why-link:disabled { color: #9aa0a6; }
+body:not(.guide) .why-link { display: none; }
