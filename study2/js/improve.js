@@ -120,7 +120,7 @@ renderBubble = function (role, text) {
   if (b && what && !b.querySelector(".ub-what")) b.querySelector(".receipt").insertAdjacentHTML("beforebegin", `<small class="ub-what">${what}</small>`);
 };
 
-const RECEIPT_MS = 5000; // '전달됨' 표시를 보여 주는 시간
+const RECEIPT_MS = 3500; // '전달됨' 표시를 보여 주는 시간
 const UNSENT_MS = 4000;
 let v4UnsentTimer = null;
 function watchUnsent() {
