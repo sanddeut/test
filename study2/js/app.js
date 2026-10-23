@@ -3220,7 +3220,10 @@ function unb64url(str) {
 
 // 링크(또는 붙여넣은 텍스트)에서 키를 꺼내 저장. 성공하면 true
 function saveKeyFrom(text) {
-  const m = String(text || "").match(/[#&]k=([\w-]+)/);
+  const raw = String(text || "").trim();
+  // API 키를 직접 넣은 경우
+  if (raw && !/[#&]k=/.test(raw) && /^[\w-]{20,}$/.test(raw)) { store.set("gemini_key", raw); return true; }
+  const m = raw.match(/[#&]k=([\w-]+)/);
   if (!m) return false;
   try {
     const cfg = JSON.parse(unb64url(m[1]));
@@ -3244,12 +3247,13 @@ function readKeyFromLink() {
 function setupPasteKey() {
   const box = $("#paste-key");
   // 평소에는 숨기고, 「연결 안 됨」 문구를 누르면 링크 붙여넣기 칸이 열림
-  const refresh = () => { applyLLMSettings(); if (LLM.enabled) box.hidden = true; };
+  const refresh = () => { applyLLMSettings(); if (LLM.enabled) box.hidden = true; else box.hidden = false; };
   // 키가 없으면 링크 붙여넣기 칸, 키가 있으면 연결 진단 페이지로
-  $("#llm-status-text").onclick = () => { if (!LLM.enabled) box.hidden = !box.hidden; else location.href = "key.html"; };
+  // 「Gemini 연결됨/연결 안 됨」 문구를 누르면 API 키 입력 칸이 열림 (키를 바꿀 때도)
+  $("#llm-status-text").onclick = () => { box.hidden = !box.hidden; };
   $("#btn-paste-key").onclick = () => {
     const ok = saveKeyFrom($("#paste-link").value);
-    if (!ok) { alert("링크에서 키를 찾지 못했어요. 받은 링크 전체를 붙여넣어 주세요."); return; }
+    if (!ok) { alert("API 키를 확인해 주세요."); return; }
     $("#paste-link").value = "";
     refresh();
   };
