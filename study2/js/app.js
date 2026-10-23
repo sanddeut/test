@@ -2526,6 +2526,13 @@ function pinPress(k) {
 
 function finish(status) {
   if (S.finished) return false;
+  // 기존안도 개선안과 같이 호출한 뒤 10초 있다가 체험을 마침 (체험 시간 조건 맞춤)
+  if (status === "completed" && !S.unified && S.session === 0 && S.rideDone && !S.postWaited) {
+    S.postWaited = true;
+    const sess = S;
+    setTimeout(() => { if (S === sess && !S.finished) finish("completed"); }, 10000);
+    return false;
+  }
   S.finished = true;
   S.running = false;
   S.m.finalDest = S.form.dest;
