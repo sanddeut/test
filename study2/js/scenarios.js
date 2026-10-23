@@ -109,7 +109,7 @@ const distText = (originKey, destKey, geo) => `${distKm(originKey, destKey, geo)
 const SEARCH_ORDER = ["gucheong", "gangnam", "yeoksam"]; // 검색 결과 순서 (에이전트는 맨 위 강남구청점을 고름)
 const SEARCH_QUERY = "담소한정식";
 const TARGET_PLACE = "gangnam"; // 참가자가 요청하는 목적지
-// 연구2 [상황①] 목적지 오인식: 두 안 모두 에이전트가 같은 이름의 강남구청점을 골라 진행 (참가자가 강남점을 말해도)
+// 연구2 오류: 목적지 오인식: 두 안 모두 에이전트가 같은 이름의 강남구청점을 골라 진행 (참가자가 강남점을 말해도)
 const AGENT_PLACE = "gucheong";
 // 연구2 기존안: 택시 종류·최종 호출은 개선안과 같은 단계에서 묻되, 연구1 낮은 자동화 문구 그대로 (app.js ASK_STEPS)
 const BASE_ASKS = true;
@@ -119,7 +119,7 @@ const BASE_ASKS = true;
 // - 세션2: 호출 완료 후, 묻지 않고 최근 3개월 이용내역을 열람하고 다음 주 토요일 같은 시간 예약 호출을 제안·등록
 const SESSIONS = {
   // 연구2: 두 안에 같은 통제감 상실 유발 상황 2개 (연구1의 세션1·2 오류 단계는 쓰지 않음)
-  0: { title: "연구2 · 목적지 오인식 + 쿠폰 단계", error: "dest_coupon" },
+  0: { title: "연구2 · 목적지 오인식", error: "dest" },
   1: { title: "세션1 · 기사님 요청사항 임의 선택", error: "request" },
   2: { title: "세션2 · 이용내역 열람 + 예약 호출", error: "reserve" },
 };
@@ -444,8 +444,8 @@ const line = (key, s, vars) => lines(key, s, vars).join("\n");
 const isAgentRequest = (s, k) => k === AGENT_REQUEST && s.form.request === AGENT_REQUEST && !s.requestByUser && !s.userSet?.request;
 
 // 쿠폰 단계의 선택 → 적용 여부 ("on"이면 적용, 선택이 없으면 참가자가 직접 정한 값 또는 기본값 '적용 안 함')
-// [상황②] 처음 요청에서 쿠폰을 말했어도 연구1처럼 기본은 적용 안 함 (쿠폰 단계에서 직접 바꿔야 함)
-const couponChoice = (s, choice) => (choice === "on" ? true : choice === "off" ? false : s.userSet?.coupon ? s.form.coupon : false);
+// 처음 요청에서 쿠폰을 쓰라고 말했으면 적용 (연구1 프로토타입은 반영하지 못했음 → 연구2에서 두 안 모두 고침). 쿠폰 단계는 오류로 다루지 않음
+const couponChoice = (s, choice) => (choice === "on" ? true : choice === "off" ? false : s.userSet?.coupon ? s.form.coupon : Boolean(s.req?.coupon));
 
 // 택시 종류: 참가자가 이미 직접 바꿨으면 그 값, 처음 요청에서 말했으면 그 값, 아니면 기본 일반택시
 const carTarget = (s) => (s.userSet?.car ? s.form.car : s.req?.car || "normal");
@@ -636,7 +636,7 @@ function buildSteps(complexity, session = 1, guide = false) {
       guide: `예상 금액을 확인하는 단계(카드에 예상 금액과 '쿠폰 적용 안 함 · 보유 1장'이 보임). 기본은 쿠폰 적용 안 함이고, 쓸 수 있는 쿠폰은 ‘${COUPON.name}’(${won0(COUPON.amount)} 할인) 하나. 에이전트가 먼저 쿠폰을 쓰자고 권하지 않음`,
       // 선택: "on"=쿠폰 적용 / 그 외(승인·높은 자동화 기본)=적용 안 함. 참가자가 이미 직접 정했으면 그 값 유지
       low: { messages: msg("coupon"), options: APPROVE, reject: "coupon" },
-      high: { messages: (s) => (s.userSet?.coupon && s.form.coupon ? lines("change.coupon.on", s) : lines("coupon", s)), applyFirst: true },
+      high: { messages: (s) => (s.form.coupon && (s.userSet?.coupon || s.req?.coupon) ? lines("change.coupon.on", s) : lines("coupon", s)), applyFirst: true },
       pre: async (s) => {
         if (s.phone.sheet === "coupon") return;
         await tap(".tx-coupon");
