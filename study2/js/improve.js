@@ -140,6 +140,7 @@ const _syncControlsPh = syncControls;
 syncControls = function () {
   _syncControlsPh();
   if (S && !$("#msg").disabled) $("#msg").placeholder = TEXT_PLACEHOLDER;
+  else if (S && $("#msg").placeholder === "AI가 작업 중이에요") $("#msg").placeholder = "AI가 앱 조작 중…"; // 대화창 대신 입력창에서 알림
 };
 
 const _syncSendButton = syncSendButton;
@@ -188,7 +189,7 @@ syncControls = function () {
   if (!lowTalkable()) return;
   $("#msg").disabled = false;
   $("#mic").disabled = false;
-  $("#msg").placeholder = TEXT_PLACEHOLDER;
+  $("#msg").placeholder = "AI가 앱 조작 중…"; // AI가 작업하는 동안: 대화창 대신 입력창에서 알림 (말을 걸 수는 있음)
   syncSendButton();
 };
 
@@ -286,7 +287,7 @@ setCard = function (opts = {}) {
   const st = c.querySelector("#rc-status");
   // 진행 문장은 대화에 이미 있으니, 작업 중에는 점만 보여 줌
   const working = Boolean(S?.running) && !S.finished && !S.stopped && !c.classList.contains("asking");
-  if (working) st.innerHTML = '<span class="dots" aria-label="작업 중"><i></i><i></i><i></i></span><span class="rc-sub">AI가 앱 조작 중</span>';
+  if (working) st.innerHTML = '<span class="dots" aria-label="AI가 앱 조작 중"><i></i><i></i><i></i></span>'; // 글자는 입력창에서 알림 (간결하게)
   c.classList.toggle("working", working);
 };
 
