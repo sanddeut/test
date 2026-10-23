@@ -1045,7 +1045,7 @@ finish = function (status) {
   return _finish(status);
 };
 
-const POST_CALL_IDLE_MS = 30000; // 호출한 뒤 이만큼 아무것도 하지 않으면 체험을 마침 (기록 저장·끝 화면)
+const POST_CALL_IDLE_MS = 10000; // 호출한 뒤 이만큼 아무것도 하지 않으면 체험을 마침 (기록 저장·끝 화면)
 async function postCallWait() {
   S.postCall = true;
   setChips([]);
