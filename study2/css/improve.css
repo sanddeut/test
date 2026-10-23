@@ -372,3 +372,13 @@
 .bubble.agent.more-open { border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; margin-bottom: 0; }
 .more-box { align-self: flex-start; max-width: 86%; margin-top: -6px; background: #eef0f3; color: #6b6f7a; font-size: 14px; line-height: 1.5; padding: 8px 14px; border-radius: 0 0 14px 14px; }
 #rc-q + .more-box { max-width: none; margin: 4px 0 8px; border-radius: 12px; }
+
+/* 연구2: 듣는 중 취소 ✕ (빨간색) */
+.voice-btn .vcancel { display: none; margin-left: auto; flex: none; color: #d93025; }
+.voice-btn .vcancel .ms { font-size: 26px; animation: none !important; }
+.voice-btn.on .vcancel { display: inline-flex; }
+.voice-btn .vtext { overflow: hidden; text-overflow: ellipsis; white-space: normal; line-height: 1.35; word-break: keep-all; }
+.voice-btn.on { position: relative; }
+.voice-btn.on .vcancel { position: absolute; right: 14px; top: 11px; margin: 0; }
+.voice-btn.on.has-text .vcancel { top: 4px; right: 8px; }
+.voice-btn.on .vlabel { padding-right: 44px; }

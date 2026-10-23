@@ -712,6 +712,7 @@ function fitMsg() {
 
 function onSubmit(e) {
   e?.preventDefault();
+  window.stopMic?.(false); // 보내면 듣기를 끝냄
   const input = $("#msg");
   const text = input.value.trim();
   if (!text || !S || S.finished) return;
@@ -3143,13 +3144,31 @@ function setupMic() {
   const btn = $("#mic");
   if (!SR) { btn.hidden = true; return; }
   let rec = null;
+  let want = false; // 한 번 누르면 보내기·취소를 누를 때까지 계속 들음 (말을 멈추거나 끊어 말해도 다시 이어 들음)
+  let startText = "";
+  const input = $("#msg");
+  // 듣기 끝내기: 보내기(cancel=false) 또는 취소(cancel=true, 받아 적은 말을 지움)
+  window.stopMic = (cancel = false) => {
+    if (!want && !rec) return;
+    want = false;
+    try { rec?.stop(); } catch { /* 이미 멈춤 */ }
+    rec = null;
+    if (cancel) { input.value = startText; input.dispatchEvent(new Event("input")); if (S) logEvent("voice_cancel"); }
+    listenUi(false);
+  };
+  let listenUi = () => {};
   btn.onclick = () => {
-    if (rec) { rec.stop(); return; }
+    if (want) { window.stopMic(false); return; }
+    want = true;
+    startText = input.value.trim();
+    startRec();
+  };
+  function startRec() {
     rec = new SR();
     rec.lang = "ko-KR";
     rec.interimResults = true;
+    rec.continuous = true;
     // 받아 적기만 함: 보내기 버튼을 누를 때까지 보내지 않음 (이미 입력해 둔 글 뒤에 이어 씀)
-    const input = $("#msg");
     const base = input.value.trim();
     // 개선안: 듣는 중 표시와 받아 적는 내용을 바로 보여 줌 (가이드라인 2)
     const bar = $("#listen-bar");
@@ -3163,18 +3182,20 @@ function setupMic() {
         else armUnsent();
       }
     };
+    listenUi = listen;
     rec.onresult = (e) => {
       const said = Array.from(e.results).map((r) => r[0].transcript).join("").trim();
       input.value = [base, said].filter(Boolean).join(" ");
       input.dispatchEvent(new Event("input")); // 보내기 버튼 상태 갱신
       if (S?.guide) bar.querySelector("span").textContent = said || "듣고 있어요 …";
     };
-    rec.onend = () => { rec = null; listen(false); };
-    rec.onerror = () => { rec = null; listen(false); };
+    // 브라우저가 조용하면 스스로 멈추므로, 보내기·취소 전이면 다시 이어 들음
+    rec.onend = () => { rec = null; if (want) setTimeout(() => { if (want && !rec) startRec(); }, 150); else listen(false); };
+    rec.onerror = (e) => { if (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "audio-capture") { want = false; rec = null; listen(false); } };
     if (S?.guide) bar.querySelector("span").textContent = "듣고 있어요 …";
     listen(true);
-    rec.start();
-  };
+    try { rec.start(); } catch { /* 이미 듣는 중 */ }
+  }
 }
 
 // =====================================================================
