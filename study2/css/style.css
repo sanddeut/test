@@ -1000,7 +1000,7 @@ body.guide .chat { position: relative; -webkit-mask-image: linear-gradient(to bo
 /* G16 되돌리기 */
 .undo-link { align-self: flex-end; margin-top: -6px; border: 0; background: none; color: #5f6470; font-size: 13.5px; display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px; flex-shrink: 0; }
 .undo-link .ms { font-size: 16px; vertical-align: 0; }
-body:not(.guide) .undo-link { display: none; }
+body:not(.guide):not(.unified) .undo-link { display: none; }
 
 /* G4·G6·G23 실행화면: 움직이는 테두리 + 반투명 덮개 + 'AI가 앱 조작 중' 칩 + 누를 수 없음 알림 */
 body.guide .only-guide { display: flex !important; }
@@ -1067,4 +1067,4 @@ body.talk-unstarted .phone[data-view] .composer.only-chat { display: none !impor
 .why-link { align-self: flex-start; margin-top: -6px; border: 0; background: none; color: #0b57d0; font-size: 13.5px; display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px; flex-shrink: 0; }
 .why-link .ms { font-size: 16px; }
 .why-link:disabled { color: #9aa0a6; }
-body:not(.guide) .why-link { display: none; }
+body:not(.guide):not(.unified) .why-link { display: none; }

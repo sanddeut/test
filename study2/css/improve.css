@@ -1,0 +1,353 @@
+/* =====================================================================
+   연구2 개선안 (js/improve.js)
+   ===================================================================== */
+/* [입력 방법] 처음: 「눌러서 시작하기」 → 「말로 하기」「글자로 하기」 */
+.start-wrap { display: none; gap: 8px; margin: 6px 14px calc(56px + env(safe-area-inset-bottom)); flex: none; }
+.phone[data-view="chat"][data-input="start"] .start-wrap, .phone[data-view="chat"][data-input="pick"] .start-wrap { display: flex !important; }
+.phone[data-input="start"] .composer, .phone[data-input="pick"] .composer { display: none !important; }
+.start-btn, .pick-btn { border: 0; border-radius: 999px; height: 56px; font-size: 18px; font-weight: 700; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; white-space: nowrap;
+  transition: flex-grow .35s cubic-bezier(.3,.7,.3,1), opacity .25s, padding .35s; }
+.start-btn { flex: 1 1 0; background: #0b57d0; color: #fff; box-shadow: 0 2px 10px rgba(11,87,208,.25); }
+.pick-btn { flex: 0 1 0; padding: 0; opacity: 0; background: #fff; color: #0b57d0; box-shadow: 0 0 0 1.5px #0b57d0; }
+.pick-btn .ms { font-size: 24px; vertical-align: 0; }
+.pick-btn:disabled { color: #9aa0ab; box-shadow: 0 0 0 1.5px #c9ced8; }
+.phone[data-input="pick"] .start-btn { flex: 0 1 0; padding: 0; opacity: 0; pointer-events: none; }
+.phone[data-input="pick"] .pick-btn { flex: 1 1 0; padding: 0 12px; opacity: 1; }
+.phone[data-input="pick"] #pick-voice { background: #0b57d0; color: #fff; box-shadow: none; }
+.phone[data-input="pick"] #pick-voice:disabled { background: #e3e6ea; color: #7a808a; }
+/* 고른 뒤: 고른 방식만 */
+.composer { position: relative; }
+.voice-btn { display: none; flex: 1; min-width: 0; align-items: center; gap: 8px; border: 0; background: #eef3fd; color: #0b57d0; border-radius: 999px; padding: 10px 14px; font-size: 16.5px; font-weight: 600; font-family: inherit; text-align: left; }
+.voice-btn span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voice-btn .ms { font-size: 22px; vertical-align: 0; flex: none; }
+.voice-btn.on { background: transparent; color: #b3261e; }
+.voice-btn.on .ms { animation: blink 1s infinite; }
+.phone[data-input="voice"] .voice-btn { display: flex; }
+.phone[data-input="voice"] #msg, .phone[data-input="voice"] #mic, .phone[data-input="text"] #mic { display: none !important; }
+.phone[data-input="voice"] .composer { align-items: center; }
+/* 말로 하기 ↔ 글자로 하기: 입력창 위 오른쪽 작은 버튼 */
+.mode-fab { display: none; position: absolute; right: 4px; bottom: calc(100% + 8px); align-items: center; gap: 4px; border: 0; border-radius: 999px; background: #fff; color: #3c4048; font-size: 13.5px; font-weight: 600; font-family: inherit; padding: 6px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.mode-fab .ms { font-size: 18px; vertical-align: 0; }
+.phone[data-input="text"] .mode-fab, .phone[data-input="voice"] .mode-fab { display: inline-flex; }
+/* 보내기 버튼: '보내기' 글자 */
+.composer .send.send-text { width: auto; border-radius: 999px; padding: 0 16px; font-size: 15.5px; font-weight: 700; }
+/* 첫 인사 아래 안내 카드 */
+.bubble.guide-card { white-space: normal; display: flex; flex-direction: column; gap: 6px; }
+.guide-card b { font-size: 16.5px; }
+.guide-card ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 16px; line-height: 1.5; }
+.phone[data-input="text"] .start-wrap, .phone[data-input="voice"] .start-wrap, .phone:not([data-view="chat"]) .start-wrap { display: none !important; }
+/* 말로 하기: 마이크 버튼은 크고 진하게, 듣지 않을 때는 회색 글씨로 */
+.phone[data-input="voice"] .composer .mic { width: 48px; height: 48px; background: #0b57d0; color: #fff; border-radius: 50%; border: 0; flex: none; }
+.phone[data-input="voice"] .composer .mic .ms { font-size: 26px; font-variation-settings: "FILL" 1; }
+.phone[data-input="voice"] .composer .mic.rec { background: #b3261e; animation: blink 1s infinite; }
+.voice-btn.off { color: #80868b; font-weight: 500; }
+/* 전달됨: 말풍선 왼쪽 아래 작은 회색 글씨 */
+.bubble.user { position: relative; }
+.bubble.user .receipt { position: absolute; right: calc(100% + 6px); bottom: 2px; font-size: 11.5px; color: #8a8f99; white-space: nowrap; font-weight: 400; }
+/* 보내지 않은 글: 보내기 버튼을 깜빡이며 안내 */
+.unsent-hint { display: none; position: absolute; right: 0; bottom: calc(100% + 8px); background: #1c1d21; color: #fff; font-size: 13.5px; font-weight: 600; border-radius: 10px; padding: 7px 12px; white-space: nowrap; z-index: 2; }
+.unsent-hint::after { content: ""; position: absolute; right: 26px; top: 100%; border: 6px solid transparent; border-top-color: #1c1d21; }
+.composer.unsent .unsent-hint { display: block; }
+.composer.unsent .mode-fab { visibility: hidden; }
+.composer.unsent .send { animation: unsentpulse 1s ease-in-out infinite; }
+@keyframes unsentpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(11,87,208,.5); } 50% { box-shadow: 0 0 0 7px rgba(11,87,208,0); } }
+.voice-btn { background: transparent; padding: 6px 4px; }
+.voice-btn span:last-child { white-space: normal; overflow: visible; line-height: 1.35; word-break: keep-all; }
+.voice-btn.off { font-size: 15px; }
+/* 말로 하기: [눌러서 말하기 | 보내기] 두 버튼 */
+.phone[data-input="voice"] .composer { background: transparent !important; box-shadow: none; padding: 0; gap: 8px; }
+.voice-btn { justify-content: center; height: 52px; padding: 0 14px; border-radius: 999px; background: #fff; color: #0b57d0; box-shadow: 0 0 0 1.5px #0b57d0, 0 2px 10px rgba(0,0,0,.06); font-size: 17px; font-weight: 700; }
+.voice-btn.on { background: #fff; color: #b3261e; box-shadow: 0 0 0 1.5px #b3261e, 0 2px 10px rgba(0,0,0,.06); }
+.voice-btn.said { justify-content: flex-start; color: #1c1d21; font-weight: 500; font-size: 16px; box-shadow: 0 0 0 1px #d6dce6, 0 2px 10px rgba(0,0,0,.06); }
+.voice-btn span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.phone[data-input="voice"] .composer .send.send-text { height: 52px; padding: 0 20px; font-size: 17px; }
+/* 첫 인사 말풍선 안 안내: 회색 상자로 구분 */
+.bubble.with-guide { white-space: normal; display: flex; flex-direction: column; gap: 10px; }
+.guide-box { background: #f1f3f6; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.guide-label { display: inline-flex; align-items: center; gap: 3px; font-size: 12.5px; font-weight: 700; color: #5f6470; }
+.guide-label .ms { font-size: 15px; vertical-align: 0; }
+.guide-box b { font-size: 15.5px; }
+.guide-box ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 2px; font-size: 15px; line-height: 1.5; color: #3c4048; }
+/* 말하기 버튼: 누를 수 있다는 게 보이게 보내기보다 연한 배경색 */
+.voice-btn { background: #dce8fc; color: #0b57d0; box-shadow: none; }
+.voice-btn.on { background: #fbe0de; color: #b3261e; box-shadow: none; }
+.voice-btn.said { background: #fff; }
+.guide-title { display: flex; align-items: center; gap: 5px; }
+.guide-title .ms { font-size: 18px; vertical-align: 0; color: #5f6470; font-weight: 400; }
+/* 말로 하기: 말하기 버튼과 보내기를 텍스트 필드처럼 한 칸으로 묶음 (말이 길어지면 칸이 위로 늘어남) */
+.phone[data-input="voice"] .composer { background: #fff !important; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 6px; gap: 6px; border-radius: 28px; align-items: flex-end; }
+.voice-btn { flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: auto; min-height: 48px; padding: 8px 16px; border-radius: 22px; text-align: center; transition: background .2s; }
+.voice-btn .vlabel { font-size: 17px; font-weight: 700; line-height: 1.3; transition: font-size .25s ease, opacity .25s; }
+.voice-btn .vtext { display: block; max-height: 0; opacity: 0; overflow: hidden; font-size: 16px; font-weight: 500; line-height: 1.45; color: #1c1d21; white-space: normal; word-break: keep-all; text-align: left; transition: max-height .3s ease, opacity .25s; }
+.voice-btn.has-text { align-items: flex-start; }
+.voice-btn.has-text .vlabel { font-size: 12.5px; opacity: .85; }
+.voice-btn.has-text .vtext { max-height: 12em; opacity: 1; }
+.voice-btn span:last-child { white-space: normal; overflow: hidden; text-overflow: clip; }
+.voice-btn.said { background: #dce8fc; }
+.phone[data-input="voice"] .composer .send.send-text { height: 48px; padding: 0 18px; font-size: 16.5px; }
+.voice-btn .vlabel:empty { display: none; }
+/* 듣는 중: 빨간 영역은 '듣고 있어요 …'에만. 받아 적기 시작하면 빨간 영역이 스르르 작아지며 위로 올라가 칩이 되고, 받아 적는 곳은 흰색 */
+:root { interpolate-size: allow-keywords; }
+.voice-btn.on { background: transparent; padding: 0; justify-content: flex-start; }
+.voice-btn.on .vlabel { display: block; width: 100%; box-sizing: border-box; min-height: 48px; padding: 12px 16px; border-radius: 22px; background: #fbe0de; color: #b3261e; font-size: 17px; opacity: 1;
+  transition: width .4s cubic-bezier(.3,.7,.3,1), min-height .4s cubic-bezier(.3,.7,.3,1), padding .4s cubic-bezier(.3,.7,.3,1), font-size .4s cubic-bezier(.3,.7,.3,1), border-radius .4s; }
+.voice-btn.on.has-text { padding: 8px 10px 10px; align-items: flex-start; gap: 6px; }
+.voice-btn.on.has-text .vlabel { width: fit-content; min-height: 0; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; opacity: 1; }
+.voice-btn.on .vtext { padding: 0 6px; }
+.bubble.user .receipt .ms { font-size: 15px; vertical-align: 0; color: #8a8f99; }
+/* 뒤로 가기: 가운데 다이얼로그, 뒤 화면은 딤 */
+.back-dlg { position: absolute; inset: 0; z-index: 50; background: rgba(20,22,26,.5); display: grid; place-items: center; padding: 24px; }
+.bd-card { width: 100%; max-width: 320px; background: #fff; border-radius: 22px; padding: 24px 18px 10px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.25); text-align: center; }
+.bd-card b { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 19px; font-weight: 700; color: #1c1d21; }
+.bd-card b .ms { font-size: 24px; color: #0b57d0; vertical-align: 0; }
+.bd-card p { margin: 0 0 10px; font-size: 16px; color: #3c4048; }
+.bd-card button { border: 0; border-radius: 14px; font-family: inherit; font-size: 17px; font-weight: 700; height: 52px; }
+.bd-go { background: #0b57d0; color: #fff; }
+.bd-undo { background: #fff; color: #0b57d0; box-shadow: inset 0 0 0 1.5px #0b57d0; }
+.bd-card hr { width: 100%; border: 0; border-top: 1px solid #e6e9ee; margin: 8px 0 0; }
+.bd-quit { background: none; color: #c5221f; height: 46px !important; font-size: 16px !important; }
+/* 전달됨: 동그라미 안 체크, 차분한 초록 */
+.bubble.user .receipt .ms { font-size: 16px; color: #5f9e78; }
+/* 앱 종료 확인 */
+.bd-quit-yes { background: #c5221f; color: #fff; }
+.bd-quit-no { background: #fff; color: #3c4048; box-shadow: inset 0 0 0 1.5px #c9ced8; }
+/* 실행화면 (피그마 시안): 파랑·보라·분홍 그라데이션 테두리가 돌고, 흰색 0.3 덮개, 위 가운데 탭 모양 칩, 오른쪽 아래 빨간 「내가 조작하기」 */
+@property --ring { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+.phone[data-view="progress"] .screen-clip, .phone.acting[data-view="progress"] .screen-clip {
+  border: 2px solid transparent; box-sizing: content-box;
+  background: linear-gradient(#fff, #fff) padding-box, conic-gradient(from var(--ring), #4c8df6, #a36bf5 72deg, #f06292 144deg, #4c8df6 360deg) border-box;
+  animation: ring-spin 3s linear infinite; box-shadow: 0 4px 20px rgba(0,0,0,.10); }
+@keyframes ring-spin { to { --ring: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .phone[data-view="progress"] .screen-clip { animation: none; } }
+.ai-veil { display: none; position: absolute; inset: 0; z-index: 8; background: rgba(255,255,255,.3); pointer-events: none; }
+.phone[data-view="progress"] .ai-veil { display: block; }
+.ai-live-chip { display: none; position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 10; background: linear-gradient(90deg, #4c8df6, #a36bf5); color: #fff; font-size: 12px; font-weight: 700; line-height: 20px; padding: 5px 12px; border-radius: 0 0 12px 12px; box-shadow: 0 2px 8px rgba(76,141,246,.35); white-space: nowrap; }
+.phone[data-view="progress"] .ai-live-chip { display: block; }
+.frame-manual { display: none !important; position: absolute; right: 14px; bottom: 14px; z-index: 10; pointer-events: auto; align-items: center; gap: 6px; border: 0; border-radius: 999px; background: #d93025 !important; color: #fff; font-size: 12.5px !important; font-weight: 700; padding: 7.5px 14px !important; box-shadow: 2px 2px 7px rgba(0,0,0,.35); }
+.frame-manual .ms { font-size: 16px; vertical-align: 0; }
+.phone[data-view="progress"] .frame-manual { display: inline-flex !important; }
+/* 내가 조작하기 → 흰 화면과 로딩 스피너 → 앱 화면이 살짝 튕기며 */
+#manual-loading { position: absolute; inset: 0; z-index: 60; background: #fff; display: grid; place-items: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
+#manual-loading.on { opacity: 1; pointer-events: auto; }
+#manual-loading .spinner { width: 36px; height: 36px; border-radius: 50%; border: 3.5px solid #dfe3ea; border-top-color: #0b57d0; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.screen-clip.bounce-in { animation: bounce-in .55s cubic-bezier(.3,1.4,.5,1) both; }
+@keyframes bounce-in { 0% { transform: scale(.94); opacity: .6; } 60% { transform: scale(1.015); opacity: 1; } 100% { transform: scale(1); } }
+/* 진행 현황: 지나간 대화는 흐리게(아래쪽으로 오면 진하게), 지나간 AI 말풍선에 작게 '완료' */
+#chat-spacer { flex: none; }
+.bd-quit { color: #6b6f7a !important; }
+/* 다이얼로그: 구분선 없이 요소 간 세로 간격을 넓게 */
+.bd-card { gap: 14px; padding: 28px 20px 14px; }
+.bd-card p { margin: -6px 0 6px; }
+/* 앱 종료 확인의 돌아가기: 앱 종료와 같은 회색 글자 버튼 */
+.bd-quit-no { background: none !important; box-shadow: none !important; color: #6b6f7a !important; height: 46px !important; font-size: 16px !important; }
+/* 실행화면 위 '작업 진행 중' 글자는 빼서 화면을 간결하게 */
+#pv-title { display: none; }
+/* 진행 카드: 작업 중에는 움직이는 점 세 개 */
+#rc-title[hidden] { display: none; }
+#rc-status .dots { display: inline-flex; gap: 5px; align-items: center; height: 1.45em; }
+#rc-status .dots i { width: 7px; height: 7px; border-radius: 50%; background: #8a8f99; animation: dotbounce 1.2s ease-in-out infinite; }
+#rc-status .dots i:nth-child(2) { animation-delay: .15s; }
+#rc-status .dots i:nth-child(3) { animation-delay: .3s; }
+#rc-status.thinking:has(.dots)::after { content: none; }
+@keyframes dotbounce { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+/* 진행 카드: 확인 질문이 뜨면 위쪽 상태 줄을 없애고 질문만 */
+.run-card.asking .rc-head { display: none; }
+.run-card.asking .rc-q { margin-top: 0; padding-top: 4px; border-top: 0; }
+
+/* 말로/글로를 고른 뒤에는 안내 상자 숨김 */
+.phone[data-input="text"] .guide-box, .phone[data-input="voice"] .guide-box { display: none; }
+
+/* 현재 단계는 맨 위에, 그 위 지나간 대화는 위쪽 가장자리에서 그라데이션으로 흐려짐 (스크롤하면 원래대로 보임) */
+.phone[data-view="chat"] #chat.scrolled { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 56px); mask-image: linear-gradient(to bottom, transparent 0, #000 56px); }
+
+/* 직접 조작 중: 헤더를 연한 붉은색으로, 칩은 흰 바탕에 붉은 글씨 */
+.direct-bar { background: #fdecea; border-bottom-color: #f7d4d0; }
+.direct-bar .db-tag { background: #fff; color: #d93025; box-shadow: 0 0 0 1px #f3c4bf; }
+
+/* 진행 카드: AI 말풍선처럼 흰 바탕 */
+.run-card, .open-card { background: #fff; box-shadow: 0 0 0 1px #e6e9ee; }
+
+/* 진행 카드: 점은 카드 바깥, 카드는 그 아래에 이어서 */
+.run-card { background: transparent; box-shadow: none; padding: 0; gap: 10px; }
+.run-card .rc-head { padding: 2px 4px; }
+.rc-body { background: #fff; box-shadow: 0 0 0 1px #e6e9ee; border-radius: 20px; padding: 16px 16px 10px; display: flex; flex-direction: column; gap: 12px; }
+.rc-body:has(> #rc-q[hidden]):has(> #rc-choices:empty) { display: none; }
+.rc-body .rc-q { margin-top: 0; padding-top: 0; border-top: 0; }
+.rc-body.enter { animation: rcin .35s ease-out .25s both; }
+@keyframes rcin { from { opacity: 0; transform: translateY(8px); } }
+/* 카드 안의 카드는 아주 옅은 회색 */
+.rc-body .rc-pv, .rc-body .rc-summary, .rc-body .choice-list, .rc-body .choice { background: #f8f9fb; }
+
+/* 대화창: 흰 배경, AI 말풍선과 진행 카드는 회색, 사용자 말풍선은 파란색. 카드 안의 카드는 흰색, 「실행화면 보기」는 약하게 */
+.phone[data-view="chat"] { background: #fff; }
+.phone[data-view="chat"] .chat-head { background: #fff; }
+.bubble.agent { background: #f5f6f8; box-shadow: none; }
+.bubble.agent .guide-box { background: #fff; }
+.run-card .rc-body, .open-card { background: #f5f6f8; box-shadow: none; }
+.rc-body .rc-pv, .rc-body .rc-summary, .rc-body .choice-list, .rc-body .choice { background: #fff; }
+.rc-body .rc-pv, .rc-body .rc-summary, .rc-body .choice-list { box-shadow: none; }
+.rc-body .rc-open { background: rgba(255,255,255,.55); color: #3c4048; box-shadow: none; font-weight: 500; }
+.rc-body .rc-open .ms { color: #6b6f7a; }
+.phone[data-view="chat"] .composer { box-shadow: 0 0 0 1px #e3e6ea, 0 2px 10px rgba(0,0,0,.06); }
+
+/* 진행 카드 강조: 발화 문장이 주인공(굵게), 카드 안의 카드는 한 단계 작게(보조 정보) */
+.rc-body .rc-q, .big-text .rc-body .rc-q { font-weight: 600; }
+.rc-body .pv-app, .rc-body .pv-acct, .rc-body .pv-evt { padding: 9px 12px; gap: 10px; }
+.rc-body .pv-app b, .rc-body .pv-acct b, .rc-body .pv-evt b { font-size: 14.5px; }
+.rc-body .pv-app small, .rc-body .pv-acct small, .rc-body .pv-evt small { font-size: 12.5px; }
+.rc-body .pv-icon, .rc-body .pv-pin, .rc-body .pv-acct .bk-logo { width: 32px; height: 32px; border-radius: 10px; }
+.rc-body .pv-pin { border-radius: 50%; }
+.rc-body .pv-icon .ms, .rc-body .pv-pin .ms { font-size: 18px; }
+.rc-body .choice { padding: 11px 14px; font-size: 15px; }
+.rc-body .choice-list .choice.chip { min-height: 50px; }
+.rc-body .choice .c-main small { font-size: 12.5px; }
+.rc-body .rc-summary { padding: 4px 12px; }
+.rc-body .rc-summary div { padding: 6px 0; font-size: 13.5px; }
+.rc-body .rc-summary b { font-weight: 500; }
+
+/* 말로/글로 전환 버튼: 흰 배경에서 경계가 보이게 옅은 회색 테두리, 입력창과 조금 더 띄움 */
+.mode-fab { bottom: calc(100% + 10px); box-shadow: 0 0 0 1px #e3e6ea, 0 2px 8px rgba(0,0,0,.08); }
+
+/* 진행 카드: [발화 + 카드]와 [사용자 버튼]을 두 묶음으로. 발화와 카드 사이 넉넉히, 버튼 위 옅은 구분선, 버튼은 조금 작게 */
+.rc-body .rc-q { margin-bottom: 10px; }
+.rc-body { padding-bottom: 16px; }
+.rc-choices:has(> .chip:not(.choice))::before { content: ""; order: 1; flex: 0 0 calc(100% - 8px); height: 1px; margin: 20px 4px; background: #e3e6ea; }
+.rc-choices > :not(.chip) { order: 0; }
+.rc-choices > .chip:not(.choice) { order: 2; padding: 10px 10px; font-size: 15.5px; }
+.rc-choices > .chip:not(.choice):first-of-type { margin-left: 14px; }
+.rc-choices > .chip:not(.choice):last-of-type { margin-right: 14px; }
+.run-card.asking.can-manual .rc-manual { margin-top: 4px; }
+
+/* 작업 중 점 아래 "AI가 앱 조작 중" */
+#rc-status:has(.dots) { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+#rc-status .rc-sub { font-size: 12.5px; color: #8a8f99; line-height: 1.3; }
+
+/* 멈추기: 빨간 네모 대신 빨간 글자 버튼 */
+.composer .send.stop-text { width: auto; height: 40px; padding: 0 16px; border-radius: 999px; font-size: 16px; font-weight: 700; font-family: inherit; background: #d93025; color: #fff; }
+
+/* AI 말풍선 아래 작은 「되돌리기」 */
+.undo-link { align-self: flex-start; display: inline-flex; align-items: center; gap: 3px; margin: -6px 0 0 8px; border: 0; background: none; padding: 2px 4px; color: #6b6f7a; font-size: 13px; font-weight: 500; font-family: inherit; }
+.undo-link .ms { font-size: 16px; vertical-align: 0; }
+
+/* 전달 체크는 보낸 순간 그 말풍선에서만 잠깐 보였다가 사라짐 */
+.bubble.user .receipt { animation: receipt-fade 2.4s ease forwards; }
+@keyframes receipt-fade { 0%, 65% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+
+/* 내가 조작하기: 손 아이콘 없이, 조금 작게 */
+.frame-manual { padding: 6.5px 12px !important; font-size: 12px !important; }
+
+
+/* 승인/거부 말풍선: 무엇에 답했는지 아랫줄에 작게 */
+.bubble.user .ub-what { display: block; font-size: 12.5px; color: #5f6b80; line-height: 1.3; margin-top: 1px; }
+.undo-link.on-user { align-self: flex-end; margin: -6px 8px 0 0; }
+
+/* 말풍선 사이 간격 넓힘 (「되돌리기」가 들어가도 답답하지 않게) */
+.chat { gap: 18px; }
+.undo-link { margin-top: -12px; }
+
+/* 거부 후 추천 선택지: 대화창 안 목록 */
+.chat > .reject-picks { flex-shrink: 0; align-self: stretch; }
+
+/* 카드 안 선택지는 보통 굵기 (굵게는 발화 문장만) */
+.rc-body .choice .c-main b { font-weight: 400; }
+.rc-body .pv-car .pv-car-opt.on span, .rc-body .pv-car .pv-car-opt.on b { font-weight: 500; }
+/* "AI가 앱 조작 중"을 점에 조금 더 가깝게 */
+#rc-status .dots { height: 1em; margin-top: 4px; }
+#rc-status .rc-sub { margin-top: 2px; }
+
+/* 대화를 시작할 때 권한 묻기 */
+.perm-dlg { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.perm-card { background: #fff; border-radius: 22px; padding: 26px 20px 16px; width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 16px; }
+.perm-card > b { font-size: 18px; font-weight: 700; line-height: 1.4; }
+.perm-card ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.perm-card li { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.perm-card li b { display: block; font-size: 15.5px; font-weight: 600; }
+.perm-card li small { display: block; font-size: 13px; color: #6b6f7a; margin-top: 1px; }
+.perm-tgl { position: relative; flex: none; width: 44px; height: 26px; }
+.perm-tgl input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.perm-tgl i { position: absolute; inset: 0; border-radius: 999px; background: #c9ccd3; transition: background .2s; pointer-events: none; }
+.perm-tgl i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.perm-tgl input:checked + i { background: #0b57d0; }
+.perm-tgl input:checked + i::after { transform: translateX(18px); }
+.perm-btns { display: flex; gap: 8px; margin-top: 4px; }
+.perm-btns button { flex: 1; border: 0; border-radius: 999px; padding: 12px; font-size: 16px; font-weight: 600; font-family: inherit; }
+.perm-no { background: none; color: #6b6f7a; }
+.perm-yes { background: #0b57d0; color: #fff; }
+
+/* 내가 조작하기: 실행화면 가운데 아래 */
+.frame-manual { right: auto !important; left: 50%; transform: translateX(-50%); }
+/* 되돌리기: 위 말풍선에 더 가깝게 */
+.undo-link, .undo-link.on-user { margin-top: -16px; }
+/* "AI가 앱 조작 중"을 점 위로 */
+#rc-status:has(.dots) { flex-direction: column-reverse; }
+#rc-status .rc-sub { margin: 0 0 2px; }
+#rc-status .dots { margin-top: 0; }
+/* 실행화면 보기: 위 요소들과 구분되게 여백 */
+.rc-body .rc-open { margin-top: 10px; }
+
+/* 실행화면: 앱 화면과 아래 버튼 칸을 하나의 테두리로 묶음 */
+.run-frame { display: contents; }
+.run-tray { display: none; }
+.phone[data-view="progress"] .run-frame { display: flex; flex-direction: column; align-items: stretch; border-radius: 30px; border: 2px solid transparent;
+  background: linear-gradient(#f7f6fd, #f7f6fd) padding-box, conic-gradient(from var(--ring), #4c8df6, #a36bf5 72deg, #f06292 144deg, #4c8df6 360deg) border-box;
+  animation: ring-spin 3s linear infinite; box-shadow: 0 4px 20px rgba(0,0,0,.10); overflow: hidden; }
+.phone[data-view="progress"] .run-frame .screen-clip { border: 0 !important; background: #fff !important; animation: none !important; box-shadow: 0 1px 0 #e6e3f5 !important; border-radius: 28px 28px 22px 22px; }
+.phone[data-view="progress"] .run-tray { display: flex; justify-content: center; gap: 8px; padding: 10px 12px 12px; }
+.run-tray .frame-manual { position: static !important; transform: none !important; display: inline-flex !important; padding: 9px 18px !important; font-size: 14.5px !important; box-shadow: none !important; }
+.run-tray .tray-stop { border: 1.5px solid #d93025; background: #fff; color: #d93025; border-radius: 999px; padding: 8px 18px; font-size: 14.5px; font-weight: 700; font-family: inherit; }
+.run-tray .tray-stop:disabled { opacity: .45; }
+.phone[data-view="progress"] .pv-bottom { display: none !important; }
+.pv-help { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: 0; background: none; width: 40px; height: 40px; display: grid; place-items: center; color: #1c1d21; }
+.pv-help .ms { font-size: 26px; }
+
+/* 「?」 화면 안내 */
+.coach { position: absolute; inset: 0; z-index: 70; }
+.coach-hole { position: absolute; box-shadow: 0 0 0 9999px rgba(0,0,0,.6); pointer-events: none; transition: all .25s ease; }
+.coach-tip { position: absolute; left: 20px; right: 20px; background: #fff; border-radius: 16px; padding: 16px 16px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+.coach-tip p { margin: 0 0 12px; font-size: 16px; line-height: 1.5; font-weight: 500; color: #1c1d21; }
+.coach-foot { display: flex; align-items: center; justify-content: space-between; }
+.coach-n { font-size: 13px; color: #8a8f99; }
+.coach-next { border: 0; border-radius: 999px; background: #0b57d0; color: #fff; padding: 8px 18px; font-size: 15px; font-weight: 600; font-family: inherit; }
+.phone.coaching .run-tray button:disabled { opacity: 1; }
+
+/* 권한 다이얼로그: 제목과 내용 사이를 넓게, 항목 이름은 한 단계 가늘게 */
+.perm-card > b { margin-bottom: 12px; }
+.perm-card li b { font-weight: 500; }
+
+/* 실행화면 테두리는 파랑과 보라 두 가지만, 아래 버튼 칸은 아주 살짝 더 색 있게, 버튼은 조금 작게 */
+.phone[data-view="progress"] .run-frame { background: linear-gradient(#efecfb, #efecfb) padding-box, conic-gradient(from var(--ring), #4c8df6, #a36bf5 180deg, #4c8df6 360deg) border-box; }
+.run-tray .frame-manual { padding: 7px 14px !important; font-size: 13.5px !important; }
+.run-tray .tray-stop { padding: 6px 14px; font-size: 13.5px; }
+
+/* 「?」 안내: 말풍선 툴팁, 진행 표시와 다음 버튼은 어두운 배경 위 화면 아래쪽 */
+.coach-tip { left: 20px; right: 20px; padding: 12px 16px; border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+.coach-tip p { margin: 0; font-size: 15.5px; }
+.coach-tip.down::after { content: ""; position: absolute; bottom: -8px; left: var(--tail-x, 50%); width: 16px; height: 16px; background: #fff; transform: rotate(45deg); border-radius: 2px; }
+.coach-foot { position: absolute; left: 20px; right: 20px; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: space-between; }
+.coach-n { color: rgba(255,255,255,.85); font-size: 14px; }
+.coach-next { background: #fff; color: #1c1d21; }
+/* 권한 다이얼로그: 확인 버튼 하나, 위 여백 넓게 */
+.perm-btns { margin-top: 16px; }
+.coach-tip.up::after { content: ""; position: absolute; top: -8px; left: var(--tail-x, 50%); width: 16px; height: 16px; background: #fff; transform: rotate(45deg); border-radius: 2px; }
+
+/* 배차 완료 화면의 '호출 취소' (호출한 뒤 되돌리기에서 AI가 누름) */
+.tx-cancel-call { text-align: center; font-size: 13px; color: #8a8f99; padding: 12px 0 2px; }
+
+/* 첫 인사: 발화("무엇을 도와드릴까요?")를 주인공으로, 시작 안내 상자는 보조로 (굵기와 대비를 낮추고 발화와 간격을 넓힘) */
+.bubble.with-guide { font-weight: 600; gap: 16px; }
+.bubble.agent.with-guide .guide-box { background: rgba(255,255,255,.6); font-weight: 400; gap: 2px; }
+.bubble.with-guide .guide-title { font-size: 14px; font-weight: 500; color: #4a4f57; }
+.bubble.with-guide .guide-title .ms { font-size: 16px; }
+.bubble.with-guide .guide-box ol { font-size: 14px; color: #5f6470; }
+
+/* 연구2: 전달됨 표시는 글자와 함께 계속 보임 (가이드라인 2) */
+.receipt em { font-style: normal; font-size: 11.5px; color: #1e8e3e; margin-left: 2px; vertical-align: middle; }
+.receipt.fail .ms, .receipt.fail em { color: #d93025; }
+.resend { align-self: flex-end; margin-top: -4px; border: 0; background: none; color: #d93025; font-size: 13px; font-weight: 600; padding: 2px 4px; font-family: inherit; }
+/* 연구2: 두 번째로 못 알아들었을 때 다른 입력 방법 알약 (입력 전환 버튼과 같은 모양, 아이콘 없음 · 가이드라인 3) */
+.mode-pill { align-self: flex-start; display: inline-flex; align-items: center; border: 0; border-radius: 999px; background: #fff; color: #3c4048; font-size: 13.5px; font-weight: 600; font-family: inherit; padding: 6px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.12); margin-top: -2px; }
+
+/* 연구2: 진행 카드 안에서 펼친 「이유 보기」 */
+.why-text { margin: 6px 0 2px; color: #3c4048; font-size: 15px; line-height: 1.5; background: #f1f3f6; border-radius: 12px; padding: 8px 12px; }

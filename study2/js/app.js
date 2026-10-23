@@ -365,7 +365,7 @@ function ensureRunCard() {
     <div id="rc-q" class="rc-q" hidden></div>
     <div id="rc-choices" class="rc-choices"></div>
     <button type="button" id="rc-open" class="rc-open"><span class="ms">open_in_full</span> 실행화면 보기</button>
-    <button type="button" id="rc-manual" class="rc-manual">${S?.guide ? "내가 앱 조작하기" : "직접 조작하기"}</button>`;
+    <button type="button" id="rc-manual" class="rc-manual">${S?.guide || S?.unified ? "내가 앱 조작하기" : "직접 조작하기"}</button>`;
   chat().insertBefore(c, $("#chips"));
   c.querySelector("#rc-open").onclick = () => showRun(true);
   // 질문 카드 아래 작은 링크 (chatGPT의 "Sign in manually instead"처럼) → 앱 화면에서 직접 조작
@@ -1322,7 +1322,8 @@ async function run() {
       showTyping(true);
       await sleep(1500 * PACE);
       showTyping(false);
-      await sayKey(S.m.mishears === 1 ? "mishear" : "mishear.2");
+      await sayKey(S.m.mishears === 1 ? "mishear" : S.unified ? "mishear.2g" : "mishear.2");
+      if (typeof onMishear === "function") onMishear(S.m.mishears, text); // 개선안: 전달 안 됨 표시·다시 보내기 (G2), 다른 입력 방법 안내 (G3)
       continue;
     }
     if (S.m.mishears && S.m.mishearRecoveredAt == null) { S.m.mishearRecoveredAt = now(); logEvent("mishear_recovered", { text }); }
@@ -1362,10 +1363,8 @@ async function run() {
     logEvent("step_start", { label: step.label });
     renderStepper();
     // 연구2 기존안: 개선안과 같은 단계(택시 종류, 최종 호출)에서 같은 횟수로 묻되, 연구1 낮은 자동화 방식 그대로 물음 (G18·G20은 두 안 공통 선행조건)
-    const askHere = !S.guide && S.session === 0 && S.automation === "high" && ASK_STEPS.includes(step.id);
-    let ok;
-    if (askHere) { S.automation = "low"; try { ok = await runLowStep(step); } finally { S.automation = "high"; } }
-    else ok = S.guide ? await runGuideStep(step) : S.automation === "low" ? await runLowStep(step) : await runHighStep(step);
+    const ok = await runStepAt(i, step);
+    if (ok === "undo") { i = S.undoTo - 1; continue; } // 개선안: 되돌린 단계부터 다시
     if (S.guide && S.jumpTo != null && !S.finished) {
       // 개선안 되돌리기: 고른 단계부터 다시 진행 (가이드라인 16)
       i = (await rewindTo(S.jumpTo)) - 1;
@@ -1375,6 +1374,13 @@ async function run() {
     if (S.automation === "low") await sleep(1000 * PACE); // 높은 자동화는 단계 안에서 읽는 시간을 둠
   }
   if (S.guide && !S.finished) finish("completed");
+}
+
+// 한 단계 실행 (개선안 improve.js가 감싸서 단계별 방식·되돌리기를 끼워 넣음)
+async function runStepAt(i, step) {
+  const askHere = !S.guide && S.session === 0 && S.automation === "high" && ASK_STEPS.includes(step.id);
+  if (askHere) { S.automation = "low"; try { return await runLowStep(step); } finally { S.automation = "high"; } }
+  return S.guide ? runGuideStep(step) : S.automation === "low" ? runLowStep(step) : runHighStep(step);
 }
 
 const resolveMsgs = (m) => (typeof m === "function" ? m(S) : m);
@@ -2598,7 +2604,7 @@ function summary() {
     participant_id: S.cfg.pid,
     participant_name: S.cfg.name,
     condition: S.cond,
-    version: S.guide ? "guide" : "base",
+    version: S.guide || S.unified ? "guide" : "base",
     session: S.session,
     error_type: SESSIONS[S.session]?.error ?? null,
     complexity: S.complexity,
@@ -2632,7 +2638,7 @@ function summary() {
     total_ms: m.finishedAt,
     // 오류 ① 잘못 알아들음: 몇 번 못 알아들었는지, 처음 실패부터 알아들을 때까지 걸린 시간
     mishear_count: m.mishears || 0,
-    drop_reason_opened: S.guide ? m.whyOpened || 0 : null,
+    drop_reason_opened: S.guide || S.unified ? m.whyOpened || 0 : null,
     mishear_recover_ms: m.mishearAt != null && m.mishearRecoveredAt != null ? m.mishearRecoveredAt - m.mishearAt : null,
     // 오류 ② 하차 지점 변경: 어디서 바로잡았는지 (dest=목적지 단계, final=최종 확인, done=호출 뒤 되돌리기 등)
     dest_fixed_at: S.log.find((e) => e.type === "dest_changed" && e.dest === TARGET_PLACE)?.step ?? null,
@@ -2778,6 +2784,14 @@ function renderPlan() {
 }
 function onSetupChange() {
   renderPlan();
+  // 개선안은 화면 구성 파일(improve)을 따로 불러오므로, 버전을 바꾸면 저장하고 새로 불러옴
+  const wantGuide = radio("ver") === "guide";
+  if (wantGuide !== Boolean(window.__GUIDE)) {
+    const saved = store.get("setup", {}) || {};
+    store.set("setup", { ...saved, pid: $("#pid").value.trim(), name: $("#pname").value.trim(), version: radio("ver") });
+    location.reload();
+    return;
+  }
   // 프롬프트 편집칸은 고른 버전의 프롬프트를 보여 줌
   const g = radio("ver") === "guide";
   if (g !== promptGuide) { promptGuide = g; setPrompt(savedPrompt(g)); }
@@ -2818,8 +2832,8 @@ function start() {
   const cfg = readSetup();
   store.set("setup", { pid: cfg.pid, name: cfg.name, complexity: cfg.complexity, version: cfg.version, order: cfg.order, session: cfg.session, scope: cfg.scope });
   S = newSession(cfg);
-  promptGuide = S.guide;
-  setPrompt(savedPrompt(S.guide));
+  promptGuide = S.guide || S.unified;
+  setPrompt(savedPrompt(promptGuide));
   document.body.classList.toggle("guide", S.guide);
   $("#btn-stop").textContent = S.guide ? "멈추기" : "중지";
   $("#btn-manual").textContent = S.guide ? "내가 앱 조작하기" : "직접 조작";
@@ -2855,7 +2869,7 @@ function start() {
   S.promptVersion = LLM.promptVersion;
   S.scriptVersion = scriptVersion(S.cond);
   $("#prompt-live").value = LLM.prompt;
-  logEvent("session_start", { session: S.session, condition: S.cond, version: S.guide ? "guide" : "base", participant: cfg.pid, llm: LLM.enabled ? LLM.model : "rules", delay_ms: cfg.delay, pace: cfg.pace, prompt_version: LLM.promptVersion, prompt: LLM.prompt, script_version: S.scriptVersion, script_overrides: SCRIPT_OVERRIDES[S.cond] || null });
+  logEvent("session_start", { session: S.session, condition: S.cond, version: S.guide || S.unified ? "guide" : "base", participant: cfg.pid, llm: LLM.enabled ? LLM.model : "rules", delay_ms: cfg.delay, pace: cfg.pace, prompt_version: LLM.promptVersion, prompt: LLM.prompt, script_version: S.scriptVersion, script_overrides: SCRIPT_OVERRIDES[S.cond] || null });
   // 휴대폰 현재 위치(출발지 기본값)는 run()에서 받음 (개선안은 위치 정보를 허용한 경우에만)
   run().catch((e) => { console.error(e); logEvent("error", { message: String(e) }); });
 }

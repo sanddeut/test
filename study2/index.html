@@ -20,7 +20,13 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <!-- 배포 후 휴대폰에 예전 파일이 남지 않도록 CSS·JS는 항상 새로 받음 -->
-  <script>window.__V = Date.now(); document.write('<link rel="stylesheet" href="css/style.css?v=' + window.__V + '">');</script>
+  <script>
+    window.__V = Date.now();
+    // 개선안은 연구2 가이드라인 구현(v4)의 화면을 그대로 씀: 설정에서 개선안을 고르면 improve.css·improve.js를 함께 불러옴
+    try { window.__GUIDE = JSON.parse(localStorage.getItem("s2:setup") || "{}").version === "guide"; } catch (e) { window.__GUIDE = false; }
+    document.write('<link rel="stylesheet" href="css/style.css?v=' + window.__V + '">');
+    if (window.__GUIDE) document.write('<link rel="stylesheet" href="css/improve.css?v=' + window.__V + '">');
+  </script>
 </head>
 <body>
   <header class="topbar">
@@ -201,6 +207,6 @@
     </div>
   </aside>
 
-  <script>["scenarios", "llm", "phone", "app"].forEach(function (n) { document.write('<script src="js/' + n + '.js?v=' + window.__V + '"><\/script>'); });</script>
+  <script>["scenarios", "llm", "phone", "app"].concat(window.__GUIDE ? ["improve"] : []).forEach(function (n) { document.write('<script src="js/' + n + '.js?v=' + window.__V + '"><\/script>'); });</script>
 </body>
 </html>

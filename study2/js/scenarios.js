@@ -169,6 +169,8 @@ const CONDITIONS = {
   B2: { complexity: "B", automation: "high", guide: false, title: "B · 기존안 (연구1 높은 자동화)" },
   A2G: { complexity: "A", automation: "high", guide: true, title: "A · 개선안 (가이드라인 적용)" },
   B2G: { complexity: "B", automation: "high", guide: true, title: "B · 개선안 (가이드라인 적용)" },
+  // 개선안(v4 화면, improve.js): 묻는 단계는 낮은 자동화 문구로 묻고, 나머지는 improve.js가 알리고 진행
+  B1: { complexity: "B", automation: "low", guide: false, title: "B · 개선안 (가이드라인 적용)" },
 };
 const condKey = (complexity, guide) => `${complexity}2${guide ? "G" : ""}`;
 
@@ -231,6 +233,7 @@ function scriptDefaults(cond) {
   add("greet", "시작", "첫 인사", "무엇을 도와드릴까요?");
   add("mishear", "[오류] 잘못 알아들음", "처음 요청의 1번째 입력 (엉뚱한 답)", "네, 안녕하세요. 오늘 기분은 어떠신가요?");
   add("mishear.2", "[오류] 잘못 알아들음", "처음 요청의 2번째 입력", "죄송해요, 알아듣지 못했어요. 다시 한번 말해 주세요.");
+  add("mishear.2g", "[개선안] 잘못 알아들음 (G3)", "처음 요청의 2번째 입력 (못 한 이유와 다시 할 방법)", "죄송해요, 말씀을 알아듣지 못했어요. 어디에서 어디로 갈지 다시 한번 말해 주세요.");
 
   if (low) {
     add("taxi_open", "택시 앱 실행", "승인 요청", "택시 앱을 실행할까요?");
@@ -286,6 +289,10 @@ function scriptDefaults(cond) {
       add("coupon.skip", "예상 금액 확인", "그대로 진행할 때", "이대로 진행할게요.");
     } else add("coupon", "예상 금액 확인", "안내 (쿠폰은 기본 적용 안 함)", "예상 금액은 {요금}이에요.");
   add("drop", "[오류] 하차 지점 변경", "안내 (바꾼 뒤 알림 · 이유 없음)", "하차 지점을 ‘{하차}’로 변경했어요.");
+  add("drop.announce", "[개선안] 하차 지점 변경 (G5·G11·G16)", "바꾸기 전에 알림 → 읽을 시간 뒤 진행 (이유 없음)", "하차 지점을 ‘{하차}’로 변경할게요.");
+  add("drop.why", "[개선안] 하차 지점 변경 (G10)", "「이유 보기」를 눌렀을 때", "가게 앞은 차를 세우기 어려워서, 가장 가까운 ‘{하차}’로 바꾸려고 해요.");
+  add("origin.announce", "[개선안] 출발지 설정 (G5·G11)", "먼저 알림 → 읽을 시간 뒤 진행", "출발지를 ‘{출발지}’(으)로 할게요.");
+  add("dest.announce", "[개선안] 목적지 설정 (G5·G11)", "먼저 알림 → 읽을 시간 뒤 진행", "‘{목적지}’을 찾았어요. 여기로 갈게요.");
   }
 
   if (low || BASE_ASKS) {
