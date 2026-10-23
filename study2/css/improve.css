@@ -351,3 +351,7 @@
 
 /* 연구2: 진행 카드 안에서 펼친 「이유 보기」 */
 .why-text { margin: 6px 0 2px; color: #3c4048; font-size: 15px; line-height: 1.5; background: #f1f3f6; border-radius: 12px; padding: 8px 12px; }
+
+/* 전달됨은 잠시 보인 뒤 사라짐 */
+.receipt { transition: opacity .6s; }
+.receipt.gone { opacity: 0; }

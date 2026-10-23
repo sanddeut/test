@@ -112,11 +112,15 @@ renderBubble = function (role, text) {
   if (role !== "user") return;
   const b = [...chat().querySelectorAll(".bubble.user")].at(-1);
   if (b && !b.querySelector(".receipt")) b.insertAdjacentHTML("beforeend", '<span class="receipt" title="전달됨" aria-label="전달됨"><span class="ms">check_circle</span><em>전달됨</em></span>');
+  // 전달됨은 잠시 보인 뒤 사라짐 (전달 안 됨은 계속 보임)
+  const rc = b?.querySelector(".receipt");
+  if (rc && !rc.dataset.timer) { rc.dataset.timer = "1"; setTimeout(() => { if (!rc.classList.contains("fail")) rc.classList.add("gone"); }, RECEIPT_MS); }
   // 승인/거부 버튼으로 답한 경우: 무엇에 답했는지 작은 글씨로 아랫줄에
   const what = S?.running && ["승인", "거부", "확인", "수정", "허용", "호출하기", "예약하기"].includes(text) ? (S.consentAsk ? "이용내역 확인" : STEP_WHAT[S.steps[S.stepIdx]?.id]) : null;
   if (b && what && !b.querySelector(".ub-what")) b.querySelector(".receipt").insertAdjacentHTML("beforebegin", `<small class="ub-what">${what}</small>`);
 };
 
+const RECEIPT_MS = 5000; // '전달됨' 표시를 보여 주는 시간
 const UNSENT_MS = 4000;
 let v4UnsentTimer = null;
 function watchUnsent() {
