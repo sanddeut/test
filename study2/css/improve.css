@@ -402,3 +402,7 @@
 /* 판단 이유 ›: 파일럿에서 잘 못 찾아서 더 크고 진하게 */
 .has-more { padding-right: 44px !important; }
 .has-more::after { font-size: 30px; right: 8px; color: #5f6470; font-weight: 500; }
+
+/* 되돌리기: 파일럿에서 잘 못 찾아서 더 크고 진하게 */
+.undo-link { font-size: 15px; color: #4a4f57; gap: 4px; padding: 4px 6px; }
+.undo-link .ms { font-size: 21px; }
