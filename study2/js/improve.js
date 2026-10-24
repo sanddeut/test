@@ -640,7 +640,7 @@ handleReject = async function (...args) {
 // =====================================================================
 // 연구2: 높은 자동화를 유지하고 G18·G20에 따라 택시 종류·최종 호출만 먼저 물음. 출발지·목적지·하차 지점은 먼저 알리고 읽을 시간 뒤 진행
 const STEP_POLICY = { taxi_open: "auto", origin: "announce", dest: "announce", car: "list", count: "announce", coupon: "auto", pay: "auto", drop: "announce", request: "list", reserve: "consent" };
-const READ_MS = 8000; // 알리고 진행하는 단계의 읽을 시간 (가이드라인 11)
+const READ_MS = 6000; // 알리고 진행하는 단계의 읽을 시간 (가이드라인 11)
 
 const _newSession = newSession;
 newSession = function (cfg) {
