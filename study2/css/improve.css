@@ -412,3 +412,7 @@
 .phone[data-view="progress"] .run-tray { padding: 12px 12px 0; }
 .phone[data-view="progress"] .screen-box { flex-direction: column; }
 .phone[data-view="progress"] .run-tray { flex: none; }
+
+/* 판단 이유: 쉐브론 대신 동그란 물음표 (펼치면 채운 아이콘) */
+.has-more::after { content: "help"; font-size: 26px; right: 10px; color: #5f6470; transform: translateY(-50%) !important; font-variation-settings: "FILL" 0; }
+.has-more.more-open::after { font-variation-settings: "FILL" 1; color: #0b57d0; }
