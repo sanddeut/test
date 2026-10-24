@@ -1332,7 +1332,8 @@ async function run() {
       showTyping(true);
       await sleep(1500 * PACE);
       showTyping(false);
-      await sayKey(S.m.mishears === 1 ? "mishear" : S.unified ? "mishear.2g" : "mishear.2");
+      // 마지막(이번 오류의 끝) 실패에는 두 번째 문구: 기존안 "다시 한번 말해 주세요" / 개선안 G3 "어디에서 어디로 갈지…"
+      await sayKey(S.m.mishears < MISHEAR_COUNT ? "mishear" : S.unified ? "mishear.2g" : "mishear.2");
       if (typeof onMishear === "function") onMishear(S.m.mishears, text); // 개선안: 전달 안 됨 표시·다시 보내기 (G2), 다른 입력 방법 안내 (G3)
       continue;
     }

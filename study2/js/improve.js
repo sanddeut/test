@@ -1285,7 +1285,7 @@ function onMishear(n, text) {
     ub.after(row);
   }
   gLog("G2", "mishear_mark", { n });
-  if (n < 2) return;
+  if (n < MISHEAR_COUNT) return; // 마지막 실패 때 다른 입력 방법 알약 (가이드라인 3)
   const ab = [...chat().querySelectorAll(":scope > .bubble.agent")].at(-1);
   if (!ab) return;
   const voice = inputMode.mode === "voice";

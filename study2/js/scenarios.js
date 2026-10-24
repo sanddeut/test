@@ -126,7 +126,7 @@ const SEARCH_QUERY = "담소한정식";
 const TARGET_PLACE = "gangnam"; // 참가자가 요청하는 목적지
 const AGENT_PLACE = TARGET_PLACE; // 목적지는 정상으로 찾음
 // 연구2 오류 ① 잘못 알아들음: 처음 요청의 앞 두 번은 무슨 말을 하든 알아듣지 못함 (두 안 동일)
-const MISHEAR_COUNT = 2;
+const MISHEAR_COUNT = 1; // 처음 요청을 한 번만 알아듣지 못함 (두 번째 문구 · 개선안은 G3 다른 입력 방법까지)
 const DROP_PLACE = "drop"; // (이전 설계: 하차 지점 변경. 지금은 쓰지 않음)
 const USE_DROP = false;
 // 연구2 오류 ② 잘못 실행: 처음 요청을 '택시 2대'로 잘못 알아들어, 최종 호출 확인 때 드러남 (두 안 동일)
