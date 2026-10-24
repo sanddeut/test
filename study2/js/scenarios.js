@@ -22,7 +22,8 @@ const WRONG_ORIGIN = "daegu";
 const ORIGINS = {
   current: { name: "현재 위치" },
   dongcheon: { name: "신분당선 동천역", addr: "경기 용인시 수지구 동천동", lat: 37.33797, lng: 127.10278 },
-  daegu: { name: "대구 동천역", addr: "대구 북구 동천동 · 대구 도시철도 3호선", lat: 35.94246, lng: 128.55945 },
+  // say: AI가 말할 때 쓰는 이름 (잘못 정한 곳이 대구라는 걸 알아보기 쉽게 시까지 말함)
+  daegu: { name: "대구 동천역", say: "대구광역시 북구 동천역", addr: "대구광역시 북구 동천동 · 대구 도시철도 3호선", lat: 35.94246, lng: 128.55945 },
 };
 const GEO_FALLBACK = { lat: 37.39475, lng: 127.11118, label: "경기 성남시 분당구 삼평동" }; // 판교역 부근
 const ORIGIN_QUERY = "동천역";
@@ -30,7 +31,7 @@ const ORIGIN_QUERY = "동천역";
 const ORIGIN_RESULTS = ERR_SET === 2
   ? [
       // 오류 세트 2: 같은 이름의 역이 두 곳 (AI는 대구 동천역을 고름)
-      { key: "daegu", name: "대구 동천역", addr: "대구 북구 동천동 · 대구 도시철도 3호선" },
+      { key: "daegu", name: "대구 동천역", addr: "대구광역시 북구 동천동 · 대구 도시철도 3호선" },
       { key: "dongcheon", name: "신분당선 동천역", addr: "경기 용인시 수지구 동천동 · 신분당선" },
       { key: null, name: "동천역 버스정류장", addr: "경기 용인시 수지구 동천로" },
     ]
@@ -112,14 +113,18 @@ function setCustomPlace(name) {
 }
 
 // 거리(km): 동천역에서는 고정값, 현재 위치·참가자가 말한 출발지에서는 직선거리 × 1.35 (도로 거리 근사)
-function distKm(originKey, destKey, geo) {
-  const d = PLACES[destKey];
-  if (originKey === TARGET_ORIGIN && d.road) return d.road;
-  const o = originPoint(originKey, geo);
+function roadKm(o, d) {
   const R = 6371, rad = Math.PI / 180;
   const a = Math.sin(((d.lat - o.lat) * rad) / 2) ** 2 + Math.cos(o.lat * rad) * Math.cos(d.lat * rad) * Math.sin(((d.lng - o.lng) * rad) / 2) ** 2;
   return Math.max(0.5, Math.round(2 * R * Math.asin(Math.sqrt(a)) * 1.35 * 10) / 10);
 }
+function distKm(originKey, destKey, geo) {
+  const d = PLACES[destKey];
+  if (originKey === TARGET_ORIGIN && d.road) return d.road;
+  return roadKm(originPoint(originKey, geo), d);
+}
+// 출발지 카드: 현재 위치에서 출발지까지 거리 (대구 동천역처럼 먼 곳을 알아보기 쉽게, 두 안 동일)
+const hereText = (originKey, geo) => (ORIGINS[originKey]?.lat ? `현재 위치에서 ${Math.round(roadKm(originPoint("current", geo), ORIGINS[originKey]))}km` : "");
 const distText = (originKey, destKey, geo) => `${distKm(originKey, destKey, geo).toFixed(1)}km`;
 const SEARCH_ORDER = ["gucheong", "gangnam", "yeoksam"]; // '담소한정식' 검색 결과 순서
 const SEARCH_QUERY = "담소한정식";
@@ -459,7 +464,7 @@ function lines(key, s, vars = {}) {
   const pay = vars.pay ?? f.pay ?? "auto";
   const originKey = vars.origin ?? f.origin ?? "current";
   const map = {
-    출발지: ORIGINS[originKey].name,
+    출발지: ORIGINS[originKey].say || ORIGINS[originKey].name,
     목적지: PLACES[dest].name,
     택시종류: CAR_TYPES[car].label,
     결제: PAY[pay].label,

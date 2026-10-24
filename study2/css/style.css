@@ -762,7 +762,7 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .tx-from .tx-from-go { color: #9aa0ab; font-size: 20px; }
 .tx-from.hl { box-shadow: 0 0 0 3px #ffc72c; }
 .tx-res .tx-res-ic.o { color: #1c1d21; }
-.pv-origin small { display: block; color: #6b6f7a; font-size: 12.5px; }
+.pv-origin small { display: block; color: #3c4049; font-size: 14px; font-weight: 500; margin-top: 2px; } /* 출발지 주소는 역 이름 가까운 크기로 (대구 동천역을 알아보기 쉽게) */
 
 /* v2 세션별 오류: 기사님 요청사항 · 이용내역 · 예약 */
 .kv.tx-req { cursor: default; border-radius: 10px; }

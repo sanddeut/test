@@ -443,3 +443,5 @@
 /* 연구2: 내 말풍선 아래는 [! 전달 실패]만, 글씨 크게 */
 .resend-row .send-fail { font-size: 15px; gap: 4px; }
 .resend-row .send-fail .ms { font-size: 18px; }
+/* 연구2: 출발지 주소·거리는 기존안과 같은 크기 (대구 동천역을 알아보기 쉽게) */
+.rc-body .pv-origin small { font-size: 14px; color: #3c4049; font-weight: 500; }
