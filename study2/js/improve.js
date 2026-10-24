@@ -140,11 +140,16 @@ function watchUnsent() {
 
 // 보내기 버튼: 화살표 대신 '보내기' 글자 (작업 중 중지 버튼은 원안 그대로)
 // 글로 하기 입력칸 안내 문구: '말하기'가 아니라 글자로 적는 곳임을 알 수 있게
+const STOP_LABEL = "일시정지"; // 멈추기 버튼 이름 (입력창·실행화면 모두)
 const _syncControlsPh = syncControls;
 syncControls = function () {
   _syncControlsPh();
   if (S && !$("#msg").disabled) $("#msg").placeholder = TEXT_PLACEHOLDER;
   else if (S && $("#msg").placeholder === "AI가 작업 중이에요") $("#msg").placeholder = "AI가 앱 조작 중…"; // 대화창 대신 입력창에서 알림
+  const st = $("#btn-stop");
+  if (st && st.textContent !== STOP_LABEL) st.textContent = STOP_LABEL;
+  const mb = $("#btn-manual");
+  if (S?.unified && mb && mb.textContent !== "내가 앱 조작하기") mb.textContent = "내가 앱 조작하기";
 };
 
 const _syncSendButton = syncSendButton;
@@ -152,7 +157,7 @@ syncSendButton = function () {
   _syncSendButton();
   const btn = $("#send");
   if (btn.dataset.mode === "send" && btn.textContent !== "보내기") btn.textContent = "보내기";
-  if (btn.dataset.mode === "stop" && btn.textContent !== "멈추기") btn.textContent = "멈추기";
+  if (btn.dataset.mode === "stop" && btn.textContent !== STOP_LABEL) btn.textContent = STOP_LABEL;
   btn.classList.toggle("send-text", btn.dataset.mode === "send");
   btn.classList.toggle("stop-text", btn.dataset.mode === "stop");
 };
@@ -845,7 +850,7 @@ function setupRunFrame() {
   chip.className = "ai-live-chip";
   chip.textContent = "AI가 앱 조작 중 ...";
   clip.appendChild(chip);
-  // 실행화면 아래 한 칸에 「멈추기」와 「내가 조작하기」를 묶음 (테두리 안)
+  // 실행화면(테두리) 바로 아래, 테두리 밖에 「일시정지」와 「내가 앱 조작하기」
   const frame = document.createElement("div");
   frame.className = "run-frame";
   clip.parentNode.insertBefore(frame, clip);
@@ -853,13 +858,13 @@ function setupRunFrame() {
   const tray = document.createElement("div");
   tray.className = "run-tray";
   const stop = $("#btn-stop");
-  stop.textContent = "멈추기";
+  stop.textContent = STOP_LABEL;
   stop.classList.add("tray-stop");
   const btn = $("#btn-manual");
   btn.classList.add("frame-manual");
   btn.textContent = "내가 앱 조작하기";
   tray.append(stop, btn);
-  frame.appendChild(tray);
+  frame.after(tray);
   // 오른쪽 위 「?」: 실행화면의 각 요소 안내
   const help = document.createElement("button");
   help.type = "button";
