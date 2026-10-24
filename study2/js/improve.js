@@ -647,7 +647,7 @@ newSession = function (cfg) {
   // 조건 선택과 상관없이 하나의 개선안 (높은 복잡도 과업 기준)
   const s = _newSession({ ...cfg, condition: "B1" });
   s.unified = true;
-  s.perm = { app: true, location: true };
+  s.perm = { app: null, location: true }; // 앱 대신 조작은 택시 앱을 열기 직전에 물음
   return s;
 };
 
@@ -782,8 +782,10 @@ async function askAppPermission() {
 
 function runByPolicy(step, redo) {
   const p = STEP_POLICY[step.id];
-  if (step.id === "taxi_open" && S.perm && S.perm.app === false) {
-    return askAppPermission().then((ok) => (ok ? runAuto(step) : ok));
+  if (step.id === "taxi_open" && S.perm && S.perm.app !== true) {
+    // 처음이면 팝업으로 묻고, 허용 안 함이면 대화에서 왜 필요한지 설명하고 다시 물음
+    const ask = S.perm.app == null ? showPermDialog() : Promise.resolve(false);
+    return ask.then((ok) => (ok ? runAuto(step) : askAppPermission().then((ok2) => (ok2 ? runAuto(step) : ok2))));
   }
   if (p === "announce") {
     // 오류 ② 택시 2대: 되돌리면 1대로 두고 다시 바꾸지 않음
@@ -801,28 +803,26 @@ function runByPolicy(step, redo) {
 // =====================================================================
 // [가이드라인 21, 22] 대화를 시작할 때 무엇을 허용할지 묻기 (항목별로 끌 수 있음)
 // =====================================================================
-const PERMS = [
-  { id: "app", name: "앱 대신 조작하기", why: "택시를 부르려고 휴대폰 앱을 대신 눌러요" },
-  { id: "location", name: "위치 정보", why: "출발지를 찾을 때 써요" },
-];
+// [가이드라인 21, 22] 택시 앱을 열기 직전에 앱 대신 조작을 허용할지 묻기 (허용 / 허용 안 함)
 function showPermDialog() {
-  if ($("#perm-dlg")) $("#perm-dlg").remove();
-  const d = document.createElement("div");
-  d.id = "perm-dlg";
-  d.className = "perm-dlg";
-  d.innerHTML = `<div class="perm-card" role="dialog" aria-modal="true" aria-labelledby="perm-title">
-      <b id="perm-title">AI와의 대화를 위해 권한 허용을 문의드려요</b>
-      <ul>${PERMS.map((p) => `<li><span><b>${p.name}</b><small>${p.why}</small></span><label class="perm-tgl"><input type="checkbox" data-perm="${p.id}" checked><i></i></label></li>`).join("")}</ul>
-      <div class="perm-btns"><button type="button" class="perm-yes">확인</button></div>
-    </div>`;
-  $(".phone").appendChild(d);
-  const close = (all) => {
-    const perm = Object.fromEntries([...d.querySelectorAll("[data-perm]")].map((x) => [x.dataset.perm, all && x.checked]));
-    if (S) { S.perm = perm; logEvent("permissions", perm); }
-    d.remove();
-    document.body.classList.remove("perm-wait");
-  };
-  d.querySelector(".perm-yes").onclick = () => close(true); // 켜고 끄는 건 토글로, 버튼은 확인 하나
+  return new Promise((res) => {
+    if ($("#perm-dlg")) $("#perm-dlg").remove();
+    const d = document.createElement("div");
+    d.id = "perm-dlg";
+    d.className = "perm-dlg";
+    d.innerHTML = `<div class="perm-card" role="dialog" aria-modal="true" aria-labelledby="perm-title">
+        <b id="perm-title">사용자님 대신에 제가 ‘${TAXI_APP}’ 앱을 조작해 택시를 부르려고 해요.<br>괜찮을까요?</b>
+        <div class="perm-btns"><button type="button" class="perm-no">허용 안 함</button><button type="button" class="perm-yes">허용</button></div>
+      </div>`;
+    $(".phone").appendChild(d);
+    const close = (ok) => {
+      if (S) { S.perm.app = ok; logEvent("permissions", { app: ok }); gLog(["G21", "G22"], "permission_set", { app: ok }); }
+      d.remove();
+      res(ok);
+    };
+    d.querySelector(".perm-yes").onclick = () => close(true);
+    d.querySelector(".perm-no").onclick = () => close(false);
+  });
 }
 
 // 새 세션을 시작할 때마다 처음 상태(눌러서 시작하기)로
@@ -830,9 +830,6 @@ const _start = start;
 start = function () {
   document.body.classList.add("unified");
   setInputMode("start");
-  document.body.classList.add("perm-wait"); // 허용 팝업에 답하기 전에는 대화를 시작하지 않음
-  clearTimeout(start.permT);
-  start.permT = setTimeout(() => { if (S && !S.finished && !$("#perm-dlg")) showPermDialog(); }, 2000); // 앱에 들어오고 2초 뒤 스르르 (무엇을 허용할지 묻기)
   history.pushState({ v4: 1 }, ""); // 뒤로 가기를 눌러도 페이지를 나가지 않게
   return _start();
 };
