@@ -177,7 +177,7 @@ function taxiOrigin() {
   const rows = show
     ? ORIGIN_RESULTS.map((r) => {
         const live = S.manual && r.key ? `data-man-origin="${r.key}"` : "";
-        return `<div class="tx-res tx-ores ${!S.manual && r.key === TARGET_ORIGIN ? "hl" : ""}" ${r.key ? `data-origin="${r.key}"` : ""} ${live}>${mi(r.key ? "subway" : "location_on", "fill tx-res-ic o")}
+        return `<div class="tx-res tx-ores ${!S.manual && r.key === (originInResults(S.originTarget) ? S.originTarget : TARGET_ORIGIN) ? "hl" : ""}" ${r.key ? `data-origin="${r.key}"` : ""} ${live}>${mi(r.key ? "subway" : "location_on", "fill tx-res-ic o")}
           <div class="tx-res-main"><b>${esc(r.name)}</b><small>${esc(r.addr)}</small></div></div>`;
       }).join("")
     : "";

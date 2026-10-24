@@ -279,7 +279,7 @@ function stepPreview() {
     case "origin":
       // 출발지를 '바꾼다'는 개념은 드러내지 않고, 설정할 출발지 하나만 보여줌
       if (S.guide) { const k = S.originTarget || TARGET_ORIGIN; return el("pv-acct pv-place pv-origin", `<span class="pv-pin"><span class="ms">trip_origin</span></span><span><b>${esc(ORIGINS[k].name)}</b><small>${esc(ORIGINS[k].addr || originLabel(k, S.geo))}</small></span>`); }
-      return el("pv-acct pv-place pv-origin", `<span class="pv-pin"><span class="ms">trip_origin</span></span><span><b>${esc(ORIGINS[TARGET_ORIGIN].name)}</b><small>${esc(ORIGINS[TARGET_ORIGIN].addr)}</small></span>`);
+      { const k = S.originTarget && ORIGINS[S.originTarget]?.addr ? S.originTarget : TARGET_ORIGIN; return el("pv-acct pv-place pv-origin", `<span class="pv-pin"><span class="ms">trip_origin</span></span><span><b>${esc(ORIGINS[k].name)}</b><small>${esc(ORIGINS[k].addr)}</small></span>`); }
     case "dest": {
       const k = S.phone.pendingDest ?? S.form.dest ?? AGENT_PLACE;
       return el("pv-acct pv-place", `<span class="pv-pin"><span class="ms fill">location_on</span></span><span><b>${esc(PLACES[k].name)}</b><small>${esc(PLACES[k].addr)} · ${esc(distText(S.form.origin, k, S.geo))}</small></span>`);
@@ -1006,7 +1006,7 @@ function requestOptions() {
 }
 
 function changeIntents() {
-  return [...(stepIdNow() === "request" || (S.guide && S.session === 1 && !S.rideDone) ? ["set_request"] : []), "set_origin", "set_dest", ...(S.complexity === "B" ? ["set_car"] : []), ...(USE_PAY_STEP ? ["set_pay"] : []), ...(S.complexity === "B" && USE_COUPON ? ["set_coupon"] : []), ...(S.session === 0 ? ["set_count"] : [])];
+  return [...(stepIdNow() === "request" || (S.guide && S.session === 1 && !S.rideDone) ? ["set_request"] : []), "set_origin", "set_dest", ...(S.complexity === "B" ? ["set_car"] : []), ...(USE_PAY_STEP ? ["set_pay"] : []), ...(S.complexity === "B" && USE_COUPON ? ["set_coupon"] : []), ...(S.session === 0 && ERR_SET === 1 ? ["set_count"] : [])];
 }
 
 // 높은 자동화에서 말한 내용 해석. 수정 요청은 반영하고, 그 외에는 짧게 응답한 뒤 진행 상황을 알리고 계속 진행
@@ -1028,7 +1028,9 @@ async function applyHighChange(o, via) {
     return true;
   }
   if (o.intent === "set_origin" && namedOrigin(o)) {
-    setOption("origin", namedOrigin(o), via);
+    const k = namedOrigin(o);
+    setOption("origin", k, via);
+    S.originTarget = k; // 알리고 진행 중에 바꾸면 그대로 둠 (오류② 대구 동천역을 바로잡은 경우)
     await sayKey("change.origin");
     return true;
   }
@@ -1695,7 +1697,7 @@ async function handleReject(step, c, said) {
       await redoDest(k);
       return proceed("change.dest", { dest: k });
     }
-    if (o.intent === "set_origin" && namedOrigin(o)) { setOption("origin", namedOrigin(o), "final"); return proceed("change.origin"); }
+    if (o.intent === "set_origin" && namedOrigin(o)) { const k = namedOrigin(o); setOption("origin", k, "final"); S.originTarget = k; return proceed("change.origin"); }
     if (o.intent === "set_car" && CAR_TYPES[o.car_type]) { setOption("car", o.car_type, "final"); return proceed("change.car"); }
     if (o.intent === "set_pay" && PAY[o.pay_method]) { setOption("pay", o.pay_method, "final"); return proceed("change.pay"); }
     if (o.intent === "set_coupon" && typeof o.coupon === "boolean") { setOption("coupon", o.coupon, "final"); return proceed(o.coupon ? "change.coupon.on" : "change.coupon.off"); }
@@ -1769,12 +1771,21 @@ async function runLowDest(step) {
 async function prepOrigin(step) {
   if (manualDone(step) || S.userSet.origin) return "go";
   if (S.req.originName && !S.req.origin) S.req.origin = setCustomOrigin(S.req.originName, S.geo);
-  if (S.req.origin) { S.originTarget = S.req.origin; return "go"; }
+  if (S.req.origin) { S.originTarget = misjudgeOrigin(S.req.origin); return "go"; }
   if (S.automation === "high") await gate();
   const r = await askOrigin(step, "asked");
   if (r === "cancel") return false;
   if (S.automation === "low") await dwell();
   return true;
+}
+
+// 연구2 오류② (버전 2): 처음 정하는 출발지가 '동천역'이면 같은 이름의 '대구 동천역'으로 판단 (한 번만, 두 안 동일)
+function misjudgeOrigin(k) {
+  if (ERR_SET !== 2 || k !== TARGET_ORIGIN || S.originErrDone || S.userSet.origin) return k;
+  S.originErrDone = true;
+  logEvent("origin_misjudged", { origin: WRONG_ORIGIN });
+  if (S.m.errorShownAt == null) S.m.errorShownAt = now();
+  return WRONG_ORIGIN;
 }
 
 // 출발지를 어디로 할지 물음 → 말한 곳(동천역 / 현재 위치 / 그 외 장소)으로 다시 묻지 않고 바로 설정
@@ -1795,13 +1806,13 @@ async function askOrigin(step, via) {
     logEvent("origin_named", { intent: o.intent, origin: o.origin, via });
     const named = o.intent === "set_origin" && !ORIGINS[o.origin] && o.origin_name ? setCustomOrigin(o.origin_name, S.geo) : null;
     if (o.intent === "set_origin" && (ORIGINS[o.origin] || named)) {
-      const k = named || o.origin;
+      const k = misjudgeOrigin(named || o.origin);
       S.originTarget = k;
       logEvent("origin_changed", { origin: k, name: ORIGINS[k].name, via });
       await sayKey(k === "current" ? "origin.skip" : "origin.confirm", { origin: k }, { talk: true });
       // 동천역이면 실행화면에서 검색해 고르는 과정을 보여줌
-      if (k === TARGET_ORIGIN && S.phone.taxiView !== "origin") await doPre(step);
-      await doApply(step, k === "current" ? "reject" : k === TARGET_ORIGIN ? "approve" : "custom", { announced: true });
+      if (originInResults(k) && S.phone.taxiView !== "origin") await doPre(step);
+      await doApply(step, k === "current" ? "reject" : originInResults(k) ? "approve" : "custom", { announced: true });
       return "done";
     }
     if (o.intent === "cancel") { await cancelRide(); return "cancel"; }
@@ -2539,7 +2550,7 @@ function finish(status) {
   S.m.finalDest = S.form.dest;
   // 오류(목적지 오인식): 최종 목적지가 강남점이면 바로잡음. 쿠폰은 오류가 아니고 결과만 기록 (summary의 coupon_outcome)
   // 오류 ② 택시 2대로 잘못 이해: 최종 호출 대수가 1대면 바로잡음
-  if (status === "completed" && S.m.errorOutcome == null) S.m.errorOutcome = (S.form.count || 1) === 1 ? "corrected" : "accepted";
+  if (status === "completed" && S.m.errorOutcome == null) S.m.errorOutcome = ERR_SET === 2 ? (S.form.origin === "daegu" ? "accepted" : "corrected") : (S.form.count || 1) === 1 ? "corrected" : "accepted";
   if (status === "cancelled" || status === "exited") S.m.errorOutcome = S.m.errorOutcome ?? status;
   S.m.finishedAt = now();
   logEvent("session_end", { status, summary: summary() });
@@ -2658,6 +2669,10 @@ function summary() {
     think_opened: S.unified ? m.thinkOpens || 0 : null, // 개선안: 「AI가 ~하는 중」을 펼쳐 본 횟수 (모든 단계)
     mishear_recover_ms: m.mishearAt != null && m.mishearRecoveredAt != null ? m.mishearRecoveredAt - m.mishearAt : null,
     // 오류 ② 택시 2대로 잘못 이해: 최종 호출 대수, 어디서 바로잡았는지
+    error_set: ERR_SET, // 1 = 택시 2대, 2 = 대구 동천역
+    final_origin: S.form.origin,
+    origin_fixed_at: ERR_SET === 2 ? S.log.find((e) => (e.type === "origin_changed" && (e.value === TARGET_ORIGIN || e.origin === TARGET_ORIGIN)) || e.type === "origin_undo")?.step ?? null : null,
+    origin_fixed_via: ERR_SET === 2 ? S.log.find((e) => (e.type === "origin_changed" && (e.value === TARGET_ORIGIN || e.origin === TARGET_ORIGIN)) || e.type === "origin_undo")?.via ?? null : null,
     final_count: S.form.count || 1,
     count_fixed_at: S.log.find((e) => e.type === "count_changed" && e.value === 1)?.step ?? null,
     count_fixed_via: S.log.find((e) => e.type === "count_changed" && e.value === 1)?.via ?? null,
@@ -2696,7 +2711,9 @@ function renderSummary() {
     ["조건", CONDITIONS[S.cond].title],
     ["해석", s.llm],
     ["오류 ① 잘못 알아들음", `${s.mishear_count}번 못 알아들음${s.mishear_recover_ms != null ? ` · ${Math.round(s.mishear_recover_ms / 1000)}초 뒤 다시 말함` : ""}`],
-    ["오류 ② 택시 2대로 잘못 이해", `${label[s.error_outcome] || "-"}${s.count_fixed_at ? ` · ${s.count_fixed_at}에서 ${s.count_fixed_via || ""}` : ""}`],
+    s.error_set === 2
+      ? ["오류 ② 대구 동천역으로 판단", `${label[s.error_outcome] || "-"}${s.origin_fixed_at ? ` · ${s.origin_fixed_at}에서 ${s.origin_fixed_via || ""}` : ""}`]
+      : ["오류 ② 택시 2대로 잘못 이해", `${label[s.error_outcome] || "-"}${s.count_fixed_at ? ` · ${s.count_fixed_at}에서 ${s.count_fixed_via || ""}` : ""}`],
     ["쿠폰 (오류 아님)", `${cpn[s.coupon_outcome]}${s.coupon_changed_at ? ` · ${s.coupon_changed_at}에서` : ""} · 처음에 ${s.coupon_mentioned ? "말함" : "말 안 함"}`],
     ["개입 방식", s.correction_via || "-"],
     ["오류→반응", s.error_response_ms != null ? `${(s.error_response_ms / 1000).toFixed(1)}초` : "-"],
@@ -2765,12 +2782,13 @@ function renderSessionCount() {
 // =====================================================================
 const radio = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value;
 function readSetup() {
-  const guide = radio("ver") === "guide";
+  const v = radio("ver") || "base";
+  const guide = v.startsWith("guide");
   return {
     pid: $("#pid").value.trim() || "P00",
     name: $("#pname").value.trim() || "OOO",
     complexity: "B", // 연구2: 높은 복잡도 하나로 고정
-    version: guide ? "guide" : "base",
+    version: v, // base · base2 · guide · guide2
     order: radio("order") || "base_first",
     // 개선안 확인 범위: narrow = 높은 자동화를 유지하고 비가역·선호·요청 외 결정만 확인 / wide = 피그마 상세 구현대로 출발지·목적지도 확인
     scope: radio("scope") || "narrow",
@@ -2806,15 +2824,16 @@ function renderPlan() {
 function onSetupChange() {
   renderPlan();
   // 개선안은 화면 구성 파일(improve)을 따로 불러오므로, 버전을 바꾸면 저장하고 새로 불러옴
-  const wantGuide = radio("ver") === "guide";
-  if (wantGuide !== Boolean(window.__GUIDE)) {
+  const wantGuide = (radio("ver") || "").startsWith("guide");
+  const wantErr = /2$/.test(radio("ver") || "") ? 2 : 1;
+  if (wantGuide !== Boolean(window.__GUIDE) || wantErr !== (window.__ERRSET || 1)) {
     const saved = store.get("setup", {}) || {};
     store.set("setup", { ...saved, pid: $("#pid").value.trim(), name: $("#pname").value.trim(), version: radio("ver") });
     location.reload();
     return;
   }
   // 프롬프트 편집칸은 고른 버전의 프롬프트를 보여 줌
-  const g = radio("ver") === "guide";
+  const g = (radio("ver") || "").startsWith("guide");
   if (g !== promptGuide) { promptGuide = g; setPrompt(savedPrompt(g)); }
 }
 
@@ -2884,7 +2903,7 @@ function start() {
   $("#stage").hidden = false;
   document.body.classList.add("in-session");
   document.body.classList.remove("drawer-open");
-  if (cfg.showTask) openTask(true); // 시작할 때 상황·과업 먼저 보여줌 (모바일)
+  // 시작할 때 상황·과업 바텀시트는 띄우지 않음 (두 안 공통 · 과업은 실험 전에 따로 안내)
   renderPhone();
   renderStepper();
   S.promptVersion = LLM.promptVersion;
@@ -2938,7 +2957,7 @@ function renderPromptMeta() {
 }
 
 function initPrompt() {
-  promptGuide = radio("ver") === "guide";
+  promptGuide = (radio("ver") || "").startsWith("guide");
   setPrompt(savedPrompt(promptGuide));
   $("#prompt").oninput = () => setPrompt($("#prompt").value, { from: "setup" });
   $("#btn-prompt-apply").onclick = () => {
@@ -3304,7 +3323,7 @@ function setupInstall() {
 
 // 코드의 기본 문구(시나리오 문구·프롬프트)를 새로 정리하면 이 값을 바꿈
 // → 브라우저에 저장된 예전 수정본을 지우고 최신 기본값을 쓰게 함 (이후 새로 고친 내용은 다시 저장됨)
-const CONTENT_VERSION = "s2-taxi-2026-10-24a";
+const CONTENT_VERSION = "s2-taxi-2026-10-24b";
 function resetOldContent() {
   if (store.get("content_version", null) === CONTENT_VERSION) return;
   store.del("script_overrides");

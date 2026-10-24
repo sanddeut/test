@@ -16,18 +16,31 @@ const PLACES = {
 // 출발지: 기본은 휴대폰 GPS의 현재 위치, 과업에서 ‘신분당선 동천역’으로 바꿈
 // (현재 위치 좌표는 세션 시작 때 받아서 S.geo에 둠. 위치를 못 받으면 GEO_FALLBACK)
 const TARGET_ORIGIN = "dongcheon";
+// 연구2 오류 세트: 1 = 택시 2대로 잘못 이해, 2 = 같은 이름의 '대구 동천역'으로 판단 (설정에서 기존안1·2, 개선안1·2로 고름)
+const ERR_SET = window.__ERRSET === 2 ? 2 : 1;
+const WRONG_ORIGIN = "daegu";
 const ORIGINS = {
   current: { name: "현재 위치" },
   dongcheon: { name: "신분당선 동천역", addr: "경기 용인시 수지구 동천동", lat: 37.33797, lng: 127.10278 },
+  daegu: { name: "대구 동천역", addr: "대구 북구 동천동 · 대구 도시철도 3호선", lat: 35.94246, lng: 128.55945 },
 };
 const GEO_FALLBACK = { lat: 37.39475, lng: 127.11118, label: "경기 성남시 분당구 삼평동" }; // 판교역 부근
 const ORIGIN_QUERY = "동천역";
 // 출발지 검색 결과 (신분당선 동천역만 고를 수 있음)
-const ORIGIN_RESULTS = [
-  { key: "dongcheon", name: "신분당선 동천역", addr: "경기 용인시 수지구 동천동 · 지하철역" },
-  { key: null, name: "동천역 버스정류장", addr: "경기 용인시 수지구 동천로" },
-  { key: null, name: "동천역 환승주차장", addr: "경기 용인시 수지구 동천동 876" },
-];
+const ORIGIN_RESULTS = ERR_SET === 2
+  ? [
+      // 오류 세트 2: 같은 이름의 역이 두 곳 (AI는 대구 동천역을 고름)
+      { key: "daegu", name: "대구 동천역", addr: "대구 북구 동천동 · 대구 도시철도 3호선" },
+      { key: "dongcheon", name: "신분당선 동천역", addr: "경기 용인시 수지구 동천동 · 신분당선" },
+      { key: null, name: "동천역 버스정류장", addr: "경기 용인시 수지구 동천로" },
+    ]
+  : [
+      { key: "dongcheon", name: "신분당선 동천역", addr: "경기 용인시 수지구 동천동 · 지하철역" },
+      { key: null, name: "동천역 버스정류장", addr: "경기 용인시 수지구 동천로" },
+      { key: null, name: "동천역 환승주차장", addr: "경기 용인시 수지구 동천동 876" },
+    ];
+// 출발지 검색 결과에 있는 역인지 (검색해서 고르는 과정을 보여 줄 수 있는 곳)
+const originInResults = (k) => ORIGIN_RESULTS.some((r) => r.key && r.key === k);
 
 // 받침이 있으면 "으로", 없으면 "로" (ㄹ 받침은 "로")
 // ‘이름’ 뒤의 조사를 이름에 맞게 (참가자가 말한 장소 이름이 들어가도 자연스럽게): 을/를, 으로/로, 은/는
@@ -126,7 +139,7 @@ const BASE_ASKS = true;
 // - 세션2: 호출 완료 후, 묻지 않고 최근 3개월 이용내역을 열람하고 다음 주 토요일 같은 시간 예약 호출을 제안·등록
 const SESSIONS = {
   // 연구2: 두 안에 같은 통제감 상실 유발 상황 2개 (연구1의 세션1·2 오류 단계는 쓰지 않음)
-  0: { title: "연구2 · 잘못 알아들음 + 택시 2대로 잘못 이해", error: "mishear_count" },
+  0: ERR_SET === 2 ? { title: "연구2 · 잘못 알아들음 + 대구 동천역으로 판단", error: "mishear_origin" } : { title: "연구2 · 잘못 알아들음 + 택시 2대로 잘못 이해", error: "mishear_count" },
   1: { title: "세션1 · 기사님 요청사항 임의 선택", error: "request" },
   2: { title: "세션2 · 이용내역 열람 + 예약 호출", error: "reserve" },
 };
@@ -189,11 +202,11 @@ const SITUATION = {
     situation: [
       "오늘 저녁 7시에 동창회 모임이 있습니다. 모임 장소는 ‘담소한정식 강남점’입니다.",
       "오늘 정장을 입었기 때문에, 편하게 모범택시를 타고 가려고 합니다.",
-      "택시는 ‘신분당선 동천역’에서 타려고 합니다.",
+      ERR_SET === 2 ? "택시는 집 근처 ‘동천역’(경기 용인시 수지구)에서 타려고 합니다." : "택시는 ‘신분당선 동천역’에서 타려고 합니다.",
       "가지고 계신 할인쿠폰이 1장 있어서, 이걸 사용하려 합니다.",
     ],
     task: [
-      "AI와 대화를 하며 ‘신분당선 동천역’에서 ‘담소한정식 강남점’까지 가는 택시를 불러주세요.",
+      ERR_SET === 2 ? "AI와 대화를 하며 ‘동천역’에서 ‘담소한정식 강남점’까지 가는 택시를 불러주세요." : "AI와 대화를 하며 ‘신분당선 동천역’에서 ‘담소한정식 강남점’까지 가는 택시를 불러주세요.",
       "택시종류는 ‘모범택시’로 선택해주세요.",
       "택시비 결제 전에, 할인쿠폰을 적용해주세요.",
     ],
@@ -519,7 +532,7 @@ function buildSteps(complexity, session = 1, guide = false) {
     pre: async (s) => {
       const p = s.phone;
       if (p.taxiView === "origin" && p.originTyped === ORIGIN_QUERY) return;
-      if (s.originTarget && s.originTarget !== TARGET_ORIGIN) return; // 동천역이 아닌 곳은 검색 화면을 보여주지 않음
+      if (s.originTarget && !originInResults(s.originTarget)) return; // 검색 결과에 없는 곳은 검색 화면을 보여주지 않음
       await tap(".tx-from");
       p.taxiView = "origin";
       p.originTyped = "";
@@ -535,14 +548,15 @@ function buildSteps(complexity, session = 1, guide = false) {
     act: async (s, choice) => {
       const p = s.phone;
       // 승인(또는 높은 자동화) = 설정할 출발지로: 동천역이 아니면 해당 선택으로 바꿔 처리
-      if (choice !== "reject" && choice !== "custom" && s.originTarget && s.originTarget !== TARGET_ORIGIN) choice = s.originTarget === "current" ? "reject" : "custom";
+      if (choice !== "reject" && choice !== "custom" && s.originTarget && !originInResults(s.originTarget)) choice = s.originTarget === "current" ? "reject" : "custom";
       if (choice === "reject" || choice === "custom") {
         // 동천역이 아닌 곳: 검색 화면을 닫고 홈으로 (custom이면 말한 곳을 출발지로)
         if (p.taxiView === "origin") await tap(".tx-sbar .back");
         if (choice === "custom") s.form.origin = "custom";
       } else if (p.taxiView === "origin") {
-        await tap(`.tx-ores[data-origin="${TARGET_ORIGIN}"]`);
-        s.form.origin = TARGET_ORIGIN;
+        const k = originInResults(s.originTarget) ? s.originTarget : TARGET_ORIGIN;
+        await tap(`.tx-ores[data-origin="${k}"]`);
+        s.form.origin = k;
       }
       p.taxiView = "home";
       renderPhone();
@@ -550,6 +564,7 @@ function buildSteps(complexity, session = 1, guide = false) {
     },
     apply: (s, choice) => {
       const k = choice === "custom" ? "custom" : choice === "reject" ? "current" : s.originTarget || TARGET_ORIGIN;
+      if (s.userSet?.origin && s.form.origin && s.form.origin !== k && choice !== "custom" && choice !== "reject") { s.phone.taxiView = "home"; s.phone.focus = null; return; } // 진행 중에 직접 바꾼 출발지는 그대로
       s.form.origin = k;
       s.phone.taxiView = "home";
       s.phone.focus = null;
@@ -643,7 +658,7 @@ function buildSteps(complexity, session = 1, guide = false) {
 
   // 연구2 오류 ②: 처음 요청을 '택시 2대'로 잘못 알아들은 것이 예상 금액 확인 직전에 드러남 (이후 예상 금액·최종 확인 모두 2대 기준)
   // 참가자가 이미 대수를 정했거나 되돌렸으면 바꾸지 않음
-  if (session === 0) steps.push({
+  if (session === 0 && ERR_SET === 1) steps.push({
     id: "count",
     kind: "error_count",
     label: "[오류②·2대로 잘못 이해] 호출 대수", // 참가자에게는 '호출 대수'만 보임 (되돌리기 안내)

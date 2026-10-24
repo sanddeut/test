@@ -540,10 +540,10 @@ function rejectPicks() {
     case "car": return CAR_PICKS();
     case "coupon": return [{ label: "쿠폰 적용", out: { intent: "set_coupon", coupon: true } }, { label: "적용 안 함", out: { intent: "continue" } }];
     case "final": return [
-      { label: "출발지 바꾸기", ask: "출발지를 어디로 바꿀까요?", sub: [{ label: "현재 위치", out: { intent: "set_origin", origin: "current" } }, DIRECT] },
+      { label: "출발지 바꾸기", ask: "출발지를 어디로 바꿀까요?", sub: [...(ERR_SET === 2 ? ORIGIN_RESULTS.filter((r) => r.key).map((r) => ({ label: r.name, out: { intent: "set_origin", origin: r.key } })) : []), { label: "현재 위치", out: { intent: "set_origin", origin: "current" } }, DIRECT] },
       { label: "목적지 바꾸기", ask: "목적지를 어디로 바꿀까요?", sub: [DIRECT] },
       ...(S.complexity === "B" ? [{ label: "택시 종류 바꾸기", ask: "어떤 택시로 바꿀까요?", sub: CAR_PICKS() }] : []),
-      ...(S.session === 0 ? [{ label: "호출 대수 바꾸기", ask: "택시를 몇 대 부를까요?", sub: [1, 2].map((n) => ({ label: `${n}대`, out: { intent: "set_count", count: n } })) }] : []),
+      ...(S.session === 0 && ERR_SET === 1 ? [{ label: "호출 대수 바꾸기", ask: "택시를 몇 대 부를까요?", sub: [1, 2].map((n) => ({ label: `${n}대`, out: { intent: "set_count", count: n } })) }] : []),
       { label: "호출 취소", cancel: true },
     ];
     default: return null;
@@ -787,6 +787,7 @@ function runByPolicy(step, redo) {
     const ask = S.perm.app == null ? showPermDialog() : Promise.resolve(false);
     return ask.then((ok) => (ok ? runAuto(step) : askAppPermission().then((ok2) => (ok2 ? runAuto(step) : ok2))));
   }
+  if (step.id === "origin" && redo && ERR_SET === 2 && S.originErrDone) logEvent("origin_undo", { via: "undo" }); // 오류②(대구 동천역)를 되돌림
   if (p === "announce") {
     // 오류 ② 택시 2대: 되돌리면 1대로 두고 다시 바꾸지 않음
     if (step.id === "count") { if (redo) { S.countBlocked = true; logEvent("count_changed", { value: 1, via: "undo" }); return Promise.resolve(true); } return announceStep(step); }
