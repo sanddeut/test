@@ -1021,6 +1021,7 @@ function currentItem() {
 }
 
 let focusQueued = false;
+let focusCur = null, focusKey = "", focusUserMoved = false;
 function queueFocus() {
   if (focusQueued) return;
   focusQueued = true;
@@ -1052,7 +1053,11 @@ function applyFocus() {
     }
     const need = c.clientHeight - (contentEnd - at);
     spacer.style.height = `${Math.max(0, need)}px`;
-    c.scrollTop = Math.max(0, at);
+    // 사용자가 직접 스크롤했으면 현재 대화가 바뀔 때까지 위치를 되돌리지 않음 (스크롤이 튕기지 않게)
+    // 새 말풍선이 오거나 단계가 바뀌면 다시 현재 대화로
+    const key = `${S.stepIdx}|${c.children.length}|${cur.id || cur.textContent.length}`;
+    if (cur !== focusCur || key !== focusKey) { focusCur = cur; focusKey = key; focusUserMoved = false; }
+    if (!focusUserMoved) c.scrollTop = Math.max(0, at);
     c.classList.toggle("scrolled", c.scrollTop > 4);
   }
 }
@@ -1063,6 +1068,8 @@ function setupFocus() {
   // 위에 지나간 대화가 있을 때만 위쪽 흐림
   const markScrolled = () => c.classList.toggle("scrolled", c.scrollTop > 4);
   c.addEventListener("scroll", markScrolled, { passive: true });
+  const userMove = () => { focusUserMoved = true; };
+  ["wheel", "touchmove", "pointerdown"].forEach((t) => c.addEventListener(t, userMove, { passive: true }));
   new MutationObserver((ms) => { if (ms.some((m) => [...m.addedNodes, ...m.removedNodes].some((n) => n.id !== "chat-spacer"))) queueFocus(); })
     .observe(c, { childList: true });
   const card = () => $("#run-card");

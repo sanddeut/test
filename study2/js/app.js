@@ -108,7 +108,8 @@ function logEvent(type, data = {}) {
 // =====================================================================
 const chat = () => $("#chat");
 // 대화창을 맨 아래로 (화면 전환·버튼 표시로 높이가 바뀐 뒤에 맞춤)
-const scrollChat = () => requestAnimationFrame(() => { const c = chat(); if (S?.guide) fitSpacer(); c.scrollTop = c.scrollHeight; });
+// 개선안(unified)은 현재 대화를 맨 위에 두는 위치 맞춤(improve.js applyFocus)이 스크롤을 맡음 (사용자가 직접 스크롤하면 그대로 둠)
+const scrollChat = () => requestAnimationFrame(() => { const c = chat(); if (S?.unified && typeof queueFocus === "function") return queueFocus(); if (S?.guide) fitSpacer(); c.scrollTop = c.scrollHeight; });
 
 // 개선안: 지금 단계(진행 카드)를 항상 대화창 맨 위에 두고, 지난 대화는 위쪽 가장자리에서 흐려지게 (가이드라인 8)
 // 카드 아래에 빈 칸을 둬서 맨 아래로 내리면 카드가 맨 위에 오게 함
@@ -478,7 +479,7 @@ function showTyping(on) {
     t.className = "bubble agent typing";
     t.innerHTML = "<span></span><span></span><span></span>";
     chat().insertBefore(t, $("#chips"));
-    chat().scrollTop = chat().scrollHeight;
+    if (!S?.unified) chat().scrollTop = chat().scrollHeight;
   } else if (!on && t) t.remove();
   setStatus(null, on);
 }
