@@ -887,7 +887,7 @@ fitScreen = function () {
   const W = phone.clientWidth;
   const H = parseFloat(phone.style.getPropertyValue("--app-h")) || phone.clientHeight;
   const tray = 72;
-  const scale = Math.max(0.3, Math.min(0.8, (box.clientHeight - 36 - tray) / H, (box.clientWidth * 0.86) / W));
+  const scale = Math.max(0.3, Math.min(0.9, (box.clientHeight - 24 - tray) / H, (box.clientWidth * 0.94) / W)); // 실행화면을 크게
   phone.style.setProperty("--scale", scale.toFixed(4));
   clip.style.width = `${Math.floor(W * scale)}px`;
   clip.style.height = `${Math.floor(H * scale)}px`;

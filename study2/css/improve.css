@@ -421,3 +421,8 @@
 .run-tray { gap: 10px; }
 .run-tray .frame-manual { padding: 10px 20px !important; font-size: 15.5px !important; }
 .run-tray .tray-stop { padding: 9px 20px; font-size: 15.5px; }
+
+/* 「AI가 앱 조작 중」 칩 크게 */
+.ai-live-chip { font-size: 14.5px; line-height: 22px; padding: 6px 16px; border-radius: 0 0 14px 14px; }
+/* 실행화면을 더 크게: 아래 안내 문구 칸을 줄임 */
+.phone[data-view="progress"] .pv-panel { height: 120px; }
