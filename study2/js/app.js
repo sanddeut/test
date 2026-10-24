@@ -937,9 +937,16 @@ function openTask(on) {
 // =====================================================================
 // 중지 / 직접조작 (높은 자동화)
 // =====================================================================
-function gate() {
-  if (!S.paused) return Promise.resolve();
-  return new Promise((r) => S.resumeWaiters.push(r));
+// 참가자가 말하는 중(마이크 켬)이거나 입력칸에 글을 쓰는 중이면 AI는 하던 일을 멈추고 기다림 (기존안·개선안 공통)
+const userBusy = () => Boolean(S && S.running && !S.finished && (S.listening || $("#msg")?.value.trim()));
+async function gate() {
+  for (;;) {
+    if (S.paused) await new Promise((r) => S.resumeWaiters.push(r));
+    if (!userBusy()) return;
+    if (!S.busyHold) { S.busyHold = true; logEvent("hold_user_input"); }
+    while (userBusy() && !S.paused) await sleep(200);
+    if (S.busyHold && !userBusy()) { S.busyHold = false; logEvent("hold_user_input_end"); }
+  }
 }
 
 function resume() {
