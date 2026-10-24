@@ -1309,7 +1309,8 @@ function onMishear(n, text) {
   again2.className = "mode-pill resend-pill";
   again2.textContent = "다시 보내기";
   again2.onclick = () => { pills.remove(); resend("pill"); };
-  pills.append(pill, again2);
+  again2.classList.add("big");
+  pills.append(again2); // 다른 입력 방법 알약은 빼고 「다시 보내기」만 크게 (1회차 파일럿 뒤)
   ab.after(pills);
   scrollChat();
 }
