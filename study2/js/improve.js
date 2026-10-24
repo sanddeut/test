@@ -1129,7 +1129,10 @@ async function postCallWait() {
     const text = await Promise.race([waitText(), new Promise((r) => { idle = setTimeout(() => r("__idle"), POST_CALL_IDLE_MS); })]);
     clearTimeout(idle);
     if (text === "__idle") {
-      if (S.paused || S.manual || S.undoPending) continue;
+      // 「되돌리기」로 호출을 취소하는 중이면 여기서 끝내지 않음 (다시 호출하면 그때 다시 10초를 기다림)
+      if (S.callCancelling || !S.postCall) return;
+      // 참가자가 무언가 하는 중이면(멈춤·직접 조작·되돌리기 확인·입력 중·듣는 중) 끝내지 않고 다시 기다림
+      if (S.paused || S.manual || S.undoPending || S.listening || $("#msg").value.trim() || !$("#undo-dlg")?.hidden) continue;
       S.waiter = null;
       setChips([]);
       return _finish("completed");
@@ -1179,6 +1182,7 @@ async function tryChangeAfterCall(o) {
 
 // 호출 취소: 앱에서 '호출 취소'를 누른 뒤 최종 호출 확인 직전 상태로 돌아가, 바꿀 것을 반영하고 다시 호출할지 물음
 async function cancelCall(change) {
+  S.callCancelling = true; // 호출한 뒤 10초 대기가 이 사이에 체험을 끝내지 않게
   const f = S.steps.findIndex((x) => x.id === "final");
   S.waiter = null; S.ivWaiter = null;
   S.resumeWaiters = []; S.paused = false; S.manual = false; S.backPaused = false; S.inReject = false; S.pickOut = null;
@@ -1224,6 +1228,7 @@ async function cancelCall(change) {
   }
   S.undoTo = f;
   S.redoIdx = f;
+  S.callCancelling = false;
   return "undo"; // 최종 호출 확인부터 다시
 }
 
