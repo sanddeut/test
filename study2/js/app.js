@@ -2782,7 +2782,7 @@ function renderSessionCount() {
 // =====================================================================
 const radio = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value;
 function readSetup() {
-  const v = radio("ver") || "base";
+  const v = radio("ver") || "base2";
   const guide = v.startsWith("guide");
   return {
     pid: $("#pid").value.trim() || "P00",

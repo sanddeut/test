@@ -24,7 +24,7 @@
     window.__V = Date.now();
     // 개선안은 연구2 가이드라인 구현(v4)의 화면을 그대로 씀: 설정에서 개선안을 고르면 improve.css·improve.js를 함께 불러옴
     // 버전: base(기존안1) · base2(기존안2) · guide(개선안1) · guide2(개선안2). 1 = 택시 2대 오류, 2 = 대구 동천역 오류
-    try { const v = JSON.parse(localStorage.getItem("s2:setup") || "{}").version || "base"; window.__GUIDE = /^guide/.test(v); window.__ERRSET = /2$/.test(v) ? 2 : 1; } catch (e) { window.__GUIDE = false; window.__ERRSET = 1; }
+    try { const v = JSON.parse(localStorage.getItem("s2:setup") || "{}").version || "base2"; window.__GUIDE = /^guide/.test(v); window.__ERRSET = /2$/.test(v) ? 2 : 1; } catch (e) { window.__GUIDE = false; window.__ERRSET = 2; }
     document.write('<link rel="stylesheet" href="css/style.css?v=' + window.__V + '">');
     if (window.__GUIDE) document.write('<link rel="stylesheet" href="css/improve.css?v=' + window.__V + '">');
   </script>
@@ -54,10 +54,10 @@
       <fieldset>
         <legend>버전</legend>
         <div class="cond-grid">
-          <label class="cond"><input type="radio" name="ver" value="base" checked><b>기존안1</b><span>오류②: 택시 2대</span></label>
-          <label class="cond"><input type="radio" name="ver" value="base2"><b>기존안2</b><span>오류②: 대구 동천역</span></label>
+          <label class="cond"><input type="radio" name="ver" value="base"><b>기존안1</b><span>오류②: 택시 2대</span></label>
+          <label class="cond"><input type="radio" name="ver" value="base2" checked><b>기존안2</b><span>오류②: 대구 동천역 · 최종</span></label>
           <label class="cond"><input type="radio" name="ver" value="guide"><b>개선안1</b><span>오류②: 택시 2대</span></label>
-          <label class="cond"><input type="radio" name="ver" value="guide2"><b>개선안2</b><span>오류②: 대구 동천역</span></label>
+          <label class="cond"><input type="radio" name="ver" value="guide2"><b>개선안2</b><span>오류②: 대구 동천역 · 최종</span></label>
         </div>
       </fieldset>
 

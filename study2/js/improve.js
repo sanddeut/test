@@ -1394,7 +1394,7 @@ function traceOf(id) {
   const car = CAR_TYPES[f.car]?.label || "일반택시";
   switch (id) {
     case "taxi_open": return [`휴대폰에서 택시를 부를 수 있는 ‘${TAXI_APP}’ 앱을 찾았어요.`, `${TAXI_APP} 앱을 열고 있어요.`];
-    case "origin": { const o = ORIGINS[S.originTarget || TARGET_ORIGIN]?.name || "출발지"; return ["출발지 칸을 눌러 검색했어요.", `검색 결과 중 ‘${o}’을 골랐어요. 말씀하신 출발지와 이름이 같아서예요.`]; }
+    case "origin": { const o = ORIGINS[S.originTarget || TARGET_ORIGIN]?.name || "출발지"; return S.originTarget === WRONG_ORIGIN ? ["출발지 칸을 눌러 검색했어요.", `검색 결과 맨 위에 나온 ‘${o}’을 골랐어요.`] : ["출발지 칸을 눌러 검색했어요.", `검색 결과 중 ‘${o}’을 골랐어요. 말씀하신 출발지와 이름이 같아서예요.`]; }
     case "dest": { const d = PLACES[f.dest ?? S.userDest ?? AGENT_PLACE]?.name || "목적지"; return [`검색창에 ‘${SEARCH_QUERY}’를 입력했어요.`, `같은 이름의 지점 ${SEARCH_ORDER.length}곳 중 ‘${d}’을 골랐어요. 말씀하신 지점 이름과 같아서예요.`]; }
     case "car": return [`택시 종류 ${Object.keys(CAR_TYPES).length}가지와 종류별 예상 요금을 불러왔어요.`];
     case "coupon": return [`${car} 기준으로 예상 요금을 계산했어요.`, `쓸 수 있는 쿠폰 1장이 있어요. 지금은 적용하지 않은 상태예요.`];
@@ -1436,6 +1436,8 @@ function renderThink(st) {
 // 진행 카드에 떠 있을 때도, 대화 기록으로 옮겨진 뒤에도 같은 방식
 // =====================================================================
 function reasonOf(id) {
+  // 오류②(대구 동천역): 실제 판단 근거(검색 결과 맨 위)를 그대로 보여 줌 (가이드라인 10)
+  if (id === "origin" && S.originTarget === WRONG_ORIGIN) return `‘${ORIGIN_QUERY}’을 검색해서 맨 위에 나온 곳을 골랐어요. 검색 결과: ${ORIGIN_RESULTS.map((r) => r.name || r).join(", ")}`;
   if (id === "origin") return `처음 말씀하신 출발지와 이름이 같은 곳을 골랐어요. 검색 결과: ${ORIGIN_RESULTS.map((r) => r.name || r).join(", ")}`;
   if (id === "dest") { const d = PLACES[S.form.dest ?? AGENT_PLACE]?.name || ""; return `같은 이름의 지점 ${SEARCH_ORDER.length}곳(${SEARCH_ORDER.map((k) => PLACES[k].name.replace("담소한정식 ", "")).join(", ")}) 중 말씀하신 지점과 같은 ‘${d}’을 골랐어요.`; }
   if (id === "count") return `처음 요청을 ‘택시 ${WRONG_COUNT}대를 불러 달라’는 뜻으로 알아들었어요.`;
