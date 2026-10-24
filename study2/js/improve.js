@@ -1131,6 +1131,7 @@ async function postCallWait() {
     if (text === "__idle") {
       // 「되돌리기」로 호출을 취소하는 중이면 여기서 끝내지 않음 (다시 호출하면 그때 다시 10초를 기다림)
       if (S.callCancelling || !S.postCall) return;
+      if (S.noAutoEnd) continue; // 호출한 뒤 「되돌리기」를 눌렀으면 이 세션은 저절로 끝내지 않음 (뒤로 가기 → 앱 종료로 끝냄)
       // 참가자가 무언가 하는 중이면(멈춤·직접 조작·되돌리기 확인·입력 중·듣는 중) 끝내지 않고 다시 기다림
       if (S.paused || S.manual || S.undoPending || S.listening || $("#msg").value.trim() || !$("#undo-dlg")?.hidden) continue;
       S.waiter = null;
@@ -1183,6 +1184,7 @@ async function tryChangeAfterCall(o) {
 // 호출 취소: 앱에서 '호출 취소'를 누른 뒤 최종 호출 확인 직전 상태로 돌아가, 바꿀 것을 반영하고 다시 호출할지 물음
 async function cancelCall(change) {
   S.callCancelling = true; // 호출한 뒤 10초 대기가 이 사이에 체험을 끝내지 않게
+  S.noAutoEnd = true; // 마지막에 되돌리기를 했으면 그 뒤로는 10초 뒤 자동 종료를 하지 않음
   const f = S.steps.findIndex((x) => x.id === "final");
   S.waiter = null; S.ivWaiter = null;
   S.resumeWaiters = []; S.paused = false; S.manual = false; S.backPaused = false; S.inReject = false; S.pickOut = null;
