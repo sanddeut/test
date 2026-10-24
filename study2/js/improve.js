@@ -886,7 +886,7 @@ fitScreen = function () {
   const clip = $(".screen-clip");
   const W = phone.clientWidth;
   const H = parseFloat(phone.style.getPropertyValue("--app-h")) || phone.clientHeight;
-  const tray = 64;
+  const tray = 72;
   const scale = Math.max(0.3, Math.min(0.8, (box.clientHeight - 36 - tray) / H, (box.clientWidth * 0.86) / W));
   phone.style.setProperty("--scale", scale.toFixed(4));
   clip.style.width = `${Math.floor(W * scale)}px`;
