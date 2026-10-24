@@ -2483,14 +2483,14 @@ async function runPassword(step, spec) {
     await agentSay(o.reply, { talk: true });
   }
   logEvent("pin_entered", { duration_ms: now() - t, via: S.pinOpen ? "app" : "chat" });
-  if (S.pinOpen) { await sleep(600 * PACE); S.pinOpen = false; syncControls(); await sleep(900); }
+  if (S.pinOpen) { await sleep(300 * PACE); S.pinOpen = false; syncControls(); await sleep(300); }
   renderPinDone();
   S.pwWait = false;
   syncControls();
   // 결제 확인 → [호출] → 주변 택시 찾기
   startCalling(S);
   setStatus("", true);
-  await sleep(1200 * PACE);
+  await sleep(500 * PACE);
   return true;
 }
 

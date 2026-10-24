@@ -848,7 +848,7 @@ function buildSteps(complexity, session = 1, guide = false) {
       low: { messages: (s) => lines((s.form.count || 1) > 1 ? "done.multi" : "done", s), applyFirst: true },
       high: { messages: (s) => lines((s.form.count || 1) > 1 ? "done.multi" : "done", s), applyFirst: true },
       // 주변 택시를 찾는 화면을 잠시 보여준 뒤 배차 완료
-      act: async () => { await actSleep(2600); },
+      act: async () => { await actSleep(800); },
       apply: (s) => { s.phone.sheet = null; s.phone.taxiView = "complete"; s.phone.focus = null; },
     },
   );

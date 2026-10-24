@@ -325,7 +325,7 @@ function taxiOverlay() {
   if (p.sheet === "pin") {
     const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
     return `<div class="dim ${enter}"><div class="sheet pin ${enter}"><div class="tx-brand"><span class="tx-logo sm">${mi("local_taxi", "fill")}</span><b>${TAXI_APP} 페이</b><small>${mi("lock")} 보안 키패드</small></div><h3>결제 비밀번호</h3><p class="muted">마음카드 ****1234 · 비밀번호 4자리를 입력해주세요</p>
-      <div class="dots">${[0, 1, 2, 3].map((i) => `<i class="${i < (p.pin || "").length ? "on" : ""}"></i>`).join("")}</div>
+      <div class="pin-dots">${[0, 1, 2, 3].map((i) => `<i class="${i < (p.pin || "").length ? "on" : ""}"></i>`).join("")}</div>
       <div class="keypad">${keys.map((k) => (k ? `<button type="button" data-pin="${k}">${k === "del" ? mi("backspace") : k}</button>` : "<span></span>")).join("")}</div></div></div>`;
   }
   if (p.sheet === "request") {
