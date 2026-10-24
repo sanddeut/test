@@ -676,7 +676,7 @@ async function runAuto(step) {
   S.cond = "B2"; // 알리는 문구("~할게요", "~이에요")
   let r;
   try { r = await runHighStep(step); } finally { [S.automation, S.cond] = prev; }
-  if (r && !S.finished) { await sleep(1500 * PACE); await gate(); } // 결과를 읽을 시간 (가이드라인 11)
+  if (r && !S.finished) await gate(); // 따로 더 쉬지 않음 (읽을 시간은 단계 간격 6초로 충분)
   return r;
 }
 
