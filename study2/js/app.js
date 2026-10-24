@@ -718,6 +718,7 @@ function onSubmit(e) {
   const text = input.value.trim();
   if (!text || !S || S.finished) return;
   input.value = "";
+  input.dispatchEvent(new Event("input")); // 말로 하기 칸(받아 적은 말)도 비움
   fitMsg();
   clearUnsent();
 
@@ -3178,7 +3179,8 @@ function setupMic() {
   window.stopMic = (cancel = false) => {
     if (!want && !rec) return;
     want = false;
-    try { rec?.stop(); } catch { /* 이미 멈춤 */ }
+    // 멈춘 뒤 늦게 오는 받아 적기 결과가 입력칸을 다시 채우지 않게 (보낸 말이 입력칸에 남던 문제)
+    if (rec) { rec.onresult = null; try { rec.abort(); } catch { /* 이미 멈춤 */ } }
     rec = null;
     if (cancel) { input.value = startText; input.dispatchEvent(new Event("input")); if (S) logEvent("voice_cancel"); }
     listenUi(false);
