@@ -426,3 +426,4 @@
 .ai-live-chip { font-size: 14.5px; line-height: 22px; padding: 6px 16px; border-radius: 0 0 14px 14px; }
 /* 실행화면을 더 크게: 아래 안내 문구 칸을 줄임 */
 .phone[data-view="progress"] .pv-panel { height: 120px; }
+.ai-live-chip { font-size: 13px; line-height: 20px; padding: 5px 14px; }
