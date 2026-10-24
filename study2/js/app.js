@@ -3339,7 +3339,9 @@ function init() {
   const saved = store.get("setup", {});
   if (saved.pid) $("#pid").value = saved.pid;
   if (saved.name) $("#pname").value = saved.name;
-  for (const [name, v] of [["ver", saved.version], ["order", saved.order], ["scope", saved.scope]]) {
+  // 택시 2대 버전(1)을 숨긴 동안에는 예전에 저장된 1을 2로 바꿔 고름
+  const savedVer = !window.SHOW_V1 && saved.version && !/2$/.test(saved.version) ? (/^guide/.test(saved.version) ? "guide2" : "base2") : saved.version;
+  for (const [name, v] of [["ver", savedVer], ["order", saved.order], ["scope", saved.scope]]) {
     const r = v != null && document.querySelector(`input[name="${name}"][value="${v}"]`);
     if (r) r.checked = true;
   }
