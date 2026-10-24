@@ -767,7 +767,7 @@ async function announceInner(step) {
 
 // 앱 대신 조작하기를 허용하지 않았으면, 택시 앱을 열기 전에 왜 필요한지 설명하고 다시 묻기 (가이드라인 21·22)
 async function askAppPermission() {
-  const ask = "택시를 부르려면 제가 택시 앱을 열고 대신 눌러야 해요. ‘앱 대신 조작하기’를 허용해 주시겠어요?";
+  const ask = `택시를 부르려면 제가 ‘${TAXI_APP}’ 앱에 들어가서 대신 눌러야 해요. 허용해 주시겠어요?`;
   await agentSay(ask);
   const opts = [{ id: "approve", label: "허용" }]; // 실험 진행을 위해 허용만 둠
   for (;;) {
@@ -812,7 +812,7 @@ function showPermDialog() {
     d.id = "perm-dlg";
     d.className = "perm-dlg";
     d.innerHTML = `<div class="perm-card" role="dialog" aria-modal="true" aria-labelledby="perm-title">
-        <b id="perm-title">사용자님 대신에 제가 ‘${TAXI_APP}’ 앱을 조작해 택시를 부르려고 해요.<br>괜찮을까요?</b>
+        <b id="perm-title">사용자님 대신에 제가 ‘${TAXI_APP}’ 앱에 들어가서 택시를 부르려고 해요.<br>괜찮을까요?</b>
         <div class="perm-btns"><button type="button" class="perm-no">허용 안 함</button><button type="button" class="perm-yes">허용</button></div>
       </div>`;
     $(".phone").appendChild(d);
