@@ -667,7 +667,45 @@ async function turn(text, { said, intents, hint, fallback, fallbackBy, appKeywor
     free_origin: freeOrigin || null,
     free_place: freePlace || null,
   });
-  return res.output;
+  const o = res.output;
+  // AI가 말을 '기타'·승인으로 분류했어도 바꿀 값(출발지·대수 등)을 알아냈으면 그 변경으로 처리
+  // (값은 그대로인데 "바꿨어요"라고만 답하던 문제)
+  const was = o.intent;
+  o.intent = inferChange(o, text);
+  if (o.intent !== was) logEvent("intent_inferred", { from: was, to: o.intent });
+  // 이 단계에서 받는 의도가 아니어도 바꿀 수 있는 항목이면 바로 반영하고, 지금 단계 질문으로 돌아옴
+  if (changeIntents().includes(o.intent) && !(intents || []).includes(o.intent)) {
+    const done = applyAside(o);
+    if (done) { o.intent = "other"; o.reply = [done, fallback].filter(Boolean).join(" "); }
+  }
+  return o;
+}
+
+// 분류는 other/approve/continue인데 지금 값과 다른 출발지·목적지·대수·쿠폰·택시 종류·결제를 말했으면 그 변경 의도로 봄
+// (AI가 대화 맥락의 값을 그대로 옮겨 적은 경우를 거르려고, 참가자 말에 그 항목 낱말이 있을 때만)
+const CHANGE_PICK = [
+  ["set_origin", /역|출발|동천|대구|용인|분당|마을|단지|아파트|여기/, (o) => (o.origin || o.origin_name) && S.form.origin && namedOrigin(o) !== S.form.origin],
+  ["set_dest", /한정식|담소|목적|도착|강남|역삼/, (o) => (o.place || o.place_name) && S.form.dest != null && namedDest(o) !== S.form.dest],
+  ["set_count", /대|[0-9]/, (o) => o.count >= 1 && o.count !== (S.form.count || 1)],
+  ["set_coupon", /쿠폰|할인/, (o) => typeof o.coupon === "boolean" && o.coupon !== Boolean(S.form.coupon)],
+  ["set_car", /택시|모범|일반|대형/, (o) => CAR_TYPES[o.car_type] && o.car_type !== S.form.car],
+  ["set_pay", /결제|카드|현금/, (o) => PAY[o.pay_method] && o.pay_method !== S.form.pay],
+];
+function inferChange(o, text = "") {
+  if (!["other", "approve", "continue"].includes(o.intent)) return o.intent;
+  const hit = CHANGE_PICK.find(([k, re, has]) => changeIntents().includes(k) && re.test(text) && has(o));
+  return hit ? hit[0] : o.intent;
+}
+
+// 단계와 상관없이 값을 바로 바꾸고 확인 문구를 돌려줌 (말은 하지 않음)
+function applyAside(o, via = "text") {
+  if (o.intent === "set_origin" && namedOrigin(o)) { const k = namedOrigin(o); setOption("origin", k, via); S.originTarget = k; return line("change.origin", S); }
+  if (o.intent === "set_dest" && namedDest(o)) { const k = namedDest(o); setDest(k); logEvent("dest_changed", { dest: k, name: PLACES[k].name, via }); return line("change.dest", S, { dest: k }); }
+  if (o.intent === "set_count" && o.count >= 1) { setOption("count", o.count, via); return line("change.count", S); }
+  if (o.intent === "set_coupon" && typeof o.coupon === "boolean") { setOption("coupon", o.coupon, via); return line(o.coupon ? "change.coupon.on" : "change.coupon.off", S); }
+  if (o.intent === "set_car" && CAR_TYPES[o.car_type]) { setOption("car", o.car_type, via); return line("change.car", S); }
+  if (o.intent === "set_pay" && PAY[o.pay_method]) { setOption("pay", o.pay_method, via); return line("change.pay", S); }
+  return null;
 }
 
 async function interpret(kind, text, context) {
@@ -973,6 +1011,9 @@ function namedDest(o) {
 }
 function namedOrigin(o) {
   if (o?.origin && ORIGINS[o.origin] && o.origin !== "custom") return o.origin;
+  // "용인 동천역"처럼 이름만 온 경우: 아는 동천역이면 그 출발지로 (새 장소를 만들지 않음)
+  const nm = o?.origin_name || "";
+  if (/동천/.test(nm)) return /용인|신분당|수지|경기/.test(nm) || !/대구/.test(nm) || !ORIGINS.daegu ? "dongcheon" : "daegu";
   return o?.origin_name ? setCustomOrigin(o.origin_name, S.geo) : null;
 }
 
@@ -2479,7 +2520,7 @@ async function runPassword(step, spec) {
       if (S.finished) return false;
       continue;
     }
-    const o = await turn(r.text, { said: resolveMsgs(spec.messages).join(" "), intents: ["other"] });
+    const o = await turn(r.text, { said: resolveMsgs(spec.messages).join(" "), intents: ["other"], fallback: "결제 비밀번호는 택시 앱을 열어 직접 입력해 주세요." });
     await agentSay(o.reply, { talk: true });
   }
   logEvent("pin_entered", { duration_ms: now() - t, via: S.pinOpen ? "app" : "chat" });
