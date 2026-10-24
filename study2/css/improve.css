@@ -439,3 +439,7 @@
 
 /* 못 알아들었을 때 AI 말풍선 아래 「다시 보내기」: 크게 */
 .mis-pills .resend-pill.big { font-size: 16.5px; font-weight: 700; color: #0b57d0; padding: 11px 22px; box-shadow: 0 0 0 1.5px #0b57d0, 0 2px 8px rgba(0,0,0,.10); }
+
+/* 연구2: 내 말풍선 아래는 [! 전달 실패]만, 글씨 크게 */
+.resend-row .send-fail { font-size: 15px; gap: 4px; }
+.resend-row .send-fail .ms { font-size: 18px; }

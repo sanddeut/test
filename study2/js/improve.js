@@ -1272,18 +1272,11 @@ function onMishear(n, text) {
     $("#msg").value = text;
     $("#composer").requestSubmit();
   };
-  if (rc) rc.remove(); // 말풍선 옆 표시 대신 아래 줄에 [전달 실패 · 다시 보내기]
+  if (rc) rc.remove(); // 말풍선 옆 표시 대신 아래 줄에 [! 전달 실패] (다시 보내기는 AI 말풍선 아래 알약)
   if (ub) {
-    // 말풍선 아래 오른쪽: [! 전달 실패] [다시 보내기]
     const row = document.createElement("div");
     row.className = "resend-row";
     row.innerHTML = '<span class="send-fail" role="status"><span class="ms">error</span>전달 실패</span>';
-    const again = document.createElement("button");
-    again.type = "button";
-    again.className = "resend";
-    again.textContent = "다시 보내기";
-    again.onclick = () => resend("bubble");
-    row.appendChild(again);
     ub.after(row);
   }
   gLog("G2", "mishear_mark", { n });
