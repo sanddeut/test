@@ -427,3 +427,12 @@
 /* 실행화면을 더 크게: 아래 안내 문구 칸을 줄임 */
 .phone[data-view="progress"] .pv-panel { height: 120px; }
 .ai-live-chip { font-size: 13px; line-height: 20px; padding: 5px 14px; }
+
+/* 판단 이유 물음표: 1px 작게, 80% 불투명 */
+.has-more::after { font-size: 25px; opacity: .8; }
+
+/* 실행화면 일시정지: 렌더링 화면을 어둡게, 가운데 흰 일시정지 아이콘 */
+.pause-veil { display: none; position: absolute; inset: 0; z-index: 12; background: rgba(20,22,26,.5); place-items: center; pointer-events: none; }
+.pause-veil .ms { font-size: 88px; color: #fff; font-variation-settings: "FILL" 1; }
+.phone.frame-paused[data-view="progress"] .pause-veil { display: grid; }
+.phone.frame-paused .run-frame { animation-play-state: paused !important; }

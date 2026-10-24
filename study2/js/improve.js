@@ -147,7 +147,9 @@ syncControls = function () {
   if (S && !$("#msg").disabled) $("#msg").placeholder = TEXT_PLACEHOLDER;
   else if (S && $("#msg").placeholder === "AI가 작업 중이에요") $("#msg").placeholder = "AI가 앱 조작 중…"; // 대화창 대신 입력창에서 알림
   const st = $("#btn-stop");
-  if (st && st.textContent !== STOP_LABEL) st.textContent = STOP_LABEL;
+  const stLabel = S?.framePaused ? "다시 시작" : STOP_LABEL;
+  if (st && st.textContent !== stLabel) st.textContent = stLabel;
+  if (S?.framePaused) { st.disabled = false; $("#btn-manual").disabled = false; }
   const mb = $("#btn-manual");
   if (S?.unified && mb && mb.textContent !== "내가 앱 조작하기") mb.textContent = "내가 앱 조작하기";
 };
@@ -865,6 +867,18 @@ function setupRunFrame() {
   btn.textContent = "내가 앱 조작하기";
   tray.append(stop, btn);
   frame.after(tray);
+  // 실행화면에서 「일시정지」: 대화로 돌아가지 않고 이 화면에서 멈춤 (화면을 어둡게 하고 가운데 흰 일시정지 아이콘), 버튼은 「다시 시작」
+  const pv = document.createElement("div");
+  pv.className = "pause-veil";
+  pv.innerHTML = '<span class="ms">pause</span>';
+  clip.appendChild(pv);
+  tray.addEventListener("click", (e) => {
+    if (!S || S.finished || $(".phone").dataset.view !== "progress") return;
+    if (e.target.closest("#btn-stop")) {
+      e.stopImmediatePropagation(); e.preventDefault();
+      if (S.framePaused) framePause(false); else if (!S.paused) framePause(true);
+    } else if (e.target.closest("#btn-manual") && S.framePaused) framePause(false, "manual"); // 멈춘 채로 내가 조작하기 → 멈춤을 풀고 넘어감
+  }, true);
   // 오른쪽 위 「?」: 실행화면의 각 요소 안내
   const help = document.createElement("button");
   help.type = "button";
@@ -874,6 +888,21 @@ function setupRunFrame() {
   help.innerHTML = '<span class="ms">help</span>';
   help.onclick = openCoach;
   $(".pv-head").appendChild(help);
+}
+
+function framePause(on, why = "resume") {
+  S.framePaused = on;
+  $(".phone").classList.toggle("frame-paused", on);
+  if (on) {
+    S.paused = true;
+    S.m.stops++;
+    logEvent("stop", { via: "frame" });
+    gLog("G12", "frame_pause");
+    syncControls();
+  } else {
+    logEvent("resume", { via: `frame_${why}` });
+    resume();
+  }
 }
 
 // 실행화면 크기: 아래 버튼 칸만큼 빼고 맞춤
