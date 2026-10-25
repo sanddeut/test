@@ -159,7 +159,8 @@ syncSendButton = function () {
   _syncSendButton();
   const btn = $("#send");
   // 개선안: 입력창 버튼은 늘 「보내기」 (멈추기는 실행화면의 「일시정지」로)
-  if (S?.unified && btn.dataset.mode === "stop") { btn.dataset.mode = "send"; btn.disabled = !$("#msg").value.trim(); }
+  if (S?.unified && btn.dataset.mode === "stop") btn.dataset.mode = "send";
+  if (S?.unified && !S.finished && !$("#msg").disabled) btn.disabled = false; // 언제든 보낼 수 있게
   if (btn.dataset.mode === "send" && btn.textContent !== "보내기") btn.textContent = "보내기";
   if (btn.dataset.mode === "stop" && btn.textContent !== STOP_LABEL) btn.textContent = STOP_LABEL;
   btn.classList.toggle("send-text", btn.dataset.mode === "send");
@@ -211,6 +212,7 @@ const _syncControlsNoPh = syncControls;
 syncControls = function () {
   _syncControlsNoPh();
   if (S?.unified) $("#msg").placeholder = "메시지 입력...";
+  if (S?.unified && !S.finished && !$("#msg").disabled) $("#send").disabled = false; // 언제든 보낼 수 있게
 };
 
 const _onSubmit = onSubmit;
