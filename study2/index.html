@@ -24,7 +24,7 @@
     window.__V = Date.now();
     // 개선안은 연구2 가이드라인 구현(v4)의 화면을 그대로 씀: 설정에서 개선안을 고르면 improve.css·improve.js를 함께 불러옴
     // 버전: base(기존안1) · base2(기존안2) · guide(개선안1) · guide2(개선안2). 1 = 택시 2대 오류, 2 = 대구 동천역 오류
-    // base3 · guide3 = 2와 같은 오류를 신촌으로 (서울 신촌역을 제주 신촌리로 판단)
+    // base3 · guide3 = 2와 같은 오류를 신촌으로 (서울 신촌역을 광주 신촌동으로 판단)
     // 지금은 오류② 대구 동천역 버전(2)만 씀. 택시 2대 버전(1)은 설정에서 숨김 (다시 쓰려면 SHOW_V1 = true, 아래 label의 hidden 제거)
     window.SHOW_V1 = false;
     try { let v = JSON.parse(localStorage.getItem("s2:setup") || "{}").version || "base2"; if (!window.SHOW_V1 && !/[23]$/.test(v)) v = /^guide/.test(v) ? "guide2" : "base2"; window.__GUIDE = /^guide/.test(v); window.__ERRSET = /[23]$/.test(v) ? 2 : 1; window.__PLACE = /3$/.test(v) ? "sinchon" : "dongcheon"; } catch (e) { window.__GUIDE = false; window.__ERRSET = 2; }

@@ -4,15 +4,15 @@
 
 const TAXI_APP = "마음택시";
 
-// 출발지 장소 세트 (설정의 버전으로 고름): dongcheon = 용인 신분당선 동천역(오류: 대구 동천역) / sinchon = 서울 신촌역(오류: 제주 신촌리)
+// 출발지 장소 세트 (설정의 버전으로 고름): dongcheon = 용인 신분당선 동천역(오류: 대구 동천역) / sinchon = 서울 신촌역(오류: 광주 신촌동)
 // 코드 안의 키는 두 세트 모두 dongcheon(타려는 곳) · daegu(AI가 잘못 고르는 먼 곳)로 같게 씀
 const PLACE_SET = window.__PLACE === "sinchon" ? "sinchon" : "dongcheon";
 const SPOT = PLACE_SET === "sinchon"
   ? {
       word: /신촌/, // 참가자가 이 이름을 말하면 타려는 곳(또는 같은 이름의 먼 곳)
-      near: /서울|서대문|2호선|연세|이대|신촌역/, far: /제주|조천|신촌리/, // 어느 쪽인지 가리는 말
+      near: /서울|서대문|2호선|연세|이대|신촌역/, far: /광주|광산|송정/, // 어느 쪽인지 가리는 말
       target: { name: "신촌역", addr: "서울 서대문구 신촌동 · 지하철 2호선", lat: 37.55527, lng: 126.93693 },
-      wrong: { name: "제주 신촌리", say: "제주특별자치도 제주시 조천읍 신촌리", addr: "제주특별자치도 제주시 조천읍 신촌리 · 신촌포구", lat: 33.5386, lng: 126.6297, ic: "location_on" },
+      wrong: { name: "광주 신촌동", say: "광주 광산구 신촌동", addr: "광주 광산구 신촌동 · 송정역 부근", lat: 35.1530, lng: 126.8030, ic: "location_on" },
       query: "신촌",
       others: [{ key: null, name: "신촌역 버스정류장", addr: "서울 서대문구 신촌로" }],
       geo: { lat: 37.56592, lng: 126.93675, label: "서울 서대문구 연희동" },
