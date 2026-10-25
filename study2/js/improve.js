@@ -883,7 +883,7 @@ function setupRunFrame() {
   const intro = document.createElement("div");
   intro.className = "run-intro";
   intro.hidden = true;
-  intro.innerHTML = '<p>AI가 마음택시 앱을 사용하는<br>실시간 화면을 보여드려요.</p><button type="button" class="run-intro-ok">확인</button>';
+  intro.innerHTML = '<span class="tx-logo run-intro-logo"><span class="ms fill">local_taxi</span></span><p>AI가 마음택시 앱을 사용하는<br>실시간 화면을 보여드려요.</p><button type="button" class="run-intro-ok">확인</button>';
   intro.addEventListener("click", (e) => e.stopPropagation());
   intro.querySelector("button").onclick = () => {
     intro.hidden = true;

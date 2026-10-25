@@ -473,3 +473,4 @@
 .bubble.typing.busy-bubble .busy-dot { width: 10px; height: 10px; }
 #rc-status:has(.busy)::after, .pv-status.thinking::after { content: none; }
 .typing.busy-bubble span { width: auto; height: auto; background: none; animation: none; border-radius: 0; }
+.run-intro .run-intro-logo { margin-bottom: -6px; }
