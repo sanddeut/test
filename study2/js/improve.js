@@ -160,7 +160,7 @@ syncSendButton = function () {
   const btn = $("#send");
   // 개선안: 입력창 버튼은 늘 「보내기」 (멈추기는 실행화면의 「일시정지」로)
   if (S?.unified && btn.dataset.mode === "stop") btn.dataset.mode = "send";
-  if (S?.unified && !S.finished && !$("#msg").disabled) btn.disabled = false; // 언제든 보낼 수 있게
+  if (S?.unified && !S.finished) btn.disabled = false; // 언제든 보낼 수 있게
   if (btn.dataset.mode === "send" && btn.textContent !== "보내기") btn.textContent = "보내기";
   if (btn.dataset.mode === "stop" && btn.textContent !== STOP_LABEL) btn.textContent = STOP_LABEL;
   btn.classList.toggle("send-text", btn.dataset.mode === "send");
@@ -212,12 +212,39 @@ const _syncControlsNoPh = syncControls;
 syncControls = function () {
   _syncControlsNoPh();
   if (S?.unified) $("#msg").placeholder = "메시지 입력...";
-  if (S?.unified && !S.finished && !$("#msg").disabled) $("#send").disabled = false; // 언제든 보낼 수 있게
+  if (S?.unified && !S.finished) { $("#msg").disabled = false; $("#send").disabled = false; $("#mic").disabled = false; } // 언제든 입력하고 보낼 수 있게
 };
+
+// 개선안: 보내기는 언제나 가능. AI가 바로 받을 수 없는 순간(답을 해석하는 중 등)에 보낸 말은 말풍선으로 먼저 보이고, 받을 수 있게 되면 이어서 처리
+function canTakeText() {
+  return Boolean(S.ivWaiter || (S.waiter && !S.paused) || (S.automation === "high" && S.running && !S.paused && !S.pinOpen) || lowTalkable());
+}
+function deliverQueued() {
+  const text = S?.inbox;
+  if (!text || S.finished) return;
+  if (S.ivWaiter) { const w = S.ivWaiter; S.ivWaiter = null; S.inbox = null; logEvent("user_text", { text, queued: true }); w(text); }
+  else if (S.waiter && !S.paused) { const w = S.waiter; S.waiter = null; S.inbox = null; setChips([]); logEvent("user_text", { text, queued: true }); w.resolve({ type: "text", text }); }
+  else if (lowTalkable() && !$(".phone").classList.contains("acting")) { S.inbox = null; logEvent("user_text", { text, queued: true }); handleInterjection(text); }
+  else return;
+  syncControls();
+}
+setInterval(() => { if (S?.unified) deliverQueued(); }, 300);
 
 const _onSubmit = onSubmit;
 onSubmit = function (e) {
   const text = $("#msg").value.trim();
+  if (text && S?.unified && !S.finished && !canTakeText()) {
+    e?.preventDefault();
+    window.stopMic?.(false);
+    $("#msg").value = "";
+    $("#msg").dispatchEvent(new Event("input"));
+    fitMsg();
+    clearUnsent();
+    appendBubble("user", text);
+    S.inbox = S.inbox ? `${S.inbox}\n${text}` : text;
+    logEvent("input_queued", { text });
+    return;
+  }
   if (!text || !lowTalkable()) return _onSubmit(e);
   e?.preventDefault();
   $("#msg").value = "";
