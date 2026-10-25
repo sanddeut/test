@@ -323,6 +323,7 @@ function waitLabel() {
 }
 function aiBusy() {
   if (!S || S.finished) return false;
+  if ($("#perm-dlg")?.offsetParent) return false; // 허용을 묻는 중
   if ($("#typing")) return true;
   const asking = $("#pv-chips")?.children.length || $("#run-card")?.classList.contains("asking") || S.waiter || S.ivWaiter;
   return Boolean(S.running && !S.paused && !S.stopped && !S.manual && !S.pinOpen && !S.pwWait && !asking);
