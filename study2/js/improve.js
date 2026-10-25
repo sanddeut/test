@@ -331,7 +331,13 @@ function aiBusy() {
 const waitHTML = (cls) => `<div class="${cls}" role="status" hidden><i class="wait-spin"></i><span><b></b><small>잠시만 기다려 주세요</small></span></div>`;
 setInterval(() => {
   if (!S?.unified) return;
-  if (!$(".chat-wait")) $("#composer").insertAdjacentHTML("beforebegin", waitHTML("chat-wait only-chat"));
+  if (!$(".chat-wait")) {
+    $("#composer").insertAdjacentHTML("beforebegin", waitHTML("chat-wait only-chat"));
+    const pb = document.createElement("button"); // 대화창에서 바로 멈추기 (입력창 버튼은 늘 「보내기」)
+    pb.type = "button"; pb.className = "wait-stop"; pb.textContent = STOP_LABEL;
+    pb.onclick = () => S && handleStop("button");
+    $(".chat-wait").appendChild(pb);
+  }
   if (!$(".pv-wait")) $("#pv-status").insertAdjacentHTML("afterend", waitHTML("pv-wait"));
   const on = aiBusy(), t = waitLabel();
   for (const el of [$(".chat-wait"), $(".pv-wait")]) {
