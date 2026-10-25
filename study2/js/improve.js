@@ -339,6 +339,13 @@ setInterval(() => {
     const b = el.querySelector("b");
     if (b.textContent !== t) b.textContent = t;
   }
+  // 실행화면 태그: AI가 질문하고 답을 기다리는 동안에는 「AI가 답을 기다려요」
+  const chip = $(".ai-live-chip");
+  if (chip) {
+    const waiting = S.running && !S.finished && !S.paused && ($("#pv-chips")?.children.length || $("#run-card")?.classList.contains("asking") || S.waiter);
+    const ct = waiting ? "AI가 답을 기다려요" : "AI가 앱 조작 중 ...";
+    if (chip.textContent !== ct) chip.textContent = ct;
+  }
 }, 300);
 
 // [진행 카드] 아이콘과 움직이는 점은 카드 바깥 위에, 결과와 질문은 그 아래 흰 카드에 (점 다음에 카드가 차례로 나타남)
