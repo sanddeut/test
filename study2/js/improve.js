@@ -876,10 +876,14 @@ function setupRunFrame() {
   veil.className = "ai-veil"; // AI가 조작하는 동안 흰색 0.3 덮개로 조금 흐리게
   clip.appendChild(veil);
   // 실행화면에 처음 들어오면 화면 전체를 어둡게 하고 무엇을 보는 화면인지 알림 → [확인]을 누를 때까지 AI는 멈춤
+  const chip = document.createElement("div");
+  chip.className = "ai-live-chip"; // 안내(딤)를 닫은 뒤에 보임
+  chip.textContent = "AI가 앱 조작 중 ...";
+  clip.appendChild(chip);
   const intro = document.createElement("div");
   intro.className = "run-intro";
   intro.hidden = true;
-  intro.innerHTML = '<p>AI가 마음택시 앱을 사용하는<br>실시간 모습이에요.</p><button type="button" class="run-intro-ok">확인</button>';
+  intro.innerHTML = '<p>AI가 마음택시 앱을 사용하는<br>실시간 화면을 보여드려요.</p><button type="button" class="run-intro-ok">확인</button>';
   intro.addEventListener("click", (e) => e.stopPropagation());
   intro.querySelector("button").onclick = () => {
     intro.hidden = true;
