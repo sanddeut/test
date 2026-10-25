@@ -204,6 +204,13 @@ syncControls = function () {
   syncSendButton();
 };
 
+// 개선안: 입력칸 안내 문구 없음 (언제든 말할 수 있으니)
+const _syncControlsNoPh = syncControls;
+syncControls = function () {
+  _syncControlsNoPh();
+  if (S?.unified) $("#msg").placeholder = "";
+};
+
 const _onSubmit = onSubmit;
 onSubmit = function (e) {
   const text = $("#msg").value.trim();
