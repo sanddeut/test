@@ -336,11 +336,11 @@ setCard = function (opts = {}) {
   const st = c.querySelector("#rc-status");
   // 진행 문장은 대화에 이미 있으니, 작업 중에는 점만 보여 줌
   const working = Boolean(S?.running) && !S.finished && !S.stopped && !c.classList.contains("asking");
-  if (working) st.innerHTML = '<span class="dots" aria-label="AI가 앱 조작 중"><i></i><i></i><i></i></span>'; // 기다림 안내는 AI 프로필 옆으로
+  if (working) st.innerHTML = '<span class="dots" aria-label="AI가 앱 조작 중"><i></i><i></i><i></i></span>'; // 기다림 안내는 입력창 위 띠로
   c.classList.toggle("working", working);
 };
 
-// [기다림 안내] AI가 일하는 동안 "잠시만 기다려 주세요"를 분명히: 대화창은 AI 프로필 옆(점 자리), 실행화면은 아래 카드
+// [기다림 안내] AI가 일하는 동안 "잠시만 기다려 주세요"를 분명히: 대화창은 입력창 위 띠, 실행화면은 아래 카드
 const STEP_DOING = {
   taxi_open: "택시 앱을 열고", origin: "출발지를 설정하고", dest: "목적지를 설정하고", car: "택시 종류를 고르고",
   count: "택시 대수를 정하고", pay: "결제 방식을 고르고", coupon: "예상 금액을 확인하고", drop: "내릴 곳을 정하고",
@@ -358,38 +358,25 @@ function aiBusy() {
   return Boolean(S.running && !S.paused && !S.stopped && !S.manual && !S.pinOpen && !S.pwWait && !asking);
 }
 const waitHTML = (cls) => `<div class="${cls}" role="status" hidden><i class="wait-spin"></i><span><b></b><small>잠시만 기다려 주세요</small></span></div>`;
-// 대화창: AI가 답을 준비할 때는 「…」 말풍선 대신 기다림 안내
-const _showTyping = showTyping;
-showTyping = function (on) {
-  _showTyping(on);
-  const t = $("#typing");
-  if (on && t && S?.unified && !t.classList.contains("wait-bubble")) {
-    t.classList.add("wait-bubble");
-    t.innerHTML = '<i class="wait-spin"></i><div><b>AI가 답변을 준비하고 있어요</b><small>잠시만 기다려 주세요</small></div>';
-  }
-};
 setInterval(() => {
   if (!S?.unified) return;
   const on = aiBusy(), t = waitLabel();
   // 실행화면: 아래 카드
   if (!$(".pv-wait")) $("#pv-status").insertAdjacentHTML("afterend", waitHTML("pv-wait"));
-  const pv = $(".pv-wait");
-  pv.hidden = !on;
-  if (pv.querySelector("b").textContent !== t) pv.querySelector("b").textContent = t;
-  // 대화창: 진행 카드 위 AI 프로필 옆 (점 자리)
-  const head = $("#run-card .rc-head");
-  if (head) {
-    if (!head.querySelector(".rc-wait")) {
-      head.insertAdjacentHTML("beforeend", '<div class="rc-wait" role="status"><span><b></b><small>잠시만 기다려 주세요</small></span></div>');
-      const pb = document.createElement("button"); // 대화창에서 바로 멈추기 (입력창 버튼은 늘 「보내기」)
-      pb.type = "button"; pb.className = "wait-stop"; pb.textContent = STOP_LABEL;
-      pb.onclick = () => S && handleStop("button");
-      head.querySelector(".rc-wait").appendChild(pb);
-    }
-    head.classList.toggle("waiting", on && S.running && !$("#typing"));
-    const hb = head.querySelector(".rc-wait b");
-    if (hb.textContent !== t) hb.textContent = t;
+  // 대화창: 입력창 바로 위 띠
+  if (!$(".chat-wait")) {
+    $("#composer").insertAdjacentHTML("beforebegin", waitHTML("chat-wait only-chat"));
+    const pb = document.createElement("button"); // 대화창에서 바로 멈추기 (입력창 버튼은 늘 「보내기」)
+    pb.type = "button"; pb.className = "wait-stop"; pb.textContent = STOP_LABEL;
+    pb.onclick = () => S && handleStop("button");
+    $(".chat-wait").appendChild(pb);
   }
+  for (const el of [$(".pv-wait"), $(".chat-wait")]) {
+    el.hidden = !on;
+    const b = el.querySelector("b");
+    if (b.textContent !== t) b.textContent = t;
+  }
+  $(".chat-wait .wait-stop").hidden = !S.running; // 답을 준비하는 중에는 멈출 작업이 없음
   // 실행화면 태그: AI가 질문하고 답을 기다리는 동안에는 「AI가 답을 기다려요」
   const chip = $(".ai-live-chip");
   if (chip) {
