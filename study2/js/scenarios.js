@@ -4,13 +4,42 @@
 
 const TAXI_APP = "마음택시";
 
-// 목적지 검색 결과 (같은 이름의 여러 지점). road: 신분당선 동천역에서의 도로 거리(km, 고정값)
+// 출발지 장소 세트 (설정의 버전으로 고름): dongcheon = 용인 신분당선 동천역(오류: 대구 동천역) / sinchon = 서울 신촌역(오류: 제주 신촌리)
+// 코드 안의 키는 두 세트 모두 dongcheon(타려는 곳) · daegu(AI가 잘못 고르는 먼 곳)로 같게 씀
+const PLACE_SET = window.__PLACE === "sinchon" ? "sinchon" : "dongcheon";
+const SPOT = PLACE_SET === "sinchon"
+  ? {
+      word: /신촌/, // 참가자가 이 이름을 말하면 타려는 곳(또는 같은 이름의 먼 곳)
+      near: /서울|서대문|2호선|연세|이대|신촌역/, far: /제주|조천|신촌리/, // 어느 쪽인지 가리는 말
+      target: { name: "신촌역", addr: "서울 서대문구 신촌동 · 지하철 2호선", lat: 37.55527, lng: 126.93693 },
+      wrong: { name: "제주 신촌리", say: "제주특별자치도 제주시 조천읍 신촌리", addr: "제주특별자치도 제주시 조천읍 신촌리 · 신촌포구", lat: 33.5386, lng: 126.6297, ic: "location_on" },
+      query: "신촌",
+      others: [{ key: null, name: "신촌역 버스정류장", addr: "서울 서대문구 신촌로" }],
+      geo: { lat: 37.56592, lng: 126.93675, label: "서울 서대문구 연희동" },
+      road: { gangnam: 14.2, gucheong: 13.6, yeoksam: 13.8, drop: 14.0 }, // 신촌역에서의 도로 거리(km)
+      situ: "택시는 집 근처 ‘신촌역’(서울 서대문구)에서 타려고 합니다.",
+      taskFrom: "‘신촌역’",
+    }
+  : {
+      word: /동천/,
+      near: /용인|신분당|수지|경기/, far: /대구/,
+      target: { name: "신분당선 동천역", addr: "경기 용인시 수지구 동천동", lat: 37.33797, lng: 127.10278 },
+      wrong: { name: "대구 동천역", say: "대구광역시 북구 동천역", addr: "대구광역시 북구 동천동 · 대구 도시철도 3호선", lat: 35.94246, lng: 128.55945 },
+      query: "동천역",
+      others: [{ key: null, name: "동천역 버스정류장", addr: "경기 용인시 수지구 동천로" }],
+      geo: { lat: 37.39475, lng: 127.11118, label: "경기 성남시 분당구 삼평동" }, // 판교역 부근
+      road: { gangnam: 21.2, gucheong: 23.5, yeoksam: 21.9, drop: 21.0 }, // 신분당선 동천역에서의 도로 거리(km)
+      situ: "택시는 집 근처 ‘동천역’(경기 용인시 수지구)에서 타려고 합니다.",
+      taskFrom: "‘동천역’",
+    };
+
+// 목적지 검색 결과 (같은 이름의 여러 지점). road: 타려는 출발지에서의 도로 거리(km, 고정값)
 const PLACES = {
-  gangnam: { name: "담소한정식 강남점", addr: "서울 강남구 테헤란로 152", lat: 37.50007, lng: 127.03651, road: 21.2 },
-  gucheong: { name: "담소한정식 강남구청점", addr: "서울 강남구 학동로 426", lat: 37.51729, lng: 127.04736, road: 23.5 },
-  yeoksam: { name: "담소한정식 역삼점", addr: "서울 강남구 논현로 508", lat: 37.50375, lng: 127.03983, road: 21.9 },
+  gangnam: { name: "담소한정식 강남점", addr: "서울 강남구 테헤란로 152", lat: 37.50007, lng: 127.03651, road: SPOT.road.gangnam },
+  gucheong: { name: "담소한정식 강남구청점", addr: "서울 강남구 학동로 426", lat: 37.51729, lng: 127.04736, road: SPOT.road.gucheong },
+  yeoksam: { name: "담소한정식 역삼점", addr: "서울 강남구 논현로 508", lat: 37.50375, lng: 127.03983, road: SPOT.road.yeoksam },
   // 연구2 오류(블랙박스): 에이전트가 이유를 말하지 않고 바꾸는 하차 지점
-  drop: { name: "역삼역 2번 출구", addr: "서울 강남구 테헤란로 지하 156", lat: 37.50069, lng: 127.03722, road: 21.0 },
+  drop: { name: "역삼역 2번 출구", addr: "서울 강남구 테헤란로 지하 156", lat: 37.50069, lng: 127.03722, road: SPOT.road.drop },
 };
 
 // 출발지: 기본은 휴대폰 GPS의 현재 위치, 과업에서 ‘신분당선 동천역’으로 바꿈
@@ -21,19 +50,19 @@ const ERR_SET = window.__ERRSET === 2 ? 2 : 1;
 const WRONG_ORIGIN = "daegu";
 const ORIGINS = {
   current: { name: "현재 위치" },
-  dongcheon: { name: "신분당선 동천역", addr: "경기 용인시 수지구 동천동", lat: 37.33797, lng: 127.10278 },
-  // say: AI가 말할 때 쓰는 이름 (잘못 정한 곳이 대구라는 걸 알아보기 쉽게 시까지 말함)
-  daegu: { name: "대구 동천역", say: "대구광역시 북구 동천역", addr: "대구광역시 북구 동천동 · 대구 도시철도 3호선", lat: 35.94246, lng: 128.55945 },
+  dongcheon: SPOT.target,
+  // say: AI가 말할 때 쓰는 이름 (잘못 정한 곳이 먼 곳이라는 걸 알아보기 쉽게 시·도까지 말함)
+  daegu: SPOT.wrong,
 };
-const GEO_FALLBACK = { lat: 37.39475, lng: 127.11118, label: "경기 성남시 분당구 삼평동" }; // 판교역 부근
-const ORIGIN_QUERY = "동천역";
+const GEO_FALLBACK = SPOT.geo;
+const ORIGIN_QUERY = SPOT.query;
 // 출발지 검색 결과 (신분당선 동천역만 고를 수 있음)
 const ORIGIN_RESULTS = ERR_SET === 2
   ? [
-      // 오류 세트 2: 같은 이름의 역이 두 곳 (AI는 대구 동천역을 고름)
-      { key: "daegu", name: "대구 동천역", addr: "대구광역시 북구 동천동 · 대구 도시철도 3호선" },
-      { key: "dongcheon", name: "신분당선 동천역", addr: "경기 용인시 수지구 동천동 · 신분당선" },
-      { key: null, name: "동천역 버스정류장", addr: "경기 용인시 수지구 동천로" },
+      // 오류 세트 2: 같은 이름의 곳이 두 곳 (AI는 맨 위의 먼 곳을 고름)
+      { key: "daegu", name: SPOT.wrong.name, addr: SPOT.wrong.addr, ic: SPOT.wrong.ic },
+      { key: "dongcheon", name: SPOT.target.name, addr: SPOT.target.addr },
+      ...SPOT.others,
     ]
   : [
       { key: "dongcheon", name: "신분당선 동천역", addr: "경기 용인시 수지구 동천동 · 지하철역" },
@@ -144,7 +173,7 @@ const BASE_ASKS = true;
 // - 세션2: 호출 완료 후, 묻지 않고 최근 3개월 이용내역을 열람하고 다음 주 토요일 같은 시간 예약 호출을 제안·등록
 const SESSIONS = {
   // 연구2: 두 안에 같은 통제감 상실 유발 상황 2개 (연구1의 세션1·2 오류 단계는 쓰지 않음)
-  0: ERR_SET === 2 ? { title: "연구2 · 잘못 알아들음 + 대구 동천역으로 판단", error: "mishear_origin" } : { title: "연구2 · 잘못 알아들음 + 택시 2대로 잘못 이해", error: "mishear_count" },
+  0: ERR_SET === 2 ? { title: `연구2 · 잘못 알아들음 + ${euro(SPOT.wrong.name)} 판단`, error: "mishear_origin" } : { title: "연구2 · 잘못 알아들음 + 택시 2대로 잘못 이해", error: "mishear_count" },
   1: { title: "세션1 · 기사님 요청사항 임의 선택", error: "request" },
   2: { title: "세션2 · 이용내역 열람 + 예약 호출", error: "reserve" },
 };
@@ -207,11 +236,11 @@ const SITUATION = {
     situation: [
       "오늘 저녁 7시에 동창회 모임이 있습니다. 모임 장소는 ‘담소한정식 강남점’입니다.",
       "오늘 정장을 입었기 때문에, 편하게 모범택시를 타고 가려고 합니다.",
-      ERR_SET === 2 ? "택시는 집 근처 ‘동천역’(경기 용인시 수지구)에서 타려고 합니다." : "택시는 ‘신분당선 동천역’에서 타려고 합니다.",
+      ERR_SET === 2 ? SPOT.situ : "택시는 ‘신분당선 동천역’에서 타려고 합니다.",
       "가지고 계신 할인쿠폰이 1장 있어서, 이걸 사용하려 합니다.",
     ],
     task: [
-      ERR_SET === 2 ? "AI와 대화를 하며 ‘동천역’에서 ‘담소한정식 강남점’까지 가는 택시를 불러주세요." : "AI와 대화를 하며 ‘신분당선 동천역’에서 ‘담소한정식 강남점’까지 가는 택시를 불러주세요.",
+      ERR_SET === 2 ? `AI와 대화를 하며 ${SPOT.taskFrom}에서 ‘담소한정식 강남점’까지 가는 택시를 불러주세요.` : "AI와 대화를 하며 ‘신분당선 동천역’에서 ‘담소한정식 강남점’까지 가는 택시를 불러주세요.",
       "택시종류는 ‘모범택시’로 선택해주세요.",
       "택시비 결제 전에, 할인쿠폰을 적용해주세요.",
     ],
@@ -530,7 +559,7 @@ function buildSteps(complexity, session = 1, guide = false) {
   steps.push({
     id: "origin",
     label: "출발지 설정",
-    guide: "출발지를 휴대폰의 현재 위치에서 ‘신분당선 동천역’으로 바꾸는 단계. 출발지 검색 결과는 신분당선 동천역, 동천역 버스정류장, 동천역 환승주차장이고 택시를 탈 곳은 신분당선 동천역",
+    guide: `출발지를 휴대폰의 현재 위치에서 ‘${SPOT.target.name}’으로 바꾸는 단계. 출발지 검색 결과는 ${ORIGIN_RESULTS.map((r) => r.name).join(", ")}이고 택시를 탈 곳은 ${SPOT.target.name}`,
     low: { messages: (s) => lines("origin", s, { origin: s.originTarget || TARGET_ORIGIN }), options: APPROVE, reject: "origin" },
     high: { messages: (s) => lines("origin", s, { origin: s.originTarget || TARGET_ORIGIN }), applyFirst: true },
     // 출발지 칸을 누르고 "동천역"을 입력 → 검색 결과

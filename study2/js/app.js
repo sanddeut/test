@@ -317,7 +317,7 @@ function stepPreview() {
       return box;
     }
     case "reserve":
-      return el("rc-summary", [["출발", "신분당선 동천역"], ["도착", "담소한정식 강남점"], ["예약 시간", RESERVE.when], ["택시 종류", CAR_TYPES[S.form.car].label]]
+      return el("rc-summary", [["출발", ORIGINS[TARGET_ORIGIN].name], ["도착", "담소한정식 강남점"], ["예약 시간", RESERVE.when], ["택시 종류", CAR_TYPES[S.form.car].label]]
         .map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join(""));
     default: return null;
   }
@@ -684,7 +684,7 @@ async function turn(text, { said, intents, hint, fallback, fallbackBy, appKeywor
 // 분류는 other/approve/continue인데 지금 값과 다른 출발지·목적지·대수·쿠폰·택시 종류·결제를 말했으면 그 변경 의도로 봄
 // (AI가 대화 맥락의 값을 그대로 옮겨 적은 경우를 거르려고, 참가자 말에 그 항목 낱말이 있을 때만)
 const CHANGE_PICK = [
-  ["set_origin", /역|출발|동천|대구|용인|분당|마을|단지|아파트|여기/, (o) => (o.origin || o.origin_name) && S.form.origin && namedOrigin(o) !== S.form.origin],
+  ["set_origin", /역|출발|동천|대구|용인|분당|신촌|제주|서대문|마을|단지|아파트|여기/, (o) => (o.origin || o.origin_name) && S.form.origin && namedOrigin(o) !== S.form.origin],
   ["set_dest", /한정식|담소|목적|도착|강남|역삼/, (o) => (o.place || o.place_name) && S.form.dest != null && namedDest(o) !== S.form.dest],
   ["set_count", /대|[0-9]/, (o) => o.count >= 1 && o.count !== (S.form.count || 1)],
   ["set_coupon", /쿠폰|할인/, (o) => typeof o.coupon === "boolean" && o.coupon !== Boolean(S.form.coupon)],
@@ -1011,9 +1011,9 @@ function namedDest(o) {
 }
 function namedOrigin(o) {
   if (o?.origin && ORIGINS[o.origin] && o.origin !== "custom") return o.origin;
-  // "용인 동천역"처럼 이름만 온 경우: 아는 동천역이면 그 출발지로 (새 장소를 만들지 않음)
+  // "용인 동천역"·"서울 신촌역"처럼 이름만 온 경우: 아는 곳이면 그 출발지로 (새 장소를 만들지 않음)
   const nm = o?.origin_name || "";
-  if (/동천/.test(nm)) return /용인|신분당|수지|경기/.test(nm) || !/대구/.test(nm) || !ORIGINS.daegu ? "dongcheon" : "daegu";
+  if (SPOT.word.test(nm)) return SPOT.near.test(nm) || !SPOT.far.test(nm) || !ORIGINS.daegu ? "dongcheon" : "daegu";
   return o?.origin_name ? setCustomOrigin(o.origin_name, S.geo) : null;
 }
 
@@ -2719,7 +2719,8 @@ function summary() {
     think_opened: S.unified ? m.thinkOpens || 0 : null, // 개선안: 「AI가 ~하는 중」을 펼쳐 본 횟수 (모든 단계)
     mishear_recover_ms: m.mishearAt != null && m.mishearRecoveredAt != null ? m.mishearRecoveredAt - m.mishearAt : null,
     // 오류 ② 택시 2대로 잘못 이해: 최종 호출 대수, 어디서 바로잡았는지
-    error_set: ERR_SET, // 1 = 택시 2대, 2 = 대구 동천역
+    error_set: ERR_SET, // 1 = 택시 2대, 2 = 같은 이름의 먼 출발지
+    place_set: PLACE_SET, // dongcheon = 대구 동천역 / sinchon = 제주 신촌리
     final_origin: S.form.origin,
     origin_fixed_at: ERR_SET === 2 ? S.log.find((e) => (e.type === "origin_changed" && (e.value === TARGET_ORIGIN || e.origin === TARGET_ORIGIN)) || e.type === "origin_undo")?.step ?? null : null,
     origin_fixed_via: ERR_SET === 2 ? S.log.find((e) => (e.type === "origin_changed" && (e.value === TARGET_ORIGIN || e.origin === TARGET_ORIGIN)) || e.type === "origin_undo")?.via ?? null : null,
@@ -2762,7 +2763,7 @@ function renderSummary() {
     ["해석", s.llm],
     ["오류 ① 잘못 알아들음", `${s.mishear_count}번 못 알아들음${s.mishear_recover_ms != null ? ` · ${Math.round(s.mishear_recover_ms / 1000)}초 뒤 다시 말함` : ""}`],
     s.error_set === 2
-      ? ["오류 ② 대구 동천역으로 판단", `${label[s.error_outcome] || "-"}${s.origin_fixed_at ? ` · ${s.origin_fixed_at}에서 ${s.origin_fixed_via || ""}` : ""}`]
+      ? [`오류 ② ${euro(SPOT.wrong.name)} 판단`, `${label[s.error_outcome] || "-"}${s.origin_fixed_at ? ` · ${s.origin_fixed_at}에서 ${s.origin_fixed_via || ""}` : ""}`]
       : ["오류 ② 택시 2대로 잘못 이해", `${label[s.error_outcome] || "-"}${s.count_fixed_at ? ` · ${s.count_fixed_at}에서 ${s.count_fixed_via || ""}` : ""}`],
     ["쿠폰 (오류 아님)", `${cpn[s.coupon_outcome]}${s.coupon_changed_at ? ` · ${s.coupon_changed_at}에서` : ""} · 처음에 ${s.coupon_mentioned ? "말함" : "말 안 함"}`],
     ["개입 방식", s.correction_via || "-"],
@@ -2875,8 +2876,9 @@ function onSetupChange() {
   renderPlan();
   // 개선안은 화면 구성 파일(improve)을 따로 불러오므로, 버전을 바꾸면 저장하고 새로 불러옴
   const wantGuide = (radio("ver") || "").startsWith("guide");
-  const wantErr = /2$/.test(radio("ver") || "") ? 2 : 1;
-  if (wantGuide !== Boolean(window.__GUIDE) || wantErr !== (window.__ERRSET || 1)) {
+  const wantErr = /[23]$/.test(radio("ver") || "") ? 2 : 1;
+  const wantPlace = /3$/.test(radio("ver") || "") ? "sinchon" : "dongcheon"; // 3 = 신촌 버전
+  if (wantGuide !== Boolean(window.__GUIDE) || wantErr !== (window.__ERRSET || 1) || wantPlace !== (window.__PLACE || "dongcheon")) {
     const saved = store.get("setup", {}) || {};
     store.set("setup", { ...saved, pid: $("#pid").value.trim(), name: $("#pname").value.trim(), version: radio("ver") });
     location.reload();
@@ -3391,7 +3393,7 @@ function init() {
   if (saved.pid) $("#pid").value = saved.pid;
   if (saved.name) $("#pname").value = saved.name;
   // 택시 2대 버전(1)을 숨긴 동안에는 예전에 저장된 1을 2로 바꿔 고름
-  const savedVer = !window.SHOW_V1 && saved.version && !/2$/.test(saved.version) ? (/^guide/.test(saved.version) ? "guide2" : "base2") : saved.version;
+  const savedVer = !window.SHOW_V1 && saved.version && !/[23]$/.test(saved.version) ? (/^guide/.test(saved.version) ? "guide2" : "base2") : saved.version;
   for (const [name, v] of [["ver", savedVer], ["order", saved.order], ["scope", saved.scope]]) {
     const r = v != null && document.querySelector(`input[name="${name}"][value="${v}"]`);
     if (r) r.checked = true;

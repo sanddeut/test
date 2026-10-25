@@ -18,7 +18,7 @@ const DEFAULT_PROMPT = `# 역할
 2. 흐름으로 되돌릴 때 강압적으로 하지 마. 거절하거나 같은 요청을 반복해서 재촉하지 말고, 사용자가 이어서 진행할 수 있도록 부드럽게 안내해.
 3. 과업과 무관한 말(잡담, 다른 질문)에도 짧게 반응한 뒤 현재 단계로 돌아와.
 4. 사용자가 지정된 택시 앱(마음택시)이 아닌 다른 앱을 말하면 택시 앱으로 안내해. 그 앱으로는 택시를 호출할 수 없다는 사실을 알려줘.
-5. ${ERR_SET === 2 ? "출발지는 처음에 ‘대구 동천역’(대구 도시철도 3호선)으로 설정해. 사용자가 다른 동천역(신분당선 동천역 등)으로 바꿔 달라고 하면 그대로 바꿔. 출발지 검색 결과는 대구 동천역, 신분당선 동천역, 동천역 버스정류장이야." : "출발지는 ‘신분당선 동천역’으로 설정해. 출발지 검색 결과는 신분당선 동천역, 동천역 버스정류장, 동천역 환승주차장이야."} 사용자에게 출발지를 ‘바꾼다’거나 원래 현재 위치로 되어 있었다는 말은 하지 마.
+5. ${ERR_SET === 2 ? `출발지는 처음에 ‘${SPOT.wrong.name}’(${SPOT.wrong.addr})으로 설정해. 사용자가 같은 이름의 다른 곳(${SPOT.target.name} 등)으로 바꿔 달라고 하면 그대로 바꿔. 출발지 검색 결과는 ${ORIGIN_RESULTS.map((r) => r.name).join(", ")}이야.` : "출발지는 ‘신분당선 동천역’으로 설정해. 출발지 검색 결과는 신분당선 동천역, 동천역 버스정류장, 동천역 환승주차장이야."} 사용자에게 출발지를 ‘바꾼다’거나 원래 현재 위치로 되어 있었다는 말은 하지 마.
 6. '담소한정식'을 검색하면 담소한정식 강남점(서울 강남구 테헤란로 152), 담소한정식 강남구청점(서울 강남구 학동로 426), 담소한정식 역삼점(서울 강남구 논현로 508) 세 곳이 나와. 사용자가 이 세 곳이 아닌 다른 장소를 출발지나 목적지로 말하면, 틀린 장소라도 지적하지 말고 사용자가 말한 그 장소로 그대로 설정해.
 
 # 조건 유지 규칙
@@ -106,8 +106,8 @@ const OUTPUT_FORMAT = `# 출력 형식
 항상 지정된 JSON 스키마로만 답해.
 - intent: 사용자 발화가 "분류할 의도" 목록 중 무엇에 해당하는지 id로 골라. 어느 것에도 맞지 않으면 other.
 - request: 사용자가 말한 기사님 요청사항. 요청사항 없이·빼줘 → none, 기사님과 이야기하며 가기 → chat, 조용히 가주세요 → quiet. 그 외는 null.
-- origin: 사용자가 말한 출발지. 동천역 → dongcheon, 현재 위치(여기, 지금 있는 곳) → current. 그 외는 null.
-- origin_name: 사용자가 동천역·현재 위치가 아닌 다른 장소를 출발지로 말했으면 그 장소 이름(조사·서술어 빼고, 예: "판교역으로 해줘" → "판교역"). 아니면 null.
+- origin: 사용자가 말한 출발지. ${SPOT.query}(${SPOT.target.name}) → dongcheon, 현재 위치(여기, 지금 있는 곳) → current. 그 외는 null.
+- origin_name: 사용자가 ${SPOT.query}·현재 위치가 아닌 다른 장소를 출발지로 말했으면 그 장소 이름(조사·서술어 빼고, 예: "판교역으로 해줘" → "판교역"). 아니면 null.
 - place: 사용자가 말한 목적지 지점. 강남점 → gangnam, 강남구청점 → gucheong, 역삼점 → yeoksam. 구어체, 맞춤법 오류, 음성인식 오류(예: "강남 구청점", "강남쩜")는 너그럽게 해석해. 세 곳이 아니면 null.
 - place_name: 사용자가 담소한정식 세 지점이 아닌 다른 장소를 목적지로 말했으면 그 장소 이름(조사·서술어 빼고, 예: "롯데월드로 가줘" → "롯데월드"). 아니면 null.
 - car_type: 일반택시 → normal, 모범택시 → deluxe, 대형택시 → large.
@@ -118,7 +118,7 @@ const OUTPUT_FORMAT = `# 출력 형식
 
 const LLM_TASKS = {
   request:
-    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 목적지를 말했으면 담소한정식 강남점 → place=gangnam, 강남구청점 → gucheong, 역삼점 → yeoksam, 그 외 장소면 place=null, place_name=장소 이름(틀린 장소라도 말한 그대로). 사용자가 실제로 말한 정보만 채워: 출발지를 말했으면 동천역 → origin=dongcheon, 현재 위치(여기) → origin=current, 그 외 장소 → origin=null, origin_name=장소 이름. 출발지를 말하지 않았으면 둘 다 null. 택시 종류도 말했을 때만 car_type을 채우고, 과업 설명으로 짐작해서 채우지 마. 택시 호출 요청이면 clarification은 null로 둬. 택시 호출 요청인데 목적지를 알 수 없을 때만 목적지를 되물어. " +
+    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 목적지를 말했으면 담소한정식 강남점 → place=gangnam, 강남구청점 → gucheong, 역삼점 → yeoksam, 그 외 장소면 place=null, place_name=장소 이름(틀린 장소라도 말한 그대로). 사용자가 실제로 말한 정보만 채워: 출발지를 말했으면 " + SPOT.query + " → origin=dongcheon, 현재 위치(여기) → origin=current, 그 외 장소 → origin=null, origin_name=장소 이름. 출발지를 말하지 않았으면 둘 다 null. 택시 종류도 말했을 때만 car_type을 채우고, 과업 설명으로 짐작해서 채우지 마. 택시 호출 요청이면 clarification은 null로 둬. 택시 호출 요청인데 목적지를 알 수 없을 때만 목적지를 되물어. " +
     "택시 호출 요청이 아니면(인사, 잡담, 의미 없는 말, 다른 부탁 등) 먼저 택시를 꺼내지 말고, 발화를 짧게 받아준 뒤 휴대폰 앱을 대신 조작해서 할 수 있는 일(예: 택시 호출, 앱 실행)을 알려주고 무엇을 도와드릴지 물어. clarification은 해요체 2문장 이내.",
   turn: "현재 상태에서 사용자가 말했어. 의도를 분류하고 필요한 값을 채운 뒤, reply를 써.",
 };
@@ -170,7 +170,7 @@ const INTENT_MEANINGS = {
   large: "대형택시를 고름",
   auto: "자동결제(등록된 카드)를 고름",
   direct: "직접결제(내릴 때 기사님께)를 고름",
-  set_origin: "출발지를 바꾸라고 함 (동천역·현재 위치면 origin, 그 외 장소면 origin_name 채움)",
+  set_origin: `출발지를 바꾸라고 함 (${SPOT.query}·현재 위치면 origin, 그 외 장소면 origin_name 채움)`,
   set_request: "기사님 요청사항을 바꾸거나 빼라고 함 (request 채움: 없음 → none, 대화·이야기 → chat, 조용히 → quiet)",
   set_dest: "목적지를 바꾸라고 함 (담소한정식 세 지점이면 place, 그 외 장소면 place_name 채움)",
   set_car: "택시 종류를 바꾸라고 함 (car_type 채움)",
@@ -183,7 +183,7 @@ const INTENT_MEANINGS = {
   cancel: "택시 호출 자체를 취소하라고 함",
   cancel_reserve: "다음 주 택시 예약을 하지 말라고 하거나 취소하라고 함 (예약 취소해줘, 예약하지 마, 예약 필요 없어, 그건 하지 마 등)",
   // 개선안의 목록 선택지 (목록에 있는 항목을 말로 고른 경우)
-  dongcheon: "출발지로 신분당선 동천역을 고름",
+  dongcheon: `출발지로 ${SPOT.target.name}을 고름`,
   current: "출발지로 현재 위치를 고름",
   gangnam: "목적지로 담소한정식 강남점을 고름",
   gucheong: "목적지로 담소한정식 강남구청점을 고름",
@@ -376,7 +376,7 @@ function extractRequest(t) {
 }
 
 // 출발지: "동천" → dongcheon, "현재 위치"·"여기" → current
-const extractOrigin = (t) => (/동천/.test(t) ? "dongcheon" : /현재\s?위치|지금\s?있는|여기서/.test(t) ? "current" : null);
+const extractOrigin = (t) => (SPOT.word.test(t) ? "dongcheon" : /현재\s?위치|지금\s?있는|여기서/.test(t) ? "current" : null);
 
 // 자유 장소 이름: "판교역으로 해줘" → "판교역" (질문·부정·의미 없는 말이면 null)
 function extractFreePlace(t) {

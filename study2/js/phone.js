@@ -177,7 +177,7 @@ function taxiOrigin() {
   const rows = show
     ? ORIGIN_RESULTS.map((r) => {
         const live = S.manual && r.key ? `data-man-origin="${r.key}"` : "";
-        return `<div class="tx-res tx-ores ${!S.manual && r.key === (originInResults(S.originTarget) ? S.originTarget : TARGET_ORIGIN) ? "hl" : ""}" ${r.key ? `data-origin="${r.key}"` : ""} ${live}>${mi(r.key ? "subway" : "location_on", "fill tx-res-ic o")}
+        return `<div class="tx-res tx-ores ${!S.manual && r.key === (originInResults(S.originTarget) ? S.originTarget : TARGET_ORIGIN) ? "hl" : ""}" ${r.key ? `data-origin="${r.key}"` : ""} ${live}>${mi(r.ic || (r.key ? "subway" : "location_on"), "fill tx-res-ic o")}
           <div class="tx-res-main"><b>${esc(r.name)}</b><small>${esc(r.addr)}</small></div></div>`;
       }).join("")
     : "";
@@ -245,7 +245,7 @@ function taxiCalling() {
 
 // 세션2: 이용내역 (최근 3개월)
 function taxiHistory() {
-  const rows = RIDE_HISTORY.map((h) => `<div class="hist-row"><span><b>${esc(h.to)}</b><small>${h.date} ${h.time} · 신분당선 동천역 출발</small></span><b>${won0(h.fare)}</b></div>`).join("");
+  const rows = RIDE_HISTORY.map((h) => `<div class="hist-row"><span><b>${esc(h.to)}</b><small>${h.date} ${h.time} · ${esc(ORIGINS[TARGET_ORIGIN].name)} 출발</small></span><b>${won0(h.fare)}</b></div>`).join("");
   return `<div class="tx-page white"><div class="tx-sbar">${mi("arrow_back_ios", "back")}<b class="tx-htitle">이용내역</b></div>
     <div class="hist-filter"><span class="on">3개월</span><span>1개월</span><span>전체</span></div>
     <div class="hist-list">${rows}</div>
@@ -258,7 +258,7 @@ function taxiReserve(done) {
   return `<div class="tx-page white tx-resv">
     ${done ? `<div class="tx-done-head"><span class="done-check">${mi("check")}</span><span><b>택시를 예약했어요</b><small>출발 30분 전에 배차를 시작해요</small></span></div>` : `<div class="tx-sbar">${mi("arrow_back_ios", "back")}<b class="tx-htitle">예약 호출</b></div>`}
     <div class="done-box">
-      <div><span>출발</span><b>신분당선 동천역</b></div>
+      <div><span>출발</span><b>${esc(ORIGINS[TARGET_ORIGIN].name)}</b></div>
       <div><span>도착</span><b>담소한정식 강남점</b></div>
       <div><span>예약 시간</span><b>${RESERVE.when}</b></div>
       <div><span>택시 종류</span><b>${CAR_TYPES[S.form.car].label}</b></div>
