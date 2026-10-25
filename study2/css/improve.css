@@ -445,3 +445,12 @@
 .resend-row .send-fail .ms { font-size: 18px; }
 /* 연구2: 출발지 주소·거리는 기존안과 같은 크기 (대구 동천역을 알아보기 쉽게) */
 .rc-body .pv-origin small { font-size: 14px; color: #3c4049; font-weight: 500; }
+
+/* 실행화면: 위 「AI가 앱 조작 중」 칩 없앰. 처음 들어올 때 화면 전체를 어둡게 하고 가운데 안내 + [확인] */
+.ai-live-chip, .phone[data-view="progress"] .ai-live-chip { display: none !important; }
+.run-intro { position: absolute; inset: 0; z-index: 14; pointer-events: auto; background: rgba(20,22,26,.62); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 16px; text-align: center; }
+.run-intro[hidden] { display: none; }
+.run-intro p { margin: 0; color: #fff; font-size: 14px; white-space: nowrap; font-weight: 700; line-height: 1.5; word-break: keep-all; }
+.run-intro-ok { border: 0; background: #0b57d0; color: #fff; font: inherit; font-size: 16px; font-weight: 700; padding: 10px 32px; border-radius: 999px; }
+/* 실행화면 아래 AI 질문 칸: 흰 카드로 묶음 */
+.phone[data-view="progress"] .pv-panel { height: auto; min-height: 120px; max-height: 210px; background: #fff; border-radius: 18px; margin: 8px 14px 4px; padding: 8px 0 4px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border: 1px solid #ececf1; }

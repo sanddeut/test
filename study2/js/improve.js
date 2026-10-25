@@ -846,10 +846,18 @@ function setupRunFrame() {
   const veil = document.createElement("div");
   veil.className = "ai-veil"; // AI가 조작하는 동안 흰색 0.3 덮개로 조금 흐리게
   clip.appendChild(veil);
-  const chip = document.createElement("div");
-  chip.className = "ai-live-chip";
-  chip.textContent = "AI가 앱 조작 중 ...";
-  clip.appendChild(chip);
+  // 실행화면에 처음 들어오면 화면 전체를 어둡게 하고 무엇을 보는 화면인지 알림 → [확인]을 누를 때까지 AI는 멈춤
+  const intro = document.createElement("div");
+  intro.className = "run-intro";
+  intro.hidden = true;
+  intro.innerHTML = '<p>AI가 마음택시 앱을 사용하는<br>실시간 모습이에요.</p><button type="button" class="run-intro-ok">확인</button>';
+  intro.addEventListener("click", (e) => e.stopPropagation());
+  intro.querySelector("button").onclick = () => {
+    intro.hidden = true;
+    gLog(["G6", "G23"], "run_intro_ok");
+    if (S?.introPause) { S.introPause = false; resume(); }
+  };
+  clip.appendChild(intro);
   // 실행화면(테두리) 바로 아래, 테두리 밖에 「일시정지」와 「내가 앱 조작하기」
   const frame = document.createElement("div");
   frame.className = "run-frame";
@@ -903,6 +911,17 @@ function framePause(on, why = "resume") {
   }
 }
 
+// 실행화면에 처음 들어올 때 한 번 안내 (세션마다)
+const _syncView = syncView;
+syncView = function () {
+  _syncView();
+  if (!S || !S.unified || S.finished || S.runIntroShown || $(".phone").dataset.view !== "progress") return;
+  S.runIntroShown = true;
+  $(".run-intro").hidden = false;
+  if (!S.paused) { S.paused = true; S.introPause = true; syncControls(); }
+  gLog(["G6", "G23"], "run_intro");
+};
+
 // 실행화면 크기: 아래 버튼 칸만큼 빼고 맞춤
 const _fitScreen = fitScreen;
 fitScreen = function () {
@@ -914,7 +933,7 @@ fitScreen = function () {
   const W = phone.clientWidth;
   const H = parseFloat(phone.style.getPropertyValue("--app-h")) || phone.clientHeight;
   const tray = 72;
-  const scale = Math.max(0.3, Math.min(260 / W, (box.clientHeight - 24 - tray) / H)); // 실행화면 폭 260px (높이가 모자라면 그만큼 작게)
+  const scale = Math.max(0.3, Math.min(221 / W, (box.clientHeight - 24 - tray) / H)); // 실행화면 폭 221px (260px의 85%) (높이가 모자라면 그만큼 작게)
   phone.style.setProperty("--scale", scale.toFixed(4));
   clip.style.width = `${Math.floor(W * scale)}px`;
   clip.style.height = `${Math.floor(H * scale)}px`;
