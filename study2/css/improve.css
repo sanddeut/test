@@ -458,15 +458,24 @@
 /* 기다림 안내: 대화창 입력창 위 띠, 실행화면 아래 카드 */
 @keyframes waitspin { to { transform: rotate(360deg); } }
 .wait-spin { flex: none; width: 22px; height: 22px; border: 3px solid #f1d6d3; border-top-color: #e5372b; border-radius: 50%; animation: waitspin .9s linear infinite; }
-.chat-wait { display: flex; align-items: center; gap: 12px; margin: 0 12px 44px; padding: 12px 14px; background: #fff4f3; border: 1px solid #f3c9c5; border-radius: 16px; }
-.chat-wait b { display: block; font-size: 15.5px; color: #1f2329; }
-.chat-wait small { display: block; font-size: 13.5px; color: #6b7080; margin-top: 2px; }
 .pv-wait { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 4px 16px 8px; }
 .pv-wait b { display: block; font-size: 17px; color: #1f2329; }
 .pv-wait small { display: block; font-size: 14px; color: #6b7080; margin-top: 2px; }
-.chat-wait[hidden], .pv-wait[hidden] { display: none; }
+.pv-wait[hidden] { display: none; }
 .pv-status.thinking::after { content: none; }
 .run-intro .run-intro-logo { margin-bottom: -6px; }
 
-.chat-wait > span { flex: 1; min-width: 0; }
 .wait-stop { flex: none; border: 1.5px solid #e5372b; color: #e5372b; background: #fff; border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 14.5px; font-weight: 700; }
+/* 대화창 기다림: 진행 카드 위 AI 프로필 옆 (점 자리), 프로필 둘레가 돎 */
+.rc-head .rc-wait { display: none; }
+.run-card .rc-head.waiting { display: flex; align-items: center; gap: 10px; background: #fff4f3; border: 1px solid #f3c9c5; border-radius: 16px; padding: 8px 10px; margin-bottom: 6px; }
+.rc-head.waiting .rc-text { display: none; }
+.rc-head.waiting .rc-wait { display: flex; flex: 1; min-width: 0; align-items: center; gap: 8px; }
+.rc-wait > span { flex: 1; min-width: 0; }
+.rc-wait b { display: block; font-size: 15px; color: #1f2329; line-height: 1.35; }
+.rc-wait small { display: block; font-size: 13px; color: #6b7080; margin-top: 1px; }
+.rc-head.waiting .rc-icon { position: relative; }
+.rc-head.waiting .rc-icon::after { content: ""; position: absolute; inset: -4px; border: 3px solid transparent; border-top-color: #e5372b; border-radius: 50%; animation: waitspin .9s linear infinite; }
+.bubble.typing.wait-bubble { display: flex; align-items: center; gap: 12px; width: max-content; max-width: 90%; background: #fff4f3; border: 1px solid #f3c9c5; padding: 10px 14px; }
+.wait-bubble b { display: block; font-size: 15px; color: #1f2329; }
+.wait-bubble small { display: block; font-size: 13px; color: #6b7080; margin-top: 1px; }
