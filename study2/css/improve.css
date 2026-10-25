@@ -407,7 +407,7 @@
 .undo-link { font-size: 15px; color: #4a4f57; gap: 4px; padding: 4px 6px; }
 .undo-link .ms { font-size: 21px; }
 
-/* 실행화면: 「일시정지」「내가 앱 조작하기」를 테두리 밖, 렌더링 화면 바로 아래로 */
+/* 실행화면: 「멈추기」「내가 앱 조작하기」를 테두리 밖, 렌더링 화면 바로 아래로 */
 .phone[data-view="progress"] .run-frame .screen-clip { border-radius: 28px !important; box-shadow: none !important; }
 .phone[data-view="progress"] .run-tray { padding: 12px 12px 0; }
 .phone[data-view="progress"] .screen-box { flex-direction: column; }

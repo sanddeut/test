@@ -12,7 +12,7 @@ const SPOT = PLACE_SET === "sinchon"
       word: /신촌/, // 참가자가 이 이름을 말하면 타려는 곳(또는 같은 이름의 먼 곳)
       near: /서울|서대문|2호선|연세|이대|신촌역/, far: /광주|광산|송정/, // 어느 쪽인지 가리는 말
       target: { name: "신촌역", addr: "서울 서대문구 신촌동 · 지하철 2호선", lat: 37.55527, lng: 126.93693 },
-      wrong: { name: "광주 신촌동", say: "광주 광산구 신촌동", addr: "광주 광산구 신촌동 · 송정역 부근", lat: 35.1530, lng: 126.8030, ic: "location_on" },
+      wrong: { name: "광주 신촌동", say: "광주광역시 광산구 신촌동", addr: "광주광역시 광산구 신촌동 · 송정역 부근", lat: 35.1530, lng: 126.8030, ic: "location_on" },
       query: "신촌",
       others: [{ key: null, name: "신촌역 버스정류장", addr: "서울 서대문구 신촌로" }],
       geo: { lat: 37.56592, lng: 126.93675, label: "서울 서대문구 연희동" },

@@ -140,7 +140,7 @@ function watchUnsent() {
 
 // 보내기 버튼: 화살표 대신 '보내기' 글자 (작업 중 중지 버튼은 원안 그대로)
 // 글로 하기 입력칸 안내 문구: '말하기'가 아니라 글자로 적는 곳임을 알 수 있게
-const STOP_LABEL = "일시정지"; // 멈추기 버튼 이름 (입력창·실행화면 모두)
+const STOP_LABEL = "멈추기"; // 멈추기 버튼 이름 (입력창·실행화면 모두)
 const _syncControlsPh = syncControls;
 syncControls = function () {
   _syncControlsPh();
@@ -158,7 +158,7 @@ const _syncSendButton = syncSendButton;
 syncSendButton = function () {
   _syncSendButton();
   const btn = $("#send");
-  // 개선안: 입력창 버튼은 늘 「보내기」 (멈추기는 실행화면의 「일시정지」로)
+  // 개선안: 입력창 버튼은 늘 「보내기」 (멈추기는 실행화면의 「멈추기」로)
   if (S?.unified && btn.dataset.mode === "stop") btn.dataset.mode = "send";
   if (S?.unified && !S.finished) btn.disabled = false; // 언제든 보낼 수 있게
   if (btn.dataset.mode === "send" && btn.textContent !== "보내기") btn.textContent = "보내기";
@@ -947,7 +947,7 @@ function setupRunFrame() {
     if (S?.introPause) { S.introPause = false; resume(); }
   };
   clip.appendChild(intro);
-  // 실행화면(테두리) 바로 아래, 테두리 밖에 「일시정지」와 「내가 앱 조작하기」
+  // 실행화면(테두리) 바로 아래, 테두리 밖에 「멈추기」와 「내가 앱 조작하기」
   const frame = document.createElement("div");
   frame.className = "run-frame";
   clip.parentNode.insertBefore(frame, clip);
@@ -962,7 +962,7 @@ function setupRunFrame() {
   btn.textContent = "내가 앱 조작하기";
   tray.append(stop, btn);
   frame.after(tray);
-  // 실행화면에서 「일시정지」: 대화로 돌아가지 않고 이 화면에서 멈춤 (화면을 어둡게 하고 가운데 흰 일시정지 아이콘), 버튼은 「다시 시작」
+  // 실행화면에서 「멈추기」: 대화로 돌아가지 않고 이 화면에서 멈춤 (화면을 어둡게 하고 가운데 흰 일시정지 아이콘), 버튼은 「다시 시작」
   const pv = document.createElement("div");
   pv.className = "pause-veil";
   pv.innerHTML = '<span class="ms">pause</span>';
