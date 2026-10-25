@@ -158,6 +158,8 @@ const _syncSendButton = syncSendButton;
 syncSendButton = function () {
   _syncSendButton();
   const btn = $("#send");
+  // 개선안: 입력창 버튼은 늘 「보내기」 (멈추기는 실행화면의 「일시정지」로)
+  if (S?.unified && btn.dataset.mode === "stop") { btn.dataset.mode = "send"; btn.disabled = !$("#msg").value.trim(); }
   if (btn.dataset.mode === "send" && btn.textContent !== "보내기") btn.textContent = "보내기";
   if (btn.dataset.mode === "stop" && btn.textContent !== STOP_LABEL) btn.textContent = STOP_LABEL;
   btn.classList.toggle("send-text", btn.dataset.mode === "send");
@@ -204,11 +206,11 @@ syncControls = function () {
   syncSendButton();
 };
 
-// 개선안: 입력칸 안내 문구 없음 (언제든 말할 수 있으니)
+// 개선안: 입력칸 안내 문구는 늘 같게
 const _syncControlsNoPh = syncControls;
 syncControls = function () {
   _syncControlsNoPh();
-  if (S?.unified) $("#msg").placeholder = "";
+  if (S?.unified) $("#msg").placeholder = "메시지 입력...";
 };
 
 const _onSubmit = onSubmit;
@@ -305,37 +307,37 @@ setCard = function (opts = {}) {
   const st = c.querySelector("#rc-status");
   // 진행 문장은 대화에 이미 있으니, 작업 중에는 점만 보여 줌
   const working = Boolean(S?.running) && !S.finished && !S.stopped && !c.classList.contains("asking");
-  if (working && !st.querySelector(".busy")) st.innerHTML = busyHTML(); // 점(…)만으로는 기다려야 하는 줄 몰라서 글로도 알림
+  if (working) st.innerHTML = '<span class="dots" aria-label="AI가 앱 조작 중"><i></i><i></i><i></i></span>'; // 기다림 안내는 입력창 위 띠로
   c.classList.toggle("working", working);
 };
 
-// [기다림 표시] 깜빡이는 빨간 점 + "~하는 중…" + "잠시만 기다려 주세요" (대화창 「…」 자리, 실행화면 헤더 가운데)
+// [기다림 안내] AI가 일하는 동안 "잠시만 기다려 주세요"를 분명히: 대화창은 입력창 위 띠, 실행화면은 아래 카드
 const STEP_DOING = {
-  taxi_open: "택시 앱을 여는 중", origin: "출발지를 설정하는 중", dest: "목적지를 설정하는 중", car: "택시 종류를 고르는 중",
-  count: "택시 대수를 정하는 중", pay: "결제 방식을 고르는 중", coupon: "예상 금액을 확인하는 중", drop: "내릴 곳을 정하는 중",
-  request: "기사님 요청사항을 고르는 중", final: "호출 내용을 정리하는 중", reserve: "예약 호출을 준비하는 중",
+  taxi_open: "택시 앱을 열고", origin: "출발지를 설정하고", dest: "목적지를 설정하고", car: "택시 종류를 고르고",
+  count: "택시 대수를 정하고", pay: "결제 방식을 고르고", coupon: "예상 금액을 확인하고", drop: "내릴 곳을 정하고",
+  request: "기사님 요청사항을 고르고", final: "호출 내용을 정리하고", reserve: "예약 호출을 준비하고",
 };
-function busyDoing() {
-  if (!S?.running || S.finished) return "답변을 준비하는 중";
-  return STEP_DOING[S.steps[S.stepIdx]?.id] || "앱을 조작하는 중";
+function waitLabel() {
+  if (!S?.running || S.finished) return "AI가 답변을 준비하고 있어요";
+  return `AI가 ${STEP_DOING[S.steps[S.stepIdx]?.id] || "앱을 조작하고"} 있어요`;
 }
-function busyHTML() {
-  return `<span class="busy" role="status"><i class="busy-dot"></i><span><b>${busyDoing()}…</b><small>잠시만 기다려 주세요</small></span></span>`;
+function aiBusy() {
+  if (!S || S.finished) return false;
+  if ($("#typing")) return true;
+  const asking = $("#pv-chips")?.children.length || $("#run-card")?.classList.contains("asking") || S.waiter || S.ivWaiter;
+  return Boolean(S.running && !S.paused && !S.stopped && !S.manual && !S.pinOpen && !S.pwWait && !asking);
 }
-const _showTyping = showTyping;
-showTyping = function (on) {
-  _showTyping(on);
-  const t = $("#typing");
-  if (on && t && S?.unified && !t.querySelector(".busy")) { t.classList.add("busy-bubble"); t.innerHTML = busyHTML(); }
-};
-// 단계가 바뀌면 문구를 갱신하고, 실행화면 헤더에는 AI가 조작하는 동안에만 보임
+const waitHTML = (cls) => `<div class="${cls}" role="status" hidden><i class="wait-spin"></i><span><b></b><small>잠시만 기다려 주세요</small></span></div>`;
 setInterval(() => {
   if (!S?.unified) return;
-  document.querySelectorAll(".busy b").forEach((b) => { const s = busyDoing() + "…"; if (b.textContent !== s) b.textContent = s; });
-  let h = $(".pv-busy");
-  if (!h) { h = document.createElement("div"); h.className = "pv-busy"; h.innerHTML = busyHTML(); $(".pv-head")?.appendChild(h); }
-  const asking = $("#pv-chips")?.children.length || $("#run-card")?.classList.contains("asking");
-  h.hidden = !(S.running && !S.finished && !S.paused && !S.stopped && !S.manual && !asking);
+  if (!$(".chat-wait")) $("#composer").insertAdjacentHTML("beforebegin", waitHTML("chat-wait only-chat"));
+  if (!$(".pv-wait")) $("#pv-status").insertAdjacentHTML("afterend", waitHTML("pv-wait"));
+  const on = aiBusy(), t = waitLabel();
+  for (const el of [$(".chat-wait"), $(".pv-wait")]) {
+    el.hidden = !on;
+    const b = el.querySelector("b");
+    if (b.textContent !== t) b.textContent = t;
+  }
 }, 300);
 
 // [진행 카드] 아이콘과 움직이는 점은 카드 바깥 위에, 결과와 질문은 그 아래 흰 카드에 (점 다음에 카드가 차례로 나타남)
