@@ -298,9 +298,38 @@ setCard = function (opts = {}) {
   const st = c.querySelector("#rc-status");
   // 진행 문장은 대화에 이미 있으니, 작업 중에는 점만 보여 줌
   const working = Boolean(S?.running) && !S.finished && !S.stopped && !c.classList.contains("asking");
-  if (working) st.innerHTML = '<span class="dots" aria-label="AI가 앱 조작 중"><i></i><i></i><i></i></span>'; // 글자는 입력창에서 알림 (간결하게)
+  if (working && !st.querySelector(".busy")) st.innerHTML = busyHTML(); // 점(…)만으로는 기다려야 하는 줄 몰라서 글로도 알림
   c.classList.toggle("working", working);
 };
+
+// [기다림 표시] 깜빡이는 빨간 점 + "~하는 중…" + "잠시만 기다려 주세요" (대화창 「…」 자리, 실행화면 헤더 가운데)
+const STEP_DOING = {
+  taxi_open: "택시 앱을 여는 중", origin: "출발지를 설정하는 중", dest: "목적지를 설정하는 중", car: "택시 종류를 고르는 중",
+  count: "택시 대수를 정하는 중", pay: "결제 방식을 고르는 중", coupon: "예상 금액을 확인하는 중", drop: "내릴 곳을 정하는 중",
+  request: "기사님 요청사항을 고르는 중", final: "호출 내용을 정리하는 중", reserve: "예약 호출을 준비하는 중",
+};
+function busyDoing() {
+  if (!S?.running || S.finished) return "답변을 준비하는 중";
+  return STEP_DOING[S.steps[S.stepIdx]?.id] || "앱을 조작하는 중";
+}
+function busyHTML() {
+  return `<span class="busy" role="status"><i class="busy-dot"></i><span><b>${busyDoing()}…</b><small>잠시만 기다려 주세요</small></span></span>`;
+}
+const _showTyping = showTyping;
+showTyping = function (on) {
+  _showTyping(on);
+  const t = $("#typing");
+  if (on && t && S?.unified && !t.querySelector(".busy")) { t.classList.add("busy-bubble"); t.innerHTML = busyHTML(); }
+};
+// 단계가 바뀌면 문구를 갱신하고, 실행화면 헤더에는 AI가 조작하는 동안에만 보임
+setInterval(() => {
+  if (!S?.unified) return;
+  document.querySelectorAll(".busy b").forEach((b) => { const s = busyDoing() + "…"; if (b.textContent !== s) b.textContent = s; });
+  let h = $(".pv-busy");
+  if (!h) { h = document.createElement("div"); h.className = "pv-busy"; h.innerHTML = busyHTML(); $(".pv-head")?.appendChild(h); }
+  const asking = $("#pv-chips")?.children.length || $("#run-card")?.classList.contains("asking");
+  h.hidden = !(S.running && !S.finished && !S.paused && !S.stopped && !S.manual && !asking);
+}, 300);
 
 // [진행 카드] 아이콘과 움직이는 점은 카드 바깥 위에, 결과와 질문은 그 아래 흰 카드에 (점 다음에 카드가 차례로 나타남)
 const _ensureRunCard = ensureRunCard;
