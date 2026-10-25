@@ -1146,8 +1146,8 @@ function queueFocus() {
   requestAnimationFrame(() => requestAnimationFrame(() => { focusQueued = false; applyFocus(); }));
 }
 
-const FADE = 84; // 현재 대화 위로 남겨 둘 높이 (바로 앞 말풍선과 「되돌리기」가 살짝 보이게)
-const UNDO_PEEK = 43; // 「되돌리기」 위로 남겨 둘 높이 (보통 때 FADE와 같은 위치: 되돌리기는 현재 대화 41px 위)
+const FADE = 120; // 현재 대화 위로 남겨 둘 높이 (바로 앞 말풍선과 「되돌리기」가 살짝 보이게)
+const UNDO_PEEK = 79; // 「되돌리기」 위로 남겨 둘 높이 (보통 때 FADE와 같은 위치: 되돌리기는 현재 대화 41px 위)
 function applyFocus() {
   const c = chat();
   if (!c || !S) return;
