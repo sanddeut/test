@@ -116,3 +116,10 @@
 .one-where .ms { font-size: 18px; }
 .one-now { display: inline-flex; align-items: center; gap: 2px; padding: 6px 12px; border: 0; border-radius: 999px; background: #fff; color: #0b57d0; font: inherit; font-size: 14px; font-weight: 700; box-shadow: 0 1px 4px rgba(0, 0, 0, .1); }
 .chat.one-page.one-past-view > :not(.one-hide) { opacity: .85; }
+
+/* 위 쉐브론 왼쪽에 「지난 대화」 (같은 회색, 작게) */
+.one-nav.one-up { width: auto; gap: 2px; display: inline-flex; align-items: center; padding: 0 6px; }
+.one-nav-t { font-size: 13.5px; font-weight: 600; color: #9aa0aa; }
+.one-undo[hidden] { display: none !important; }
+.one-undo { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; margin: -6px 0 0 8px; border: 0; background: none; padding: 4px 6px; color: #4a4f57; font: inherit; font-size: 15px; font-weight: 500; }
+.one-undo .ms { font-size: 18px; }

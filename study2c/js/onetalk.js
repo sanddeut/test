@@ -27,7 +27,7 @@ function setupOneTalk() {
   // 한 세트씩 보기: 위 ⌃(이전 세트) · 아래 ⌄(다음 세트)
   const up = document.createElement("button");
   up.type = "button"; up.id = "one-up"; up.className = "one-nav one-up only-chat"; up.hidden = true;
-  up.setAttribute("aria-label", "이전 대화"); up.innerHTML = '<span class="ms">keyboard_arrow_up</span>';
+  up.setAttribute("aria-label", "이전 대화"); up.innerHTML = '<span class="one-nav-t">지난 대화</span><span class="ms">keyboard_arrow_up</span>';
   up.onclick = () => oneGo(-1);
   chat().before(up);
   const down = document.createElement("button");
@@ -143,7 +143,7 @@ one.curKey = null;
 function onePages(c) {
   const pages = [[]];
   for (const el of c.children) {
-    if (el.id === "chips" || el.id === "chat-spacer") continue;
+    if (el.id === "chips" || el.id === "chat-spacer" || el.id === "one-undo") continue;
     const page = pages.at(-1);
     const isAI = (x) => (x.classList.contains("bubble") && x.classList.contains("agent") && !x.classList.contains("typing")) || x.id === "run-card";
     // 내 말이 오면 새 세트. AI 말도 한 세트에 하나만 (AI가 혼자 이어서 진행한 단계는 단계마다 따로)
@@ -177,7 +177,7 @@ function onePage(c, bar) {
   if (one.page != null && one.page >= last) one.page = null;
   const show = new Set(pages[one.page ?? last]);
   for (const el of c.children) {
-    if (el.id === "chips" || el.id === "chat-spacer") continue;
+    if (el.id === "chips" || el.id === "chat-spacer" || el.id === "one-undo") continue;
     const hide = !show.has(el);
     if (el.classList.contains("one-hide") !== hide) el.classList.toggle("one-hide", hide);
     if (el.classList.contains("one-cur") !== (el === cur)) el.classList.toggle("one-cur", el === cur);
@@ -196,6 +196,7 @@ function onePage(c, bar) {
   const past = one.page != null;
   $("#one-where") && ($("#one-where").hidden = !past);
   c.classList.toggle("one-past-view", past);
+  oneUndo(c, show, past);
   onePauseForHistory(past);
 }
 
@@ -377,4 +378,21 @@ function onePauseForHistory(past) {
     logEvent("one_history_resume");
     resume();
   }
+}
+
+// 지금 세트에서도 「되돌리기」: 대화 기록의 마지막 「되돌리기」가 지금 세트 밖(지난 세트)에 있으면, 지금 말 아래에 같은 버튼을 둠
+function oneUndo(c, show, past) {
+  let b = $("#one-undo");
+  const link = [...c.querySelectorAll(":scope > .undo-link")].at(-1);
+  const need = !past && link && !show.has(link) && S?.running && !S.finished;
+  if (!need) { if (b) b.hidden = true; return; }
+  if (!b) {
+    b = document.createElement("button");
+    b.type = "button"; b.id = "one-undo"; b.className = "one-undo"; // improve.js가 .undo-link를 지웠다 다시 붙이므로 다른 클래스
+    b.innerHTML = '<span class="ms">undo</span>되돌리기';
+    b.onclick = () => { const l = [...chat().querySelectorAll(":scope > .undo-link")].at(-1); if (l) { logEvent("one_undo"); l.click(); } };
+  }
+  b.hidden = false;
+  const last = [...c.children].filter((el) => show.has(el)).at(-1);
+  if (last && last.nextElementSibling !== b) last.after(b);
 }
