@@ -121,3 +121,14 @@
 .rf-undo .ms { font-size: 18px; }
 /* 되돌리기 확인 창은 실행화면 덮개보다 위에 */
 .phone.rf #undo-dlg { z-index: 55; }
+
+/* 패널: 프로필 옆 메시지 자리 하나 ("AI 도우미" 이름 없음). 하는 중 문구는 파란 글씨로 같은 자리에 */
+.rf-ptop { align-items: flex-start; gap: 10px; }
+.rf-ptop .rf-avatar { margin-top: 1px; }
+.rf-ptop .rf-q { flex: 1; min-width: 0; margin: 4px 0 0; }
+.rf-q.doing { color: #0b57d0; }
+.rf-q.typing { display: inline-flex !important; gap: 4px; padding-top: 8px; }
+.rf-q.typing i { width: 7px; height: 7px; border-radius: 50%; background: #9aa0aa; animation: rf-dot 1.2s infinite ease-in-out; }
+.rf-q.typing i:nth-child(2) { animation-delay: .15s; }
+.rf-q.typing i:nth-child(3) { animation-delay: .3s; }
+.rf-ptop .rf-undo { flex: none; margin-left: 0; }

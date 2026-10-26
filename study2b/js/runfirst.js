@@ -28,8 +28,7 @@ function setupRunFirst() {
     <div class="rf-head"><div class="rf-chip" role="status">AI가 앱 사용중..</div>
       <div class="rf-ctrl"><button type="button" class="rf-stop">멈추기</button><button type="button" class="rf-manual">내가 하기</button></div></div>
     <div class="rf-panel" role="region" aria-label="AI 도우미" aria-live="polite">
-      <div class="rf-ptop"><button type="button" class="rf-avatar" aria-label="AI 도우미 (대화창 보기)">AI</button><span class="rf-status"></span><button type="button" class="rf-undo" hidden><span class="ms">undo</span>되돌리기</button></div>
-      <p class="rf-q"></p><div class="rf-pv"></div><div class="rf-opts"></div><div class="rf-talk"></div><div class="rf-fab-slot"></div>
+      <div class="rf-ptop"><button type="button" class="rf-avatar" aria-label="AI 도우미 (대화창 보기)">AI</button><p class="rf-q"></p><button type="button" class="rf-undo" hidden><span class="ms">undo</span>되돌리기</button></div><div class="rf-pv"></div><div class="rf-opts"></div><div class="rf-talk"></div><div class="rf-fab-slot"></div>
     </div>`;
   phone.appendChild(L);
   phone.style.setProperty("--rf-panel", `${RF_PANEL}px`);
@@ -69,7 +68,7 @@ async function rfEnter() {
   const L = $("#rf-layer");
   S.runFirst = true;
   S.runIntroShown = true; // improve.js의 [확인] 안내 대신 아래 안내
-  Object.assign(rf, { stepSeen: null, doing: "", ask: null, picks: null, note: "", last: "", typing: false, key: "" });
+  Object.assign(rf, { shown: "", stepSeen: null, doing: "", ask: null, picks: null, note: "", last: "", typing: false, key: "" });
   L.classList.remove("intro", "live");
   $(".phone").classList.remove("rf-live");
   $("#rf-loading").classList.add("on");
@@ -269,23 +268,21 @@ function rfRender() {
   rfComposer(talk);
   // 되돌릴 수 있는 단계가 있으면(대화창에 「되돌리기」가 붙어 있으면) 패널 위 줄 오른쪽에 「되돌리기」
   L.querySelector(".rf-undo").hidden = !(on && live && !asking && chat().querySelector(":scope > .undo-link"));
-  // 위 줄: AI가 답을 준비하는 중 "…" / 화면을 누르는 동안 "~하는 중…" / 멈췄을 때
-  const st = L.querySelector(".rf-status");
-  const typing = on && rf.typing;
-  const status = typing || !on ? "" : S.paused && !asking ? "멈춰 있어요" : live ? rf.doing : "";
-  st.classList.toggle("typing", typing);
-  const stHTML = typing ? "<i></i><i></i><i></i>" : esc(status);
-  if (st.innerHTML !== stHTML) st.innerHTML = stHTML;
-  // 본문: 질문이면 질문 + 확인할 내용 + 선택지, 아니면 AI의 마지막 말
-  const q = pin || ask ? rfQuestion() : picks ? picks.question : talk ? rf.last || lastAgentText() : rf.last;
+  // 메시지 자리 하나에: 답을 준비하는 중 "…" / 화면을 누르는 동안 "~하는 중…" / 멈췄을 때 / 그 외에는 AI의 마지막 말 (한 번에 하나만)
+  const typing = on && !asking && rf.typing;
+  const status = !on || asking || typing ? "" : S.paused ? "멈춰 있어요" : live ? rf.doing : "";
+  const q = pin || ask ? rfQuestion() : picks ? picks.question : talk ? rf.last || lastAgentText() : typing ? "" : status || rf.last || rf.shown || "";
+  if (!asking && !typing && q) rf.shown = q; // 조작이 끝나고 아직 할 말이 없으면 빈칸 대신 방금 문구를 그대로 둠
   const sig = ask ? ask.options.map((o) => o.id + o.label).join(",") : picks ? picks.list.map((o) => o.label).join(",") : "";
   const kind = pin ? "pin" : picks ? "picks" : ask ? "ask" : talk ? "talk" : "";
-  const key = `${kind}|${q}|${sig}|${asking ? S.stepIdx : ""}`;
+  const key = `${kind}|${typing}|${status ? 1 : 0}|${q}|${sig}|${asking ? S.stepIdx : ""}`;
   if (key === rf.key) return;
   rf.key = key;
   const qEl = L.querySelector(".rf-q");
   const prevQ = qEl.textContent;
-  qEl.textContent = q || "";
+  qEl.classList.toggle("doing", Boolean(status));
+  qEl.classList.toggle("typing", typing);
+  if (typing) qEl.innerHTML = "<i></i><i></i><i></i>"; else qEl.textContent = q || "";
   if (q && q !== prevQ) { qEl.classList.remove("fresh"); void qEl.offsetWidth; qEl.classList.add("fresh"); }
   // 확인할 내용: 진행 카드에 함께 보여 주던 재구성 UI (최종 호출이면 호출 내용 전체)
   const pvBox = L.querySelector(".rf-pv");
