@@ -33,6 +33,8 @@
     if (window.__GUIDE) document.write('<link rel="stylesheet" href="css/improve.css?v=' + window.__V + '">');
     // 개선안 c: 지금 말 하나만 크게 (onetalk.css·onetalk.js)
     if (window.__GUIDE) document.write('<link rel="stylesheet" href="css/onetalk.css?v=' + window.__V + '">');
+    // 기존안: 대화 기록 없이 회색 카드 안 내용만 바뀜 (basebrief.css·basebrief.js)
+    else document.write('<link rel="stylesheet" href="css/basebrief.css?v=' + window.__V + '">');
   </script>
 </head>
 <body>
@@ -216,6 +218,6 @@
     </div>
   </aside>
 
-  <script>["scenarios", "llm", "phone", "app"].concat(window.__GUIDE ? ["improve", "onetalk"] : []).forEach(function (n) { document.write('<script src="js/' + n + '.js?v=' + window.__V + '"><\/script>'); });</script>
+  <script>["scenarios", "llm", "phone", "app"].concat(window.__GUIDE ? ["improve", "onetalk"] : ["basebrief"]).forEach(function (n) { document.write('<script src="js/' + n + '.js?v=' + window.__V + '"><\/script>'); });</script>
 </body>
 </html>

@@ -401,7 +401,7 @@ function oneUndo(c, show, past) {
     const pz = document.createElement("button");
     pz.type = "button"; pz.id = "one-pause"; pz.className = "one-pill";
     pz.onclick = () => onePause(!one.userPaused);
-    row.append(u, pz);
+    row.append(pz, u); // 왼쪽 일시정지, 오른쪽 취소
   }
   if (one.userPaused && S && !S.paused) one.userPaused = false; // 다른 곳(되돌리기 등)에서 다시 시작된 경우
   const vis = Boolean(!past && S?.running && !S.finished);

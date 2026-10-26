@@ -172,3 +172,6 @@
 .phone[data-view="progress"] .pv-bottom { display: none !important; }
 .pv-chips .pv-drawer-sum { width: 100%; margin: 0 0 10px; text-align: left; }
 .pv-chips .pv-drawer-sum div { font-size: 15px; }
+/* 왼쪽 「일시정지」: 흰 바탕에 붉은 테두리 / 오른쪽 「취소」: 붉은 바탕 */
+#one-pause.one-pill { background: #fff; color: #d93025; box-shadow: 0 0 0 1.5px #d93025; }
+#one-undo.one-pill { background: #d93025; color: #fff; box-shadow: none; }
