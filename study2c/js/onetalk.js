@@ -220,11 +220,10 @@ function miniStart() {
   const box = document.createElement("div");
   box.id = "rc-mini";
   box.className = "rc-mini";
-  box.setAttribute("role", "button");
-  box.setAttribute("aria-label", "AI가 누르는 화면 크게 보기");
+  box.setAttribute("aria-label", "AI가 누르는 마음택시 화면");
   box.appendChild(clip);
   (card.querySelector("#rc-open") || card.lastElementChild).before(box);
-  box.onclick = () => { miniEnd(true); showRun(true); };
+  // 작게 보일 때는 눌러도 실행화면으로 가지 않음 (보기만)
   card.classList.add("mini-on");
   mini.on = true; mini.t0 = Date.now(); mini.endAt = 0;
   miniShow();
@@ -390,7 +389,7 @@ function oneUndo(c, show, past) {
   if (!b) {
     b = document.createElement("button");
     b.type = "button"; b.id = "one-undo"; b.className = "one-undo"; // improve.js가 .undo-link를 지웠다 다시 붙이므로 다른 클래스
-    b.innerHTML = '<span class="ms">undo</span>방금 한 일 취소'; // 되돌리기와 같은 기능. 지금 단계에서 보이게 이름을 「방금 한 일 취소」로
+    b.innerHTML = '<span class="ms">undo</span>취소'; // 되돌리기와 같은 기능 (바로 전에 끝낸 단계를 취소). 지금 단계에서 보이는 작은 알약 버튼
     b.onclick = () => { const l = [...chat().querySelectorAll(":scope > .undo-link")].at(-1); if (l) { logEvent("one_undo"); l.click(); } };
   }
   if (b.hidden) b.hidden = false;

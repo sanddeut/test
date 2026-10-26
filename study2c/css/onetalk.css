@@ -134,3 +134,9 @@
 /* 입력창 위 「말로 하기 / 글로 하기」 전환 버튼은 없앰 (처음 「눌러서 대화 시작」에서 고른 방식으로 계속) */
 .phone .mode-fab { display: none !important; }
 .one-nav.one-down { margin-bottom: 8px; }
+
+/* 지금 단계의 「취소」: 작은 흰 알약 버튼 */
+.one-undo { margin: 2px 0 0 4px; padding: 5px 12px 5px 9px; border-radius: 999px; background: #fff; box-shadow: 0 0 0 1px #d6dce6; color: #3c4048; font-size: 14px; font-weight: 600; gap: 3px; }
+.one-undo .ms { font-size: 17px; }
+/* 작은 앱 화면은 눌러도 이동하지 않음 */
+.rc-mini { cursor: default; }
