@@ -1,7 +1,9 @@
 // 새 개선안(study2b): 실행화면을 기본으로 보여 줌 (improve.js 위에 얹음)
 // - 택시를 불러 달라고 하면 허용 팝업 → 허용하면 로딩 화면 뒤 튕기듯 빠지며 앱 전체 화면으로
 // - 처음에는 화면을 어둡게 하고 흰 글씨로 "AI가 '마음택시' 앱을 사용합니다." → 딤이 약하게 남고, 오른쪽 위 「AI가 앱 사용중..」 알약 + 화면 전체 테두리
-// - 오른쪽 아래 AI 원형 프로필: AI가 확인을 받거나 알릴 말이 있으면 화면을 어둡게 하고 프로필에서 말풍선을 띄움
+// - 오른쪽 아래 AI 원형 프로필: 평소에는 "출발지를 찾는 중…"처럼 지금 하는 일을 말풍선으로, 알릴 말이 있으면 화면을 어둡게 하고 말풍선
+//   확인·선택할 일이 있으면 거의 안 보일 만큼 어둡게 하고, 확인할 내용(호출 내용 등)은 말풍선 안에 모두 보여 줌
+// - 왼쪽 위 「AI가 앱 사용중..」 태그, 오른쪽 위 「멈추기」「내가 하기」
 // - 참가자가 직접 대화창으로 가지 않는 한 대화창으로 넘어가지 않음: 선택 질문, 말로(글로) 답하는 질문, 멈춘 뒤 대화, AI의 대답 모두 말풍선에서
 // - 프로필을 누르면 대화창으로 가고, 진행 카드의 「실행화면 보기」로 돌아옴
 "use strict";
@@ -9,7 +11,7 @@
 const RF_LOADING_MS = 900; // 허용한 뒤 로딩 화면
 const RF_SWAP_MS = 1200; // 튕기며 화면이 바뀌는 시간 (slideSwap과 같게)
 const RF_INTRO_MS = 2600; // "AI가 '마음택시' 앱을 사용합니다." 안내를 보여 주는 시간
-const rf = { ask: null, picks: null, note: "", noteStep: null, last: "", typing: false, key: "", runBeforeManual: false };
+const rf = { ask: null, picks: null, note: "", noteStep: null, last: "", typing: false, key: "", runBeforeManual: false, composerHome: null };
 
 const rfOn = () => Boolean(S?.runFirst && !S.finished && $(".phone").dataset.view === "progress");
 
@@ -22,13 +24,9 @@ function setupRunFirst() {
     <p class="rf-intro">AI가 ‘${esc(TAXI_APP)}’ 앱을 사용합니다.</p>
     <div class="rf-border"></div>
     <div class="rf-chip" role="status">AI가 앱 사용중..</div>
+    <div class="rf-ctrl"><button type="button" class="rf-stop">멈추기</button><button type="button" class="rf-manual">내가 하기</button></div>
     <div class="rf-bubble" role="dialog" aria-live="polite" hidden>
-      <p class="rf-q"></p><div class="rf-opts"></div>
-      <form class="rf-input" autocomplete="off" hidden>
-        <button type="button" class="rf-mic" aria-label="말로 하기"><span class="ms">mic</span></button>
-        <input type="text" placeholder="여기에 적어 주세요" enterkeyhint="send">
-        <button type="submit" class="rf-send">보내기</button>
-      </form>
+      <p class="rf-q"></p><div class="rf-pv"></div><div class="rf-opts"></div><div class="rf-talk"></div>
     </div>
     <button type="button" class="rf-avatar" aria-label="AI 도우미 (대화창 보기)">AI</button>`;
   phone.appendChild(L);
@@ -43,31 +41,15 @@ function setupRunFirst() {
     S.showRun = false;
     syncControls();
   };
-  // 말풍선 안 입력칸: 대화창 입력칸(#msg)과 같은 내용을 쓰고, 보내기는 대화창 보내기와 같음
-  const form = L.querySelector(".rf-input");
-  const inp = form.querySelector("input");
-  const msg = $("#msg");
-  inp.addEventListener("input", () => { msg.value = inp.value; });
-  msg.addEventListener("input", () => { if (inp.value !== msg.value) inp.value = msg.value; }); // 말로 하기로 받아 적은 말
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    msg.value = inp.value;
-    if (!msg.value.trim()) return;
-    logEvent("rf_send", { text: msg.value.trim() });
-    $("#composer").requestSubmit();
-    inp.value = "";
-  });
-  const mic = form.querySelector(".rf-mic");
-  if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) mic.hidden = true;
-  mic.onclick = () => $("#mic").click();
-  new MutationObserver(() => {
-    const on = $("#mic").classList.contains("rec");
-    mic.classList.toggle("on", on);
-    mic.innerHTML = `<span class="ms">${on ? "stop_circle" : "mic"}</span>`;
-    inp.placeholder = on ? "듣고 있어요 …" : "여기에 적어 주세요";
-  }).observe($("#mic"), { attributes: true, attributeFilter: ["class"] });
+  // 오른쪽 위: 멈추기(대화창의 멈추기와 같음 → 말풍선에서 멈춘 뒤 메뉴), 내가 하기(직접 조작)
+  L.querySelector(".rf-stop").onclick = () => { if (rfOn() && !$("#btn-stop").disabled) { logEvent("rf_stop"); handleStop("rf"); } };
+  L.querySelector(".rf-manual").onclick = () => { if (rfOn() && !$("#btn-manual").disabled) { logEvent("rf_manual"); startManual(); } };
+  // 말로(글로) 답할 때는 개선안의 입력창(#composer)을 그대로 말풍선 안으로 옮겨 씀. 원래 자리를 기억해 둠
+  rf.composerHome = document.createComment("composer-home");
+  $("#composer").before(rf.composerHome);
 }
 document.addEventListener("DOMContentLoaded", setupRunFirst);
+setInterval(() => { if (S?.runFirst) rfRender(); }, 300); // 단계가 바뀌면 "~하는 중…" 문구도 바꿈
 
 // 허용 팝업에서 허용하면 실행화면으로 넘어간 뒤에 앱을 열기 시작함
 const _showPermDialogRF = showPermDialog;
@@ -215,6 +197,9 @@ const rfTalkable = () => Boolean(S.ivWaiter || rf.picks || (S.waiter && !S.waite
 function rfRender() {
   const L = $("#rf-layer");
   if (!L) return;
+  const live = L.classList.contains("live");
+  L.querySelector(".rf-stop").disabled = $("#btn-stop").disabled;
+  L.querySelector(".rf-manual").disabled = $("#btn-manual").disabled;
   const on = rfOn() && !S.manual && !S.pinOpen;
   const pin = on && S.waiter?.pin && S.pinResolve && !S.paused && !S.ivWaiter; // 취소(멈춤) 뒤에는 멈춘 뒤 질문을 보여 줌
   const picks = on && !pin && rf.picks && S.waiter === rf.picks.waiter ? rf.picks : null;
@@ -222,19 +207,27 @@ function rfRender() {
   const talk = on && !pin && rfTalkable();
   const typing = on && rf.typing;
   const note = on && rf.note ? rf.note : "";
-  const mode = pin || picks || ask || talk ? "ask" : typing ? "typing" : note ? "note" : "";
-  const q = pin || ask ? rfQuestion() : picks ? picks.question : talk ? rf.last || lastAgentText() : note;
+  const doing = on && live && !S.paused && rfDoing();
+  const mode = pin || picks || ask || talk ? "ask" : typing ? "typing" : note ? "note" : doing ? "doing" : "";
+  const q = pin || ask ? rfQuestion() : picks ? picks.question : talk ? rf.last || lastAgentText() : note || doing;
   const sig = ask ? ask.options.map((o) => o.id + o.label).join(",") : picks ? picks.list.map((o) => o.label).join(",") : "";
-  const key = `${mode}|${pin ? "pin" : picks ? "picks" : ask ? "ask" : talk ? "talk" : ""}|${q}|${sig}`;
+  const kind = pin ? "pin" : picks ? "picks" : ask ? "ask" : talk ? "talk" : "";
+  const key = `${mode}|${kind}|${q}|${sig}|${S?.stepIdx}`;
   L.dataset.mode = mode;
-  $(".phone").classList.toggle("rf-asking", Boolean(mode));
+  $(".phone").classList.toggle("rf-asking", mode === "ask");
+  rfComposer(talk);
   if (key === rf.key) return;
+  const prevMode = rf.key.split("|")[0];
   rf.key = key;
   const bub = L.querySelector(".rf-bubble");
   bub.hidden = !mode;
-  bub.classList.toggle("typing", mode === "typing");
+  bub.className = `rf-bubble ${mode}`;
   if (!mode) return;
   bub.querySelector(".rf-q").innerHTML = mode === "typing" ? "<span></span><span></span><span></span>" : esc(q);
+  // 확인할 내용: 진행 카드에 함께 보여 주던 재구성 UI (최종 호출이면 호출 내용 전체)
+  const pvBox = bub.querySelector(".rf-pv");
+  pvBox.innerHTML = "";
+  if (ask && ask.options.some((o) => o.id === "approve") && !S.noPreview) { const pv = stepPreview(); if (pv) pvBox.appendChild(pv); }
   const box = bub.querySelector(".rf-opts");
   box.innerHTML = "";
   box.className = "rf-opts";
@@ -245,7 +238,7 @@ function rfRender() {
     box.classList.add("list");
     for (const o of picks.list) {
       box.appendChild(rfRow(o.label, "", "", () => {
-        if (o.input) { bub.querySelector(".rf-input input").focus(); return; } // 직접 입력: 말풍선 입력칸으로
+        if (o.input) { if (inputMode.mode !== "text") setInputMode("text"); $("#msg").focus(); return; } // 직접 입력: 말풍선 안 입력창으로
         pickReject(o, picks.waiter);
       }));
     }
@@ -258,10 +251,25 @@ function rfRender() {
         : rfBtn(o.label, o.id === "reject" || o.id === "manual" ? "ghost" : "", () => ask.onPick(o)));
     }
   }
-  bub.querySelector(".rf-input").hidden = !talk;
-  if (mode !== "typing") { bub.classList.remove("pop"); void bub.offsetWidth; bub.classList.add("pop"); }
+  if (mode !== prevMode && mode !== "typing" && mode !== "doing") { bub.classList.remove("pop"); void bub.offsetWidth; bub.classList.add("pop"); }
   bub.scrollTop = 0;
-  if (mode !== "typing") logEvent("rf_bubble", { mode, text: q });
+  if (mode !== "typing" && mode !== "doing") logEvent("rf_bubble", { mode, text: q });
+}
+
+// 평소 말풍선: 지금 하는 일 ("출발지를 찾는 중…")
+function rfDoing() {
+  const id = S.steps[S.stepIdx]?.id;
+  if (!id || S.phone.app === "home" && id !== "taxi_open") return "";
+  return `${DOING[id] || "앱을 조작하는 중"}…`;
+}
+
+// 개선안 입력창을 말풍선 안으로 옮기거나 원래 자리로 돌려 놓음
+function rfComposer(inBubble) {
+  const form = $("#composer");
+  const slot = $("#rf-layer .rf-talk");
+  if (!form || !slot || !rf.composerHome) return;
+  if (inBubble && form.parentNode !== slot) { slot.appendChild(form); if (inputMode.mode === "start" || inputMode.mode === "pick") setInputMode("text"); }
+  else if (!inBubble && form.parentNode === slot) rf.composerHome.after(form);
 }
 
 function rfBtn(label, cls, fn) {
