@@ -5,6 +5,9 @@
 "use strict";
 
 const one = { open: false, hidden: 0 };
+// fade: 지난 대화를 접지 않고 제자리에 작고 흐리게 남김 (지금 말만 크게, 늘 화면 안에) / fold: 위 한 줄 「지난 대화 N개 · 펼치기」로 접음
+// 주소 끝에 ?one=fold 를 붙이면 접는 방식으로 볼 수 있음
+const ONE_MODE = new URLSearchParams(location.search).get("one") === "fold" ? "fold" : "fade";
 
 function setupOneTalk() {
   const bar = document.createElement("button");
@@ -42,6 +45,7 @@ function oneUpdate() {
     const c = chat();
     const bar = $("#one-bar");
     const on = Boolean(S?.unified) && !one.open;
+    if (ONE_MODE === "fade") return oneFade(c, bar);
     c.classList.toggle("one", on);
     if (!bar) return;
     if (!S?.unified) { bar.hidden = true; return; }
@@ -79,3 +83,25 @@ stepPreview = function () {
   if (S?.steps[S.stepIdx]?.id === "taxi_open") return null;
   return _stepPreviewOne();
 };
+
+// 흐리게 남기기: 지난 말은 작고 흐리게, 지금 말은 크게. 새 말이 오면 지금 말이 보이게 아래로 (위로 올리면 지난 말을 읽을 수 있음)
+let oneFadeCur = null;
+function oneFade(c, bar) {
+  if (bar) bar.hidden = true;
+  const on = Boolean(S?.unified);
+  c.classList.toggle("one-fade", on);
+  if (!on) return;
+  const cur = oneCurrent();
+  const keep = new Set([cur]);
+  for (let n = cur?.nextElementSibling; n && !n.classList.contains("bubble") && n.id !== "run-card" && n.id !== "chips"; n = n.nextElementSibling) keep.add(n);
+  for (const el of c.children) {
+    if (el.id === "chips" || el.id === "chat-spacer") continue;
+    const past = !keep.has(el);
+    if (el.classList.contains("one-past") !== past) el.classList.toggle("one-past", past);
+    if (el.classList.contains("one-cur") !== (el === cur)) el.classList.toggle("one-cur", el === cur);
+  }
+  if (cur && cur !== oneFadeCur) {
+    oneFadeCur = cur;
+    requestAnimationFrame(() => cur.scrollIntoView({ block: "end", behavior: "smooth" }));
+  }
+}

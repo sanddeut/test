@@ -17,3 +17,14 @@
 .chat.one > .one-cur { animation: one-in .45s ease both; }
 @keyframes one-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .chat.one > .one-cur { animation: none; } }
+
+/* 흐리게 남기기: 지난 말은 제자리에 작고 흐리게, 지금 말만 크게 (접지 않음) */
+.chat.one-fade { -webkit-mask-image: none !important; mask-image: none !important; }
+.chat.one-fade > #chat-spacer { display: none !important; }
+.chat.one-fade > .one-past { opacity: .4; transition: opacity .4s ease; }
+.chat.one-fade > .bubble.one-past { font-size: 14px; padding: 7px 12px; }
+.chat.one-fade > #run-card.one-past .rc-choices, .chat.one-fade > #run-card.one-past .rc-open, .chat.one-fade > #run-card.one-past .rc-manual { display: none; }
+.chat.one-fade > .bubble.agent.one-cur { max-width: 100%; font-size: 21px; font-weight: 600; line-height: 1.55; padding: 18px; }
+.chat.one-fade > #run-card.one-cur .rc-q { font-size: 21px; line-height: 1.55; }
+.chat.one-fade > #run-card.one-cur #rc-who, .chat.one-fade > #run-card.one-cur .think-t { font-size: 17px; }
+.chat.one-fade > #run-card.one-cur .choice b, .chat.one-fade > #run-card.one-cur .chip { font-size: 17px; }
