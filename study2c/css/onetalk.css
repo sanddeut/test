@@ -213,3 +213,20 @@
 .chat.one-page > #typing { background: none !important; box-shadow: none !important; border-radius: 0; margin-top: 0; padding: 0 0 0 46px; min-height: 36px; display: flex; align-items: center; }
 .chat.one-page > #typing::before { top: 0; }
 .chat.one-page > #typing, .chat.one-page > #typing::after { font-size: 15.5px !important; font-weight: 500 !important; color: #6b6f7a; line-height: 1.4; }
+
+/* 「지난 대화」 글자는 빼고 위쪽 쉐브론만 */
+.one-nav-t { display: none !important; }
+
+/* 「실행화면 보기」: 카드 밖 바로 아래, 회색 카드와 같은 색. 카드 안 원래 버튼은 숨김 */
+.chat.one-page #run-card #rc-open { position: absolute !important; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; margin: 0; padding: 0; }
+.one-open { flex: none; align-self: stretch; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 16px; background: #eef1f6; color: #3c4048; font: inherit; font-size: 15.5px; font-weight: 600; padding: 12px; margin-top: -4px; }
+.one-open .ms { font-size: 18px; }
+.one-open[hidden] { display: none !important; }
+
+/* 「일시정지」「취소」: 카드 안 맨 아래, 나란한 긴 네모 버튼 두 개 (채도를 낮춘 붉은색) */
+.rc-body > .one-ctrl { align-self: stretch; margin: 2px 0 0; gap: 8px; }
+.one-ctrl .one-pill { flex: 1; justify-content: center; height: 40px; border-radius: 12px; font-size: 15px; padding: 0 12px; }
+.one-ctrl #one-pause.one-pill { background: #fff; color: #b5524a; box-shadow: 0 0 0 1.5px #d39a94; }
+.one-ctrl #one-undo.one-pill { background: #c0605a; color: #fff; box-shadow: none; }
+.one-ctrl .one-pill .ms { font-size: 18px; }
+.chat.one-page > .one-ctrl { align-self: stretch; margin: 0; gap: 8px; }

@@ -143,7 +143,7 @@ one.curKey = null;
 function onePages(c) {
   const pages = [[]];
   for (const el of c.children) {
-    if (el.id === "chips" || el.id === "chat-spacer" || el.id === "one-ctrl") continue;
+    if (el.id === "chips" || el.id === "chat-spacer" || el.id === "one-ctrl" || el.id === "one-open") continue;
     const page = pages.at(-1);
     const isAI = (x) => (x.classList.contains("bubble") && x.classList.contains("agent") && !x.classList.contains("typing")) || x.id === "run-card" || x.classList.contains("one-own"); // one-own: 새 화면에 따로 띄우는 「~하는 중」
     // 내 말이 오면 새 세트. AI 말도 한 세트에 하나만 (AI가 혼자 이어서 진행한 단계는 단계마다 따로)
@@ -186,7 +186,7 @@ function onePage(c, bar) {
   const past = one.page != null;
   const show = new Set(past ? pages.slice(0, -1).flat() : pages[last]); // 지난 대화 보기: 지금 세트를 뺀 지난 대화 모두 / 평소: 지금 세트만
   for (const el of c.children) {
-    if (el.id === "chips" || el.id === "chat-spacer" || el.id === "one-ctrl") continue;
+    if (el.id === "chips" || el.id === "chat-spacer" || el.id === "one-ctrl" || el.id === "one-open") continue;
     const hide = !show.has(el);
     if (el.classList.contains("one-hide") !== hide) el.classList.toggle("one-hide", hide);
     if (el.classList.contains("one-cur") !== (el === cur)) el.classList.toggle("one-cur", el === cur);
@@ -209,6 +209,7 @@ function onePage(c, bar) {
   if (hh && hh.hidden === past) hh.hidden = !past;
   c.classList.toggle("one-past-view", past);
   oneUndo(c, show, past);
+  oneOpenBtn(c, show, past);
   onePauseForHistory(past);
 }
 
@@ -480,9 +481,29 @@ function oneUndo(c, show, past) {
   if (pz.innerHTML !== pzHTML) pz.innerHTML = pzHTML;
   const noPause = !one.userPaused && (S.paused || S.undoPending);
   if (pz.disabled !== noPause) pz.disabled = noPause;
-  // 그 AI 말 바로 아래
-  const anchor = ai && ai.nextElementSibling?.id === "chips" && show.has(ai.nextElementSibling) ? ai.nextElementSibling : ai;
-  if (anchor && anchor.nextElementSibling !== row) anchor.after(row);
+  // 진행 카드면 카드 안 맨 아래(「실행화면 보기」가 있던 자리), AI 말풍선이면 그 바로 아래
+  if (ai?.id === "run-card") {
+    const host = ai.querySelector(".rc-body") || ai;
+    if (host.lastElementChild !== row) host.appendChild(row);
+  } else {
+    const anchor = ai && ai.nextElementSibling?.id === "chips" && show.has(ai.nextElementSibling) ? ai.nextElementSibling : ai;
+    if (anchor && anchor.nextElementSibling !== row) anchor.after(row);
+  }
+}
+
+// 「실행화면 보기」는 카드 밖, 카드 바로 아래 (원래 버튼은 카드 안에 숨겨 두고 같은 기능의 버튼을 밖에 둠)
+function oneOpenBtn(c, show, past) {
+  let b = $("#one-open");
+  if (!b) {
+    b = document.createElement("button");
+    b.type = "button"; b.id = "one-open"; b.className = "one-open"; b.hidden = true;
+    b.innerHTML = '<span class="ms">open_in_full</span>실행화면 보기';
+    b.onclick = () => { const o = $("#rc-open"); if (o && !o.disabled) { logEvent("one_open_run"); o.click(); } };
+  }
+  const card = $("#run-card"), o = $("#rc-open");
+  const vis = Boolean(!past && card && o && show.has(card) && !card.classList.contains("one-hide") && getComputedStyle(o).display !== "none");
+  if (b.hidden === vis) b.hidden = !vis;
+  if (vis && card.nextElementSibling !== b) card.after(b);
 }
 
 // 「일시정지」: AI가 하던 일을 멈춤 (대화는 그대로). 「계속하기」로 이어서
