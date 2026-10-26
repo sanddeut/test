@@ -291,7 +291,7 @@ function miniEnd(now = false) {
   if (clip && c?.width && f?.width) {
     const k = getComputedStyle(phone).getPropertyValue("--mini-k") || String(MINI_SCALE);
     phone.appendChild(clip);
-    clip.style.cssText += `;position:absolute;left:${c.left - pr.left}px;top:${c.top - pr.top}px;width:${c.width}px;height:${c.height}px;z-index:80;margin:0;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px #c9cdd6,0 6px 18px rgba(0,0,0,.18);transform-origin:50% 50%;transition:transform .7s cubic-bezier(.4,0,.2,1),opacity .7s ease;pointer-events:none`;
+    clip.style.cssText += `;position:absolute;left:${c.left - pr.left}px;top:${c.top - pr.top}px;width:${c.width}px;height:${c.height}px;z-index:80;margin:0;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px #c9cdd6,0 6px 18px rgba(0,0,0,.18);transform-origin:50% 50%;transition:transform 1.4s cubic-bezier(.4,0,.2,1),opacity 1.4s ease;pointer-events:none`;
     if (scr) scr.style.transform = `scale(${k})`;
     const dx = f.left + f.width / 2 - (c.left + c.width / 2), dy = f.top + f.height / 2 - (c.top + c.height / 2);
     box.classList.add("closing");
@@ -303,7 +303,7 @@ function miniEnd(now = false) {
     fab?.classList.add("one-run-pop");
     setTimeout(() => fab?.classList.remove("one-run-pop"), 500);
     restore();
-  }, 720);
+  }, 1450);
 }
 // 실행화면·직접 조작으로 갈 때는 바로 원래 자리로
 const _syncViewOne = syncView;
@@ -391,7 +391,7 @@ async function onePlan() {
         "택시를 부르기 전에 진행 계획을 확인하는 중이야. 그대로 하라고 하면 approve, 출발지·목적지·택시 종류를 바꾸라고 하면 해당 set_ 의도, 고치겠다고만 하면 reject야.");
     } finally { S.planAsk = false; }
     logEvent("decision", { choice: c.id, via: c.via, key: "plan" });
-    if (c.id === "approve") return true;
+    if (c.id === "approve") { if (S.req.car && CAR_TYPES[S.req.car]) planCar(S.req.car); return true; } // 계획에 적힌 택시 종류는 다시 묻지 않음
     if (c.id === "cancel") { await cancelRide(); return false; }
     if (c.id === "__undo" || c.id === "__reask") continue;
     if (c.out && String(c.id).startsWith("set_")) {
@@ -404,8 +404,42 @@ async function onePlan() {
       await agentSay("바꿨어요. 이렇게 진행할게요.", { talk: true });
       continue;
     }
-    await agentSay("무엇을 바꿀까요? 말이나 글로 알려 주세요.", { talk: true });
+    if (!(await onePlanEdit())) return false;
   }
+}
+// 계획에서 [수정]: 무엇을 수정할지 고르고 → 그 항목을 물어 요청에 반영 → 계획을 다시 보여 줌
+function planApply(o) {
+  if (o.origin && ORIGINS[o.origin]) S.req.origin = o.origin;
+  else if (o.origin_name) { S.req.origin = null; S.req.originName = o.origin_name; }
+  if (o.car_type && CAR_TYPES[o.car_type]) planCar(o.car_type);
+  const k = namedDest(o); if (k) S.userDest = k;
+}
+// 계획에서 고른 택시 종류는 택시 종류 단계에서 다시 묻지 않고 그대로 씀
+function planCar(k) { S.req.car = k; S.form.car = k; (S.userSet ||= {}).car = true; }
+async function onePlanEdit() {
+  const q = "무엇을 수정할까요?";
+  await agentSay(q, { gated: true });
+  const items = [{ id: "p_origin", label: "출발지" }, { id: "p_dest", label: "도착지" }, { id: "p_car", label: "택시 종류" }];
+  const c = await askChoice(items, q, [...changeIntents(), "cancel"], "진행 계획에서 무엇을 고칠지 고르는 중이야. 출발지·도착지·택시 종류를 바로 말하면 해당 set_ 의도야.");
+  if (c.id === "cancel") { await cancelRide(); return false; }
+  if (c.out && String(c.id).startsWith("set_")) { planApply(c.out); return true; }
+  if (c.id === "p_car") {
+    const q2 = "어떤 택시로 할까요?";
+    await agentSay(q2, { gated: true });
+    // 출발지를 정하기 전이라 요금은 빼고
+    const c2 = await askChoice(CAR_OPTS().map((o) => ({ ...o, price: "" })), q2, ["set_car"], "택시 종류를 고르는 중이야. 일반택시=normal, 모범택시=deluxe, 대형택시=large.");
+    const k = CAR_TYPES[c2.id] ? c2.id : c2.out?.car_type;
+    if (CAR_TYPES[k]) planCar(k);
+    return true;
+  }
+  if (c.id === "p_origin" || c.id === "p_dest") {
+    const q2 = c.id === "p_origin" ? "어디에서 출발할까요? 말이나 글로 알려 주세요." : "어디로 갈까요? 말이나 글로 알려 주세요.";
+    await agentSay(q2, { gated: true });
+    const c2 = await askChoice([], q2, [c.id === "p_origin" ? "set_origin" : "set_dest"], c.id === "p_origin" ? "출발지를 고치는 중이야. 말한 곳이 출발지면 set_origin." : "도착지를 고치는 중이야. 말한 곳이 목적지면 set_dest.");
+    if (c2.out) planApply(c2.out);
+    return true;
+  }
+  return true;
 }
 const _dwellOne = dwell;
 dwell = function (ms = 1800) {
@@ -685,3 +719,24 @@ renderBubble = function (role, text) {
   if (role === "agent" && S?.oneCancelled && /^방금 한 일을 되돌렸어요\./.test(text)) { S.oneCancelled = false; text = text.replace(/^방금 한 일을 되돌렸어요\./, "취소했어요."); }
   return _renderBubbleCancel(role, text);
 };
+
+// 택시 종류를 고른 뒤: 「택시 종류를 확인하는 중」을 다시 띄우지 않고 「○○택시로 바꾸는 중」, 화면 조작도 빠르게
+const _doApplyOne = doApply;
+doApply = async function (step, choice, opts) {
+  if (!S?.unified || step?.id !== "car" || !S.userSet?.car) return _doApplyOne(step, choice, opts);
+  const pace = PACE;
+  one.doing = `${CAR_TYPES[S.form.car]?.label || "고르신 택시"}로 바꾸는 중…`;
+  PACE = Math.min(PACE, 0.5);
+  try { return await _doApplyOne(step, choice, opts); } finally { PACE = pace; one.doing = null; }
+};
+
+// 「~하는 중」 깜빡임 줄이기: 카드에 할 말이 없으면 늘 「~하는 중」 (잠깐씩 켜졌다 꺼지는 진행 표시와 상관없이)
+// 참가자가 답한 뒤 AI 말이 아무것도 안 보이는 틈이 생기면, 진행 카드를 바로 아래로 옮겨 「~하는 중」을 이어서 보여 줌
+setInterval(() => {
+  if (!S?.unified || !S.running || S.finished || one.page != null || mini.closing) return;
+  const c = chat(), card = $("#run-card"), q = $("#rc-q");
+  if (!card || !q || (!q.hidden && q.textContent.trim()) || card.classList.contains("asking") || $("#typing") || S.steps[S.stepIdx]?.id === "taxi_open") return;
+  const kids = [...c.children].filter((el) => !["chips", "chat-spacer", "one-ctrl"].includes(el.id));
+  const lastUser = kids.filter((el) => el.classList.contains("bubble") && el.classList.contains("user")).at(-1);
+  if (lastUser && kids.indexOf(card) < kids.indexOf(lastUser)) c.insertBefore(card, $("#chips"));
+}, 150);

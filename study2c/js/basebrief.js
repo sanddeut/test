@@ -1,19 +1,10 @@
 // 기존안 간결하게: 대화 기록을 남기지 않고, AI 회색 카드(진행 카드) 안의 내용만 계속 바뀜
 // - 진행 카드가 처음 나오기 전의 대화(인사·첫 요청 등)는 그대로 두고, 그 뒤에 생긴 말풍선(지난 질문·「승인」 답 등)만 숨김
 // - 카드 안 질문이 비어 있을 때는 바로 앞 AI 말을 카드 안에 보여 줌 (카드 밖 말풍선 대신)
-// - 참가자의 입력·선택이 필요하지 않은 단계(앱 열기·출발지·목적지·예상 금액 등)는 안쪽 카드를 보여 주지 않음
 "use strict";
 
 // 기존안(2c): 단계마다 넘어가는 시간을 절반으로 (화면 조작 속도 배율 0.5 + 문구를 읽는 시간 2.5초)
 PACE = 0.5;
-
-// 알림(답할 일 없음)에는 안쪽 카드 없음. 선택지와 함께 나오는 카드(택시 종류·최종 호출 등)는 그대로
-const _showNoticeBrief = showNotice;
-showNotice = function (text) {
-  const pv = stepPreview;
-  stepPreview = () => null;
-  try { return _showNoticeBrief(text); } finally { stepPreview = pv; }
-};
 
 function briefUpdate() {
   const c = chat();
