@@ -162,3 +162,7 @@
 
 /* 뒤로 가기 다이얼로그: 계속하기와 방금 한 일 취소 사이 간격 줄임 */
 .bd-go + .bd-undo { margin-top: -8px; }
+
+/* 「말로 하기/글로 하기」 전환 버튼: 말풍선 아래 왼쪽 끝 / 입력창 위 여백 넉넉히 */
+.rf-fab-slot { order: 2; justify-content: flex-start; }
+.rf-talk { margin-top: 24px; }
