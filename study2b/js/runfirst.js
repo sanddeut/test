@@ -33,7 +33,8 @@ function setupRunFirst() {
       <div class="rf-ptop"><button type="button" class="rf-avatar" aria-label="AI 도우미 (대화창 보기)">AI</button><span class="rf-status"></span></div>
       <p class="rf-q"></p><div class="rf-pv"></div><div class="rf-opts"></div><div class="rf-talk"></div><div class="rf-fab-slot"></div>
     </div>
-    <div class="rf-compose"></div>`;
+    <div class="rf-compose"></div>
+    <div class="rf-spot" hidden></div><div class="rf-hit" hidden></div>`;
   phone.appendChild(L);
   phone.style.setProperty("--rf-panel", `${RF_PANEL}px`);
   phone.style.setProperty("--rf-compose", `${RF_COMPOSE}px`);
@@ -56,7 +57,7 @@ function setupRunFirst() {
   $("#composer").before(rf.composerHome);
 }
 document.addEventListener("DOMContentLoaded", setupRunFirst);
-setInterval(() => { if (S?.runFirst) rfRender(); }, 300); // 단계가 바뀌면 "~하는 중…" 문구도 바꿈
+setInterval(() => { if (S?.runFirst) { rfRender(); rfSpot(); } }, 300);
 
 // 허용 팝업에서 허용하면 실행화면으로 넘어간 뒤에 앱을 열기 시작함
 const _showPermDialogRF = showPermDialog;
@@ -152,12 +153,14 @@ fitScreen = function () {
   const W = phone.clientWidth;
   const H = parseFloat(phone.style.getPropertyValue("--app-h")) || phone.clientHeight;
   const cut = phone.classList.contains("rf") ? (phone.classList.contains("rf-live") ? RF_HEAD : 0) + RF_COMPOSE : 0; // 위 헤더와 아래 입력창만큼 앱 화면을 줄임 (AI 패널은 없앰. 확인·선택할 때만 화면 위에 질문 카드)
-  // 앱 화면은 기기 폭의 88% 크기로 줄여 가운데에 (앱 안의 배치는 기기 폭 그대로, 높이는 남는 칸에 맞춤)
+  // 앱 화면은 실제 휴대폰 비율(기기 전체 크기) 그대로 줄여 가운데에 띄움 (최대 88%, 남는 칸에 맞춤)
+  const full = phone.clientHeight;
   const room = H - cut - RF_GAP * 2;
-  phone.style.setProperty("--scale", String(RF_SCALE));
-  phone.style.setProperty("--app-h", `${room / RF_SCALE}px`);
-  clip.style.width = `${W * RF_SCALE}px`;
-  clip.style.height = `${room}px`;
+  const k = Math.min(RF_SCALE, room / full);
+  phone.style.setProperty("--scale", String(k));
+  phone.style.setProperty("--app-h", `${full}px`);
+  clip.style.width = `${W * k}px`;
+  clip.style.height = `${full * k}px`;
 };
 
 // 실행화면에서 「내가 앱 조작하기」로 들어갔다가 돌아오면 다시 실행화면으로 (원래는 대화창으로)
@@ -302,6 +305,47 @@ function rfRender() {
   }
   L.querySelector(".rf-panel").scrollTop = 0;
   if (q) logEvent("rf_panel", { mode: kind || "message", text: q });
+  rfSpot();
+}
+
+// =====================================================================
+// 고를 일이 앱 화면 안에 있으면(택시 종류 · 최종 호출): 그 부분만 밝게 두고 나머지는 더 어둡게, 참가자가 앱 화면을 직접 누름
+// - 맨 아래 입력창 자리는 AI 말풍선(질문)으로 바뀜
+// =====================================================================
+const RF_SPOTS = {
+  car: { target: ".tx-cars", items: ".tx-car", pick: (el, opts) => opts.find((o) => o.id === el.dataset.car) },
+  final: { target: ".sheet", items: ".bk-btn2 > span", pick: (el, opts) => opts.find((o) => o.id === (el.classList.contains("primary") ? "approve" : "reject")) },
+};
+function rfSpotNow() {
+  if (!rfOn() || S.manual || S.pinOpen || S.paused || S.ivWaiter || rf.picks) return null;
+  const spot = RF_SPOTS[S.steps[S.stepIdx]?.id];
+  if (!spot || !rf.ask || !S.waiter?.options) return null;
+  const el = $("#screen")?.querySelector(spot.target);
+  return el ? { spot, el } : null;
+}
+function rfSpot() {
+  const L = $("#rf-layer");
+  if (!L) return;
+  const cur = rfSpotNow();
+  const on = Boolean(cur);
+  if ((L.dataset.spot === "1") !== on) L.dataset.spot = on ? "1" : "";
+  const box = L.querySelector(".rf-spot"), hit = L.querySelector(".rf-hit");
+  if (box.hidden === on) { box.hidden = !on; hit.hidden = !on; }
+  if (!on) return;
+  const pr = $(".phone").getBoundingClientRect();
+  const r = cur.el.getBoundingClientRect();
+  const pad = 4;
+  const css = `left:${r.left - pr.left - pad}px;top:${r.top - pr.top - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px`;
+  if (box.style.cssText !== css) { box.style.cssText = css; hit.style.cssText = css; }
+  hit.onclick = (e) => {
+    const c = rfSpotNow();
+    if (!c) return;
+    const item = [...c.el.querySelectorAll(c.spot.items)].find((x) => { const b = x.getBoundingClientRect(); return e.clientX >= b.left && e.clientX <= b.right && e.clientY >= b.top && e.clientY <= b.bottom; });
+    const o = item && c.spot.pick(item, rf.ask.options);
+    if (!o) return;
+    logEvent("rf_screen_pick", { step: S.steps[S.stepIdx]?.id, choice: o.id });
+    rf.ask.onPick(o);
+  };
 }
 
 // 개선안 입력창을 패널 안으로 옮기거나 원래 자리로 돌려 놓음

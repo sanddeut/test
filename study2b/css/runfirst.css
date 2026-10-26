@@ -136,3 +136,12 @@
 .rf-layer:not([data-mode="ask"]) .rf-panel { display: none; }
 .phone.rf[data-view="progress"] .screen-box { padding-bottom: calc(var(--rf-compose, 74px) + 12px) !important; }
 .rf-layer[data-mode="ask"] .rf-panel { border-radius: 20px; left: 10px; right: 10px; bottom: calc(var(--rf-compose, 74px) + 8px); }
+
+/* 고를 일이 앱 화면 안에 있을 때: 그 부분만 밝게(누를 수 있게), 나머지는 더 어둡게. 입력창 자리는 AI 말풍선 */
+.rf-spot { position: absolute; z-index: 1; border-radius: 14px; box-shadow: 0 0 0 3px #ffc72c, 0 0 0 2000px rgba(16, 18, 22, .88); pointer-events: none; transition: left .2s, top .2s, width .2s, height .2s; }
+.rf-hit { position: absolute; z-index: 2; pointer-events: auto; cursor: pointer; border-radius: 14px; }
+.rf-spot[hidden], .rf-hit[hidden] { display: none !important; }
+.rf-layer[data-spot="1"] .rf-dim { background: transparent !important; pointer-events: auto; }
+.rf-layer[data-spot="1"] .rf-compose { display: none; }
+.rf-layer[data-spot="1"] .rf-panel { bottom: calc(10px + env(safe-area-inset-bottom, 0px)); min-height: 0; padding: 12px 16px 14px; animation: none; }
+.rf-layer[data-spot="1"] .rf-pv, .rf-layer[data-spot="1"] .rf-opts { display: none; }
