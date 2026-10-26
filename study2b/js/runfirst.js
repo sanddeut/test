@@ -12,6 +12,9 @@ const RF_SWAP_MS = 1200; // 튕기며 화면이 바뀌는 시간 (slideSwap과 �
 const RF_HEAD = 58; // 위 헤더 높이 (태그 + 멈추기 · 내가 하기)
 const RF_PANEL = 132; // 아래 AI 패널 높이 (진행 중)
 const RF_INTRO_MS = 3800; // "AI가 '마음택시' 앱을 사용합니다." 안내를 보여 주는 시간
+const RF_COMPOSE = 74; // 맨 아래 입력창 칸 높이 (늘 보임)
+const RF_SCALE = 0.88; // 앱 화면을 기기 화면의 88% 크기로 (가운데, 둥근 모서리)
+const RF_GAP = 12; // 앱 화면 위아래 여백
 const rf = { doing: "", ask: null, picks: null, note: "", noteStep: null, last: "", typing: false, key: "", runBeforeManual: false, composerHome: null };
 
 const rfOn = () => Boolean(S?.runFirst && !S.finished && $(".phone").dataset.view === "progress");
@@ -29,9 +32,11 @@ function setupRunFirst() {
     <div class="rf-panel" role="region" aria-label="AI 도우미" aria-live="polite">
       <div class="rf-ptop"><button type="button" class="rf-avatar" aria-label="AI 도우미 (대화창 보기)">AI</button><span class="rf-status"></span></div>
       <p class="rf-q"></p><div class="rf-pv"></div><div class="rf-opts"></div><div class="rf-talk"></div><div class="rf-fab-slot"></div>
-    </div>`;
+    </div>
+    <div class="rf-compose"></div>`;
   phone.appendChild(L);
   phone.style.setProperty("--rf-panel", `${RF_PANEL}px`);
+  phone.style.setProperty("--rf-compose", `${RF_COMPOSE}px`);
   const load = document.createElement("div");
   load.id = "rf-loading";
   load.innerHTML = '<span class="rf-spinner"></span>';
@@ -146,11 +151,13 @@ fitScreen = function () {
   const clip = $(".screen-clip");
   const W = phone.clientWidth;
   const H = parseFloat(phone.style.getPropertyValue("--app-h")) || phone.clientHeight;
-  const cut = phone.classList.contains("rf") ? (phone.classList.contains("rf-live") ? RF_HEAD : 0) + RF_PANEL : 0; // 위 헤더와 아래 AI 패널만큼 앱 화면을 줄임
-  phone.style.setProperty("--scale", "1");
-  phone.style.setProperty("--app-h", `${H - cut}px`);
-  clip.style.width = `${W}px`;
-  clip.style.height = `${H - cut}px`;
+  const cut = phone.classList.contains("rf") ? (phone.classList.contains("rf-live") ? RF_HEAD : 0) + RF_PANEL + RF_COMPOSE : 0; // 위 헤더, 아래 AI 패널과 입력창만큼 앱 화면을 줄임
+  // 앱 화면은 기기 폭의 88% 크기로 줄여 가운데에 (앱 안의 배치는 기기 폭 그대로, 높이는 남는 칸에 맞춤)
+  const room = H - cut - RF_GAP * 2;
+  phone.style.setProperty("--scale", String(RF_SCALE));
+  phone.style.setProperty("--app-h", `${room / RF_SCALE}px`);
+  clip.style.width = `${W * RF_SCALE}px`;
+  clip.style.height = `${room}px`;
 };
 
 // 실행화면에서 「내가 앱 조작하기」로 들어갔다가 돌아오면 다시 실행화면으로 (원래는 대화창으로)
@@ -247,11 +254,11 @@ function rfRender() {
   const asking = Boolean(pin || picks || ask || talk);
   L.dataset.mode = asking ? "ask" : "";
   $(".phone").classList.toggle("rf-asking", asking);
-  rfComposer(talk);
+  rfComposer(on || Boolean(S?.runFirst && !S.finished && $(".phone").dataset.view === "progress"));
   // 위 줄: AI가 답을 준비하는 중 "…" / 화면을 누르는 동안 "~하는 중…" / 멈췄을 때
   const st = L.querySelector(".rf-status");
   const typing = on && rf.typing;
-  const status = typing || !on ? "" : S.paused && !asking ? "멈춰 있어요" : live ? rf.doing : "";
+  const status = typing || !on ? "" : S.paused && !asking ? "멈춰 있어요" : ""; // 「~하는 중…」 문구는 보여 주지 않음
   st.classList.toggle("typing", typing);
   const stHTML = typing ? "<i></i><i></i><i></i>" : esc(status);
   if (st.innerHTML !== stHTML) st.innerHTML = stHTML;
@@ -298,18 +305,16 @@ function rfRender() {
 }
 
 // 개선안 입력창을 패널 안으로 옮기거나 원래 자리로 돌려 놓음
-function rfComposer(inBubble) {
+// 실행화면에서는 입력창을 맨 아래 칸에 늘 둠 (패널은 그 위)
+function rfComposer(inBottom) {
   const form = $("#composer");
-  const slot = $("#rf-layer .rf-talk");
+  const slot = $("#rf-layer .rf-compose");
   if (!form || !slot || !rf.composerHome) return;
-  const fab = $("#mode-fab");
-  if (inBubble && form.parentNode !== slot) {
+  if (inBottom && form.parentNode !== slot) {
     slot.appendChild(form);
-    if (inputMode.mode === "start" || inputMode.mode === "pick") setInputMode("text");
-    if (fab) $("#rf-layer .rf-fab-slot").appendChild(fab); // 말로 하기 ↔ 글로 하기는 입력창 아래 왼쪽
-  } else if (!inBubble && form.parentNode === slot) {
+    if (inputMode.mode !== "text") setInputMode("text");
+  } else if (!inBottom && form.parentNode === slot) {
     rf.composerHome.after(form);
-    if (fab) form.appendChild(fab);
   }
 }
 
