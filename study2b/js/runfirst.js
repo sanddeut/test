@@ -227,7 +227,11 @@ agentSay = async function (text, opts = {}) {
 const _showTypingRF = showTyping;
 showTyping = function (on) {
   _showTypingRF(on);
-  if (rf.typing !== on) { rf.typing = on; if (on) rf.note = ""; rfRender(); }
+  if (rf.typing !== on) {
+    rf.typing = on;
+    if (on) { rf.note = ""; rf.msgStep = null; rf.line = ""; } // 참가자가 답하면 질문 문구는 내리고, 다음 조작은 "~하는 중…"부터
+    rfRender();
+  }
 };
 
 const _setActingRF = setActing;
