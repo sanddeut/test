@@ -10,6 +10,7 @@
 
 const RF_LOADING_MS = 900; // 허용한 뒤 로딩 화면
 const RF_SWAP_MS = 1200; // 튕기며 화면이 바뀌는 시간 (slideSwap과 같게)
+const RF_HEAD = 50; // 위 헤더 높이 (태그 + 멈추기 · 내가 하기)
 const RF_INTRO_MS = 2600; // "AI가 '마음택시' 앱을 사용합니다." 안내를 보여 주는 시간
 const rf = { ask: null, picks: null, note: "", noteStep: null, last: "", typing: false, key: "", runBeforeManual: false, composerHome: null };
 
@@ -23,8 +24,8 @@ function setupRunFirst() {
   L.innerHTML = `<div class="rf-dim"></div>
     <p class="rf-intro">AI가 ‘${esc(TAXI_APP)}’ 앱을 사용합니다.</p>
     <div class="rf-border"></div>
-    <div class="rf-chip" role="status">AI가 앱 사용중..</div>
-    <div class="rf-ctrl"><button type="button" class="rf-stop">멈추기</button><button type="button" class="rf-manual">내가 하기</button></div>
+    <div class="rf-head"><div class="rf-chip" role="status">AI가 앱 사용중..</div>
+      <div class="rf-ctrl"><button type="button" class="rf-stop">멈추기</button><button type="button" class="rf-manual">내가 하기</button></div></div>
     <div class="rf-bubble" role="dialog" aria-live="polite" hidden>
       <p class="rf-q"></p><div class="rf-pv"></div><div class="rf-opts"></div><div class="rf-talk"></div>
     </div>
@@ -115,9 +116,11 @@ fitScreen = function () {
   const clip = $(".screen-clip");
   const W = phone.clientWidth;
   const H = parseFloat(phone.style.getPropertyValue("--app-h")) || phone.clientHeight;
+  const head = $(".phone").classList.contains("rf") ? RF_HEAD : 0; // 위 헤더만큼 앱 화면을 줄임
   phone.style.setProperty("--scale", "1");
+  phone.style.setProperty("--app-h", `${H - head}px`);
   clip.style.width = `${W}px`;
-  clip.style.height = `${H}px`;
+  clip.style.height = `${H - head}px`;
 };
 
 // 실행화면에서 「내가 앱 조작하기」로 들어갔다가 돌아오면 다시 실행화면으로 (원래는 대화창으로)

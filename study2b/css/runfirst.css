@@ -127,3 +127,18 @@
 .rf-bubble .composer { display: flex !important; margin: 0 !important; box-shadow: 0 0 0 1px #d6dce6 !important; animation: none !important; }
 .rf-bubble .composer .mode-fab { bottom: calc(100% + 8px); }
 .rf-bubble .composer .unsent-hint { right: 0; }
+
+/* 위 헤더: 태그와 멈추기 · 내가 하기를 한 줄로 묶고 배경을 깔음 (테두리와 같은 색). 앱 화면은 헤더 아래부터 */
+.phone.rf[data-view="progress"] .screen-box { padding-top: 50px !important; }
+.rf-head { position: absolute; top: 0; left: 0; right: 0; height: 50px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px 0 14px;
+  background: linear-gradient(90deg, #4c8df6, #a36bf5); opacity: 0; transition: opacity .5s ease; }
+.rf-layer.live .rf-head { opacity: 1; pointer-events: auto; }
+.rf-head .rf-chip { position: static; opacity: 1; transform: none; padding: 0; background: none; box-shadow: none; border-radius: 0; font-size: 16px; line-height: 22px; }
+.rf-head .rf-ctrl { position: static; opacity: 1; }
+.rf-head .rf-ctrl button { box-shadow: none !important; padding: 7px 14px; }
+.rf-head .rf-stop { background: #fff; color: #d93025; }
+.rf-head .rf-manual { background: #d93025; color: #fff; box-shadow: 0 0 0 1.5px #fff !important; }
+.rf-border { z-index: 1; }
+.rf-head { opacity: 1; pointer-events: auto; }
+.rf-layer.intro .rf-dim { z-index: 3; }
+.rf-layer.intro .rf-intro { z-index: 4; }
