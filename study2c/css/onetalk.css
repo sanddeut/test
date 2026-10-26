@@ -74,3 +74,6 @@
 .rc-mini .screen-clip { width: var(--mini-w) !important; height: var(--mini-h) !important; flex: none; position: relative; overflow: hidden; border-radius: 14px; box-shadow: 0 0 0 1px #c9cdd6, 0 3px 10px rgba(0, 0, 0, .12); background: #fff; pointer-events: none; }
 .rc-mini .screen { transform: scale(0.42); transform-origin: 0 0; }
 #run-card.mini-on #rc-open { display: none !important; }
+
+/* 첫 인사(무엇을 도와드릴까요?)에만 프로필 옆에 「AI 도우미」 */
+.chat.one-page > .bubble.agent.with-guide::after { content: "AI 도우미"; position: absolute; left: 46px; top: -36px; font-size: 16px; font-weight: 600; color: #3c4048; line-height: 20px; white-space: nowrap; }
