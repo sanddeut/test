@@ -53,3 +53,11 @@
 /* 쉐브론: 동그란 배경 없이 회색 아이콘만 */
 .one-nav { width: 48px; height: 32px; margin: 0 auto; background: none; box-shadow: none; color: #9aa0aa; }
 .one-nav .ms { font-size: 34px; }
+
+/* 한 세트씩 보기: AI 말풍선 위에 AI 프로필 (진행 카드의 아이콘과 같은 모양) */
+.chat.one-page > .bubble.agent:not(.typing) { position: relative; margin-top: 46px; }
+.chat.one-page > .bubble.agent:not(.typing)::before { content: "auto_awesome"; position: absolute; left: 0; top: -44px; width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #4c8df6, #a36bf5); color: #fff; font-family: "Material Symbols Rounded"; font-size: 20px; font-weight: normal; line-height: 36px; text-align: center; font-variation-settings: "FILL" 1; }
+.chat.one-page > #run-card.asking { position: relative; margin-top: 46px; overflow: visible; }
+.chat.one-page > #run-card.asking::before { content: "auto_awesome"; position: absolute; left: 0; top: -44px; width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #4c8df6, #a36bf5); color: #fff; font-family: "Material Symbols Rounded"; font-size: 20px; font-weight: normal; line-height: 36px; text-align: center; font-variation-settings: "FILL" 1; }
