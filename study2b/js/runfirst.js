@@ -28,10 +28,11 @@ function setupRunFirst() {
       <div class="rf-ctrl"><button type="button" class="rf-stop">멈추기</button><button type="button" class="rf-manual">내가 하기</button></div></div>
     <div class="rf-msgs" role="region" aria-label="AI 도우미" aria-live="polite">
       <button type="button" class="rf-avatar" aria-label="AI 도우미 (대화창 보기)">AI</button>
-      <div class="rf-past"></div><p class="rf-q"></p>
+      <p class="rf-q"></p>
       <button type="button" class="rf-undo" hidden><span class="ms">undo</span>되돌리기</button>
     </div>
-    <div class="rf-panel"><div class="rf-pv"></div><div class="rf-opts"></div><div class="rf-talk"></div><div class="rf-fab-slot"></div></div>`;
+    <div class="rf-panel"><div class="rf-pv"></div><div class="rf-opts"></div></div>
+    <div class="rf-bottom"><div class="rf-talk"></div><div class="rf-fab-slot"></div></div>`;
   phone.appendChild(L);
   const load = document.createElement("div");
   load.id = "rf-loading";
@@ -67,9 +68,12 @@ function rfPlacePanel() {
   const m = L.querySelector(".rf-msgs");
   const box = $(".screen-box");
   const top = Math.max(m.offsetTop + m.offsetHeight, box.offsetTop + box.offsetHeight) + 14;
-  L.querySelector(".rf-panel").style.top = `${top}px`;
+  const bottom = L.querySelector(".rf-bottom");
+  const panel = L.querySelector(".rf-panel");
+  panel.style.top = `${top}px`;
+  panel.style.bottom = `${bottom.offsetHeight ? bottom.offsetHeight + 24 : 12}px`; // 맨 아래 입력창과 겹치지 않게
 }
-document.addEventListener("DOMContentLoaded", () => new ResizeObserver(rfPlacePanel).observe($("#rf-layer .rf-msgs")));
+document.addEventListener("DOMContentLoaded", () => { const ro = new ResizeObserver(rfPlacePanel); ro.observe($("#rf-layer .rf-msgs")); ro.observe($("#rf-layer .rf-bottom")); });
 setInterval(() => { if (S?.runFirst) rfRender(); }, 300); // 단계가 바뀌면 "~하는 중…" 문구도 바꿈
 
 // 허용 팝업에서 허용하면 실행화면으로 넘어간 뒤에 앱을 열기 시작함
@@ -85,7 +89,7 @@ async function rfEnter() {
   const L = $("#rf-layer");
   S.runFirst = true;
   S.runIntroShown = true; // improve.js의 [확인] 안내 대신 아래 안내
-  Object.assign(rf, { hist: [], line: "", msgStep: null, stepSeen: null, doing: "", ask: null, picks: null, note: "", last: "", typing: false, key: "" });
+  Object.assign(rf, { line: "", msgStep: null, stepSeen: null, doing: "", ask: null, picks: null, note: "", last: "", typing: false, key: "" });
   L.classList.remove("intro", "live");
   $(".phone").classList.remove("rf-live", "rf-big");
   $("#rf-loading").classList.add("on");
@@ -237,7 +241,6 @@ agentSay = async function (text, opts = {}) {
     rf.note = rf.note && rf.noteStep === S.stepIdx ? `${rf.note}\n${text}` : text;
     rf.noteStep = S.stepIdx;
     rf.last = text;
-    rf.hist = [...(rf.hist || []), text].slice(-6); // 지난 말 (메시지 위에 흐리게 최근 2개)
     rf.line = text; // 패널 메시지는 화면에 맞춰 차례로: ~하는 중… → '…' 검색 중… → ~할게요 → 다음 단계 ~하는 중…
     rf.msgStep = S.stepIdx;
     rfRender();
@@ -287,7 +290,7 @@ function rfRender() {
   L.querySelector(".rf-manual").disabled = $("#btn-manual").disabled;
   const on = rfOn() && !S.manual && !S.pinOpen;
   // 되돌리기로 앞 단계로 돌아가면 지난 단계의 말은 지움
-  if (S && rf.stepSeen != null && S.stepIdx < rf.stepSeen) { rf.last = ""; rf.line = ""; rf.msgStep = null; rf.hist = []; }
+  if (S && rf.stepSeen != null && S.stepIdx < rf.stepSeen) { rf.last = ""; rf.line = ""; rf.msgStep = null; }
   if (S) rf.stepSeen = S.stepIdx;
   const pin = on && S.waiter?.pin && S.pinResolve && !S.paused && !S.ivWaiter; // 취소(멈춤) 뒤에는 멈춘 뒤 질문을 보여 줌
   const picks = on && !pin && rf.picks && S.waiter === rf.picks.waiter ? rf.picks : null;
@@ -308,9 +311,6 @@ function rfRender() {
   const key = `${kind}|${typing}|${status ? 1 : 0}|${q}|${sig}|${asking ? S.stepIdx : ""}`;
   if (key === rf.key) return;
   rf.key = key;
-  // 지난 말: 지금 메시지 위에 흐리게 최근 2개
-  const past = (rf.hist || []).filter((t) => t !== q).slice(-2);
-  L.querySelector(".rf-past").innerHTML = past.map((t) => `<p>${esc(t)}</p>`).join("");
   const qEl = L.querySelector(".rf-q");
   const prevQ = qEl.textContent;
   qEl.classList.toggle("typing", typing);
@@ -396,7 +396,7 @@ dwell = function (ms = 1800) {
 };
 
 // AI가 화면을 누르고 글자를 치는 속도만 늦춤 (읽을 시간·대기 시간은 그대로)
-const RF_ACT_SLOW = 1.6;
+const RF_ACT_SLOW = 2.4;
 const _tapRF = tap;
 tap = function (sel, { pre = 450, hold = 350, after = 450, quick = false } = {}) {
   const k = S?.runFirst ? RF_ACT_SLOW : 1;

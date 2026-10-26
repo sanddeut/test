@@ -56,23 +56,23 @@
 .rf-manual { background: #d93025; color: #fff; box-shadow: 0 0 0 1.5px #fff; }
 .rf-ctrl button:disabled { opacity: .45; }
 
-/* 오른쪽 AI 메시지: 지난 말 2개는 흐리게, 지금 말은 흰 카드 */
-.rf-msgs { position: absolute; top: 70px; left: calc(24px + var(--rf-tw, 86px)); right: 12px; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: auto;
+/* AI 메시지: 지금 단계 말 하나만, 프로필에서 나오는 말풍선 (지난 말은 남기지 않음 · 기록은 대화창에) */
+.rf-msgs { position: absolute; top: 70px; left: calc(24px + var(--rf-tw, 86px)); right: 12px; z-index: 2; display: grid; grid-template-columns: 34px 1fr; align-items: start; column-gap: 10px; row-gap: 8px; pointer-events: auto;
   opacity: 0; transition: opacity .45s ease; }
 .rf-layer.live .rf-msgs { opacity: 1; }
-.rf-avatar { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 0; padding: 0; background: linear-gradient(135deg, #4c8df6, #a36bf5); color: #fff; font: inherit; font-size: 12px; font-weight: 700; }
-.rf-past:empty { display: none; }
-.rf-past p { margin: 0 0 4px; color: #9aa0aa; font-size: 14.5px; line-height: 1.45; word-break: keep-all; }
-.rf-q { align-self: stretch; margin: 0; background: #fff; border-radius: 14px; padding: 10px 12px; box-shadow: 0 1px 6px rgba(0, 0, 0, .08); color: #1c1d21; font-size: 16.5px; font-weight: 500; line-height: 1.5; white-space: pre-line; word-break: keep-all; }
-.rf-q:empty { display: none; }
+.rf-avatar { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; padding: 0; background: linear-gradient(135deg, #4c8df6, #a36bf5); color: #fff; font: inherit; font-size: 13px; font-weight: 700; }
+.rf-q { position: relative; margin: 2px 0 0; background: #fff; border-radius: 4px 16px 16px 16px; padding: 10px 13px; box-shadow: 0 1px 6px rgba(0, 0, 0, .1); color: #1c1d21; font-size: 16.5px; font-weight: 500; line-height: 1.5; white-space: pre-line; word-break: keep-all; }
+.rf-q::before { content: ""; position: absolute; left: -7px; top: 0; border-width: 0 8px 10px 0; border-style: solid; border-color: transparent #fff transparent transparent; }
+.rf-q:empty { visibility: hidden; }
 .rf-layer[data-mode="ask"] .rf-q { font-weight: 600; }
 .rf-q.fresh { animation: rf-fresh .5s ease; }
-@keyframes rf-fresh { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.rf-q.typing { display: inline-flex !important; align-self: flex-start; gap: 4px; }
+@keyframes rf-fresh { from { opacity: 0; transform: translateX(-6px) scale(.97); } to { opacity: 1; transform: none; } }
+.rf-q.typing { display: inline-flex !important; justify-self: start; gap: 4px; }
 .rf-q.typing i { width: 7px; height: 7px; border-radius: 50%; background: #9aa0aa; animation: rf-dot 1.2s infinite ease-in-out; }
 .rf-q.typing i:nth-child(2) { animation-delay: .15s; }
 .rf-q.typing i:nth-child(3) { animation-delay: .3s; }
 @keyframes rf-dot { 0%, 80%, 100% { opacity: .35; } 40% { opacity: 1; } }
+.rf-msgs .rf-undo { grid-column: 2; justify-self: start; }
 /* 「되돌리기」: 지금 메시지 아래 */
 .rf-undo { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #d6dce6; background: #fff; color: #3c4048; border-radius: 999px; padding: 6px 13px; font: inherit; font-size: 14px; font-weight: 600; }
 .rf-undo[hidden] { display: none; }
@@ -103,12 +103,12 @@
 .rf-btn:active { filter: brightness(.95); }
 .rf-opts.list > .rf-btn { margin: 8px; }
 
-/* 말로(글로) 답하기: 개선안 입력창을 그대로, 「말로 하기/글로 하기」는 그 아래 왼쪽 */
-.rf-talk { margin-top: 24px; }
-.rf-pv:empty + .rf-opts:empty + .rf-talk { margin-top: 0; }
-.rf-panel .composer { display: flex !important; margin: 0 !important; box-shadow: 0 1px 6px rgba(0, 0, 0, .08) !important; animation: none !important; }
-.phone[data-input="text"] .rf-panel .composer { background: #f1f3f6 !important; } /* 글로 입력할 때만 옅은 회색 */
-.rf-panel .composer .unsent-hint { right: 0; }
+/* 말로(글로) 답하기: 개선안 입력창을 그대로 맨 아래에 고정, 「말로 하기/글로 하기」는 그 아래 왼쪽 */
+.rf-bottom { position: absolute; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 2; pointer-events: auto; }
+.rf-bottom:has(.rf-talk:empty) { display: none; }
+.rf-bottom .composer { display: flex !important; margin: 0 !important; box-shadow: 0 1px 6px rgba(0, 0, 0, .08) !important; animation: none !important; }
+.phone[data-input="text"] .rf-bottom .composer { background: #f1f3f6 !important; } /* 글로 입력할 때만 옅은 회색 */
+.rf-bottom .composer .unsent-hint { right: 0; }
 .rf-fab-slot { display: flex; justify-content: flex-start; margin-top: 10px; }
 .rf-fab-slot .mode-fab { position: static; box-shadow: 0 0 0 1px #e3e6ec; }
 
