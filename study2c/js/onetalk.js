@@ -190,8 +190,8 @@ function onePage(c, bar) {
 }
 
 // =====================================================================
-// 허용 뒤 진행 카드 안에 실제 앱 화면을 작게 보여 줌 (스플래시 → 첫 화면 → 출발지 검색)
-// 출발지를 알리고 잠시 뒤 작은 화면은 접히고 「실행화면 보기」 버튼으로 바뀜
+// 허용 뒤 진행 카드 안에 실제 앱 화면을 작게 보여 줌 (마음택시 스플래시 → 첫 화면)
+// 앱 여는 단계가 끝나면 출발지로 넘어가기 전에 작은 화면은 접히고 「실행화면 보기」 버튼으로 바뀜
 // =====================================================================
 const MINI_SCALE = 0.3;
 const MINI_MAX_MS = 30000;
@@ -215,9 +215,16 @@ function miniStart() {
   box.onclick = () => { miniEnd(true); showRun(true); };
   card.classList.add("mini-on");
   mini.on = true; mini.t0 = Date.now(); mini.endAt = 0;
+  miniShow();
   miniFit();
   logEvent("rc_mini_start");
 }
+// 휴대폰 홈 화면일 때는 숨겨 두고, 마음택시가 열리는 순간(스플래시)부터 보임
+function miniShow() {
+  const box = $("#rc-mini");
+  if (box) box.hidden = S?.phone?.app === "home";
+}
+setInterval(() => { if (mini.on) miniShow(); }, 100);
 function miniFit() {
   const phone = $(".phone");
   const clip = $("#rc-mini .screen-clip");
@@ -254,14 +261,14 @@ syncView = function () {
   _syncViewOne();
   if (mini.on) miniFit();
 };
-// 출발지를 알리고 3초 뒤(또는 다른 단계로 넘어가면) 접음
+// (앱 여는 단계가 끝나면 접음. 혹시 남아 있으면 다른 단계로 넘어갈 때·30초 뒤 접음)
 setInterval(() => {
   if (!mini.on || !S) return;
   const id = S.steps[S.stepIdx]?.id;
   const q = $("#rc-q");
   const told = id === "origin" && q && !q.hidden && q.textContent.includes("출발지");
   if (told && !mini.endAt) mini.endAt = Date.now() + 3000;
-  if ((mini.endAt && Date.now() > mini.endAt) || (id && !["taxi_open", "origin"].includes(id)) || Date.now() - mini.t0 > MINI_MAX_MS || S.finished) miniEnd();
+  if ((id && id !== "taxi_open") || Date.now() - mini.t0 > MINI_MAX_MS || S.finished) miniEnd();
 }, 250);
 
 // 「…」만 오래 보이지 않게: AI가 일하는 동안 프로필 옆에 지금 하는 일 ("택시 종류를 확인하는 중…")
@@ -285,11 +292,15 @@ runAuto = async function (step) {
   const delay = S.cfg.delay;
   S.cfg.delay = Math.min(delay, 2000);
   S.fastOpen = true;
-  try { return await _runAutoOne(step); } finally { S.cfg.delay = delay; S.fastOpen = false; }
+  let r;
+  try { r = await _runAutoOne(step); } finally { S.cfg.delay = delay; S.fastOpen = false; }
+  // 출발지로 넘어가기 전에 작은 앱 화면을 접어 「실행화면 보기」로 바꾸고 넘어감
+  if (mini.on) { miniEnd(); await sleep(900 * PACE); }
+  return r;
 };
 const _dwellOne = dwell;
 dwell = function (ms = 1800) {
-  return _dwellOne(S?.fastOpen ? Math.min(ms, 1200) : ms);
+  return _dwellOne(S?.fastOpen ? Math.min(ms, 2000) : ms); // 앱 첫 화면은 2초 보여 줌
 };
 
 // 실행화면 첫 안내(「AI가 마음택시 앱을 사용하는 실시간 화면을 보여드려요」): [확인]을 누르지 않아도 2.5초 뒤 저절로 닫히고 AI가 이어서 진행

@@ -95,3 +95,5 @@
 
 /* 실행화면 첫 안내는 저절로 닫히므로 [확인] 버튼은 숨김 */
 .run-intro .run-intro-ok { display: none !important; }
+
+.rc-mini[hidden] { display: none !important; }
