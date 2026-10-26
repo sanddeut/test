@@ -72,7 +72,7 @@
 .rc-mini { display: flex; justify-content: center; padding: 4px 0 2px; max-height: 420px; overflow: hidden; transition: max-height .55s ease, opacity .45s ease; cursor: pointer; }
 .rc-mini.closing { max-height: 0; opacity: 0; }
 .rc-mini .screen-clip { width: var(--mini-w) !important; height: var(--mini-h) !important; flex: none; position: relative; overflow: hidden; border-radius: 14px; box-shadow: 0 0 0 1px #c9cdd6, 0 3px 10px rgba(0, 0, 0, .12); background: #fff; pointer-events: none; }
-.rc-mini .screen { transform: scale(0.3); transform-origin: 0 0; }
+.rc-mini .screen { transform: scale(var(--mini-k, .24)); transform-origin: 0 0; }
 #run-card.mini-on #rc-open { display: none !important; }
 
 /* 첫 인사(무엇을 도와드릴까요?)에만 프로필 옆에 「AI 도우미」 */
@@ -239,3 +239,15 @@
 /* 호출 완료 말 아래 버튼과 「오늘 사용자님과 함께 한 일」 사이: 회색 구분선, 위아래 넉넉히 */
 .chat.one-page > .one-sum { position: relative; margin-top: 49px; overflow: visible; }
 .chat.one-page > .one-sum::before { content: ""; position: absolute; left: 0; right: 0; top: -25px; height: 1px; background: #dfe3e9; }
+
+/* 다시 카드 밖: 「일시정지」「취소」는 카드(말풍선) 바로 아래, 지금 네모 모양 그대로 */
+.rc-body > .one-ctrl { border-top: 0; margin: 0; padding-top: 0; }
+/* 작은 앱 화면: 카드 밖, 카드 바로 아래 */
+.chat.one-page > .rc-mini { flex: none; align-self: stretch; padding: 2px 0 4px; }
+/* 「실행화면」: 입력창 위 오른쪽에 떠 있는 버튼 (예전 말로 하기 전환 버튼과 같은 모양) */
+.one-run-fab { position: absolute; right: 4px; bottom: calc(100% + 10px); z-index: 3; display: inline-flex; align-items: center; gap: 4px; border: 0; border-radius: 999px; background: #fff; color: #3c4048; font-size: 13.5px; font-weight: 600; font-family: inherit; padding: 6px 12px; box-shadow: 0 0 0 1px #e3e6ea, 0 2px 8px rgba(0, 0, 0, .08); }
+.one-run-fab .ms { font-size: 18px; }
+.one-run-fab[hidden] { display: none !important; }
+.one-run-fab.one-run-pop { animation: one-run-pop .45s ease; }
+@keyframes one-run-pop { 0% { transform: scale(.85); } 60% { transform: scale(1.08); } 100% { transform: none; } }
+.chat.one-page { padding-bottom: 48px !important; } /* 떠 있는 버튼에 마지막 내용이 가리지 않게 */

@@ -217,7 +217,7 @@ function onePage(c, bar) {
 // 허용 뒤 진행 카드 안에 실제 앱 화면을 작게 보여 줌 (마음택시 스플래시 → 첫 화면)
 // 앱 여는 단계가 끝나면 출발지로 넘어가기 전에 작은 화면은 접히고 「실행화면 보기」 버튼으로 바뀜
 // =====================================================================
-const MINI_SCALE = 0.3;
+const MINI_SCALE = 0.24; // 카드 밖 작은 앱 화면 크기 (기기 화면의 24%)
 const MINI_MAX_MS = 30000;
 const mini = { on: false, home: null, t0: 0, endAt: 0 };
 const _showPermDialogOne = showPermDialog;
@@ -234,7 +234,7 @@ function miniStart() {
   box.className = "rc-mini";
   box.setAttribute("aria-label", "AI가 누르는 마음택시 화면");
   box.appendChild(clip);
-  (card.querySelector("#rc-open") || card.lastElementChild).before(box);
+  card.after(box); // 카드 밖, 카드 바로 아래
   // 작게 보일 때는 눌러도 실행화면으로 가지 않음 (보기만)
   card.classList.add("mini-on");
   mini.on = true; mini.t0 = Date.now(); mini.endAt = 0;
@@ -247,7 +247,13 @@ function miniShow() {
   const box = $("#rc-mini");
   if (box) box.hidden = S?.phone?.app === "home";
 }
-setInterval(() => { if (mini.on) miniShow(); }, 100);
+setInterval(() => {
+  if (!mini.on) return;
+  miniShow();
+  // 카드가 아래로 자리를 옮겨도 작은 앱 화면은 늘 카드 바로 아래
+  const box = $("#rc-mini"), card = $("#run-card");
+  if (box && card && !mini.closing && card.nextElementSibling !== box) card.after(box);
+}, 100);
 function miniFit() {
   const phone = $(".phone");
   const clip = $("#rc-mini .screen-clip");
@@ -258,6 +264,7 @@ function miniFit() {
   phone.style.setProperty("--app-h", `${H}px`);
   phone.style.setProperty("--mini-w", `${Math.floor(W * MINI_SCALE)}px`);
   phone.style.setProperty("--mini-h", `${Math.floor(H * MINI_SCALE)}px`);
+  phone.style.setProperty("--mini-k", String(MINI_SCALE));
 }
 function miniEnd(now = false) {
   if (!mini.on || (mini.closing && !now)) return;
@@ -274,8 +281,29 @@ function miniEnd(now = false) {
   };
   logEvent("rc_mini_end");
   if (now || !box) return restore();
-  box.classList.add("closing"); // 접히는 효과 뒤 「실행화면 보기」로
-  setTimeout(restore, 600);
+  // 작은 화면이 오른쪽 아래 「실행화면」 버튼 쪽으로 날아가며 작아짐 (대화창 밖으로 꺼내 맨 위에서 움직임)
+  const fab = oneRunFab(true);
+  if (fab) fab.hidden = false; // 날아갈 자리(버튼)를 먼저 보이게
+  const phone = $(".phone");
+  const scr = clip?.querySelector(".screen");
+  const c = clip?.getBoundingClientRect(), f = fab?.getBoundingClientRect(), pr = phone.getBoundingClientRect();
+  const keep = { clip: clip?.style.cssText, scr: scr?.style.cssText };
+  if (clip && c?.width && f?.width) {
+    const k = getComputedStyle(phone).getPropertyValue("--mini-k") || String(MINI_SCALE);
+    phone.appendChild(clip);
+    clip.style.cssText += `;position:absolute;left:${c.left - pr.left}px;top:${c.top - pr.top}px;width:${c.width}px;height:${c.height}px;z-index:80;margin:0;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px #c9cdd6,0 6px 18px rgba(0,0,0,.18);transform-origin:50% 50%;transition:transform .7s cubic-bezier(.4,0,.2,1),opacity .7s ease;pointer-events:none`;
+    if (scr) scr.style.transform = `scale(${k})`;
+    const dx = f.left + f.width / 2 - (c.left + c.width / 2), dy = f.top + f.height / 2 - (c.top + c.height / 2);
+    box.classList.add("closing");
+    requestAnimationFrame(() => requestAnimationFrame(() => { clip.style.transform = `translate(${dx}px, ${dy}px) scale(${Math.max(0.08, f.height / c.height)})`; clip.style.opacity = "0.15"; }));
+  }
+  setTimeout(() => {
+    if (clip) clip.style.cssText = keep.clip || "";
+    if (scr) scr.style.cssText = keep.scr || "";
+    fab?.classList.add("one-run-pop");
+    setTimeout(() => fab?.classList.remove("one-run-pop"), 500);
+    restore();
+  }, 720);
 }
 // 실행화면·직접 조작으로 갈 때는 바로 원래 자리로
 const _syncViewOne = syncView;
@@ -473,7 +501,8 @@ function oneUndo(c, show, past) {
   const said = ai && (ai.id !== "run-card" || ai.classList.contains("asking") || (rq && !rq.hidden && rq.textContent.trim()));
   // 카드에 이미 고를 버튼(수정·승인 등)이 있으면 「일시정지」「취소」는 빼 둠
   const asking = ai?.id === "run-card" && ai.classList.contains("asking");
-  const vis = Boolean(!past && S?.running && !S.finished && said && !asking);
+  const opening = S?.steps?.[S.stepIdx]?.id === "taxi_open"; // 마음택시 여는 단계에서만 예외로 빼 둠
+  const vis = Boolean(!past && S?.running && !S.finished && said && !asking && !opening);
   if (row.hidden === vis) row.hidden = !vis; // 값이 바뀔 때만 (같은 값을 다시 넣어도 대화창 감시가 다시 돌아 무한 반복됨)
   if (!vis) return;
   const u = row.querySelector("#one-undo"), pz = row.querySelector("#one-pause");
@@ -483,29 +512,32 @@ function oneUndo(c, show, past) {
   if (pz.innerHTML !== pzHTML) pz.innerHTML = pzHTML;
   const noPause = !one.userPaused && (S.paused || S.undoPending);
   if (pz.disabled !== noPause) pz.disabled = noPause;
-  // 진행 카드면 카드 안 맨 아래(「실행화면 보기」가 있던 자리), AI 말풍선이면 그 바로 아래
-  if (ai?.id === "run-card") {
-    const host = ai.querySelector(".rc-body") || ai;
-    if (host.lastElementChild !== row) host.appendChild(row);
-  } else {
-    const anchor = ai && ai.nextElementSibling?.id === "chips" && show.has(ai.nextElementSibling) ? ai.nextElementSibling : ai;
-    if (anchor && anchor.nextElementSibling !== row) anchor.after(row);
-  }
+  // 카드(말풍선) 밖 바로 아래. 작은 앱 화면이 있으면 그 아래
+  let anchor = ai;
+  if (anchor?.nextElementSibling?.id === "rc-mini") anchor = anchor.nextElementSibling;
+  if (anchor?.nextElementSibling?.id === "chips" && show.has(anchor.nextElementSibling)) anchor = anchor.nextElementSibling;
+  if (anchor && anchor.nextElementSibling !== row) anchor.after(row);
 }
 
-// 「실행화면 보기」는 카드 밖, 카드 바로 아래 (원래 버튼은 카드 안에 숨겨 두고 같은 기능의 버튼을 밖에 둠)
-function oneOpenBtn(c, show, past) {
-  let b = $("#one-open");
-  if (!b) {
+// 「실행화면」: 입력창 위 오른쪽에 떠 있는 버튼 (원래 카드 안 「실행화면 보기」는 숨겨 두고 같은 기능)
+function oneRunFab(make) {
+  let b = $("#one-run-fab");
+  if (!b && make !== false) {
     b = document.createElement("button");
-    b.type = "button"; b.id = "one-open"; b.className = "one-open"; b.hidden = true;
-    b.innerHTML = '<span class="ms">open_in_full</span>실행화면 보기';
+    b.type = "button"; b.id = "one-run-fab"; b.className = "one-run-fab"; b.hidden = true;
+    b.innerHTML = '<span class="ms">open_in_full</span>실행화면';
     b.onclick = () => { const o = $("#rc-open"); if (o && !o.disabled) { logEvent("one_open_run"); o.click(); } };
+    $("#composer")?.appendChild(b);
   }
+  return b;
+}
+function oneOpenBtn(c, show, past) {
+  const b = oneRunFab(true);
+  if (!b) return;
   const card = $("#run-card"), o = $("#rc-open");
-  const vis = Boolean(!past && card && o && show.has(card) && !card.classList.contains("one-hide") && getComputedStyle(o).display !== "none");
+  // 실행화면을 볼 수 있을 때 늘 같은 자리에 (작은 앱 화면이 떠 있는 동안은 숨김: 닫힐 때 이 버튼으로 들어감)
+  const vis = Boolean(!past && S?.running && !S.finished && card && o && (mini.closing || (!mini.on && getComputedStyle(o).display !== "none")));
   if (b.hidden === vis) b.hidden = !vis;
-  if (vis && card.nextElementSibling !== b) card.after(b);
 }
 
 // 「일시정지」: AI가 하던 일을 멈춤 (대화는 그대로). 「계속하기」로 이어서
