@@ -841,7 +841,9 @@ async function announceInner(step) {
     if (S.m.errorShownAt == null) S.m.errorShownAt = now();
     // 바꾸는 이유는 먼저 말하지 않고, 「AI가 ~하는 중」을 펼치면 볼 수 있음 (가이드라인 10)
   }
-  for (let t = 0; t < READ_MS; t += 250) { await sleep(250 * PACE); await gate(); }
+  // 읽을 시간은 말풍선 안 막대로 보여 줌 (S.readProg: 멈추면 막대도 멈춤)
+  for (let t = 0; t < READ_MS; t += 250) { S.readProg = { t, total: READ_MS }; await sleep(250 * PACE); await gate(); }
+  S.readProg = { t: READ_MS, total: READ_MS }; setTimeout(() => { if (S) S.readProg = null; }, 400);
   // 읽는 동안 참가자가 목적지를 직접 바꿨으면 하차 지점은 바꾸지 않음
   if (step.id === "drop" && S.log.filter((e) => e.type === "dest_changed").length !== n0) { S.dropBlocked = true; return true; }
   await doApply(step, step.kind === "dest" ? S.form.dest : undefined, { announced: true });

@@ -100,6 +100,7 @@ start = function () {
 // 마음택시 앱을 열 때 진행 카드의 앱 카드(마음택시 · 택시 앱)는 빼 둠 (앱을 연다는 걸 알릴 다른 방법을 정할 때까지)
 const _stepPreviewOne = stepPreview;
 stepPreview = function () {
+  if (S?.planAsk) return planCard();
   if (S?.steps[S.stepIdx]?.id === "taxi_open") return null;
   return _stepPreviewOne();
 };
@@ -294,6 +295,7 @@ setInterval(() => {
 
 // 「…」만 오래 보이지 않게: AI가 일하는 동안 프로필 옆에 지금 하는 일 ("택시 종류를 확인하는 중…")
 function oneDoingText() {
+  if (one.doing) return one.doing;
   const id = S?.steps?.[S.stepIdx]?.id;
   return `${(typeof DOING !== "undefined" && DOING[id]) || "답을 준비하는 중"}…`;
 }
@@ -317,8 +319,57 @@ runAuto = async function (step) {
   try { r = await _runAutoOne(step); } finally { S.cfg.delay = delay; S.fastOpen = false; }
   // 출발지로 넘어가기 전에 작은 앱 화면을 접어 「실행화면 보기」로 바꾸고 넘어감
   if (mini.on) { miniEnd(); await sleep(900 * PACE); }
+  if (r && S && !S.finished && S.jumpTo == null && !S.planDone) { S.planDone = true; if (!(await onePlan())) return false; }
   return r;
 };
+
+// =====================================================================
+// 시작 전 계획: 앱을 살펴본 뒤 "이렇게 진행할게요" + 할 일 목록 → [수정] / [이대로 진행]
+// - 참가자가 말한 것(출발지·도착지·택시 종류)만 적고, 말하지 않은 것은 채우지 않음
+// =====================================================================
+function planRows() {
+  const o = S.req.origin ? ORIGINS[S.req.origin]?.name : S.req.originName;
+  const dk = S.userDest || (S.m.request ? namedDest(S.m.request) : null);
+  const d = dk ? PLACES[dk]?.name : null;
+  const c = S.req.car ? CAR_TYPES[S.req.car]?.label : null;
+  return [["출발지 선택", o], ["도착지 선택", d], ["택시 종류 선택", c], ["결제 금액 확인 · 쿠폰 적용", null]];
+}
+function planCard() {
+  const d = document.createElement("div");
+  d.className = "rc-pv one-plan";
+  d.innerHTML = planRows().map(([k, v], i) => `<div><span class="pl-n">${i + 1}</span><span class="pl-k">${esc(k)}</span>${v ? `<b>${esc(v)}</b>` : ""}</div>`).join("");
+  return d;
+}
+async function onePlan() {
+  one.doing = "앱을 살펴보는 중…"; // 카드 위 줄에만 (따로 「…」 말풍선은 띄우지 않음)
+  await sleep(2200 * PACE);
+  one.doing = null;
+  const said = "앱을 살펴보고 이렇게 진행할게요.";
+  await agentSay(said, { gated: true });
+  for (;;) {
+    S.planAsk = true;
+    let c;
+    try {
+      c = await askChoice([{ id: "reject", label: "수정" }, { id: "approve", label: "이대로 진행" }], said, [...changeIntents(), "cancel"],
+        "택시를 부르기 전에 진행 계획을 확인하는 중이야. 그대로 하라고 하면 approve, 출발지·목적지·택시 종류를 바꾸라고 하면 해당 set_ 의도, 고치겠다고만 하면 reject야.");
+    } finally { S.planAsk = false; }
+    logEvent("decision", { choice: c.id, via: c.via, key: "plan" });
+    if (c.id === "approve") return true;
+    if (c.id === "cancel") { await cancelRide(); return false; }
+    if (c.id === "__undo" || c.id === "__reask") continue;
+    if (c.out && String(c.id).startsWith("set_")) {
+      // 계획 단계에서 말한 것은 요청에 모아 두고, 해당 단계에서 그대로 씀
+      const o = c.out;
+      if (o.origin && ORIGINS[o.origin]) S.req.origin = o.origin;
+      else if (o.origin_name) { S.req.origin = null; S.req.originName = o.origin_name; }
+      if (o.car_type && CAR_TYPES[o.car_type]) S.req.car = o.car_type;
+      { const k = namedDest(o); if (k) S.userDest = k; }
+      await agentSay("바꿨어요. 이렇게 진행할게요.", { talk: true });
+      continue;
+    }
+    await agentSay("무엇을 바꿀까요? 말이나 글로 알려 주세요.", { talk: true });
+  }
+}
 const _dwellOne = dwell;
 dwell = function (ms = 1800) {
   return _dwellOne(S?.fastOpen ? Math.min(ms, 2000) : ms); // 앱 첫 화면은 2초 보여 줌
@@ -486,3 +537,50 @@ onSubmit = function (e) {
   return _onSubmitOne(e);
 };
 $("#composer").onsubmit = (e) => onSubmit(e);
+
+// =====================================================================
+// 알리고 진행하는 단계("~로 할게요"): 읽을 시간을 말풍선 안 막대로 (다 차면 진행, 일시정지하면 멈춤)
+// =====================================================================
+setInterval(() => {
+  const p = S?.unified && !S.finished ? S.readProg : null;
+  let bar = $("#one-read");
+  if (!p) { if (bar) bar.remove(); return; }
+  const c = chat();
+  const ai = [...c.children].filter((el) => !el.classList.contains("one-hide") && (el.id === "run-card" || (el.classList.contains("agent") && !el.classList.contains("typing")))).at(-1);
+  if (!ai) return;
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "one-read"; bar.className = "one-read";
+    bar.innerHTML = "<i></i>";
+  }
+  const host = ai.id === "run-card" ? ai.querySelector("#rc-q") : ai;
+  if (host && bar.parentNode !== ai) { if (ai.id === "run-card") host.after(bar); else ai.appendChild(bar); }
+  bar.firstChild.style.width = `${Math.min(100, ((p.t + 250) / p.total) * 100)}%`;
+}, 120);
+
+// =====================================================================
+// 호출이 끝나면 「AI가 한 일」 요약 (이유는 넣지 않음). 참가자가 고른 것은 「내가 고름」
+// =====================================================================
+setInterval(() => {
+  if (!S?.unified) return;
+  let box = $("#one-sum");
+  if (!S.rideDone) { if (box) box.remove(); return; }
+  if (box) return;
+  const f = S.form;
+  const mine = (k) => (S.userSet?.[k] ? ' <em>내가 고름</em>' : "");
+  const rows = [
+    `${esc(TAXI_APP)} 앱을 열었어요`,
+    `출발지를 <b>${esc(ORIGINS[f.origin]?.name || originLabel(f.origin, S.geo))}</b>로 정했어요${mine("origin")}`,
+    `도착지를 <b>${esc(PLACES[f.dest]?.name || "")}</b>로 정했어요${mine("dest")}`,
+    `택시 종류는 <b>${esc(CAR_TYPES[f.car].label)}</b>${mine("car")}`,
+    `결제 금액 <b>${esc(won0(fareOf(f)))}</b> · 쿠폰 ${f.coupon ? "적용" : "적용 안 함"}`,
+    `${esc(CAR_TYPES[f.car].label)}를 호출했어요`,
+  ];
+  box = document.createElement("div");
+  box.id = "one-sum"; box.className = "one-sum";
+  box.innerHTML = `<b class="sum-t">AI가 한 일</b><ol>${rows.map((r) => `<li>${r}</li>`).join("")}</ol>`;
+  const c = chat();
+  const ai = [...c.children].filter((el) => el.id === "run-card" || (el.classList.contains("agent") && !el.classList.contains("typing"))).at(-1);
+  if (ai) ai.after(box); else c.insertBefore(box, $("#chips"));
+  logEvent("one_summary");
+}, 400);

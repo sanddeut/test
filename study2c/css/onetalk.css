@@ -178,3 +178,22 @@
 
 /* 같은 세트 안에서 카드가 자리를 옮기거나 「~하는 중」이 다시 붙을 때 나타나는 효과(위로 살짝 올라옴)가 되풀이되지 않게: 세트가 바뀔 때의 효과만 */
 .chat.one-page:not(.one-in-up):not(.one-in-down) > * { animation: none; }
+
+/* 알리고 진행하는 단계: 말풍선 안 읽을 시간 막대 */
+.one-read { height: 6px; border-radius: 3px; background: #e3e7ef; overflow: hidden; margin-top: 10px; }
+.one-read i { display: block; height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, #4c8df6, #a36bf5); transition: width .25s linear; }
+.bubble.agent .one-read { margin: 10px 0 4px; }
+
+/* 시작 전 계획 목록 */
+.one-plan { padding: 6px 14px; }
+.one-plan > div { display: flex; align-items: center; gap: 10px; padding: 9px 0; font-size: 15.5px; }
+.one-plan > div + div { border-top: 1px solid #eef0f3; }
+.one-plan .pl-n { flex: none; width: 22px; height: 22px; border-radius: 50%; background: #eef1f8; color: #4a5fa8; font-size: 13px; font-weight: 700; display: grid; place-items: center; }
+.one-plan .pl-k { flex: 1; color: #3c4048; }
+.one-plan b { font-weight: 700; color: #1c1d21; text-align: right; }
+
+/* 호출이 끝난 뒤 「AI가 한 일」 */
+.one-sum { flex: none; align-self: stretch; background: #fff; border-radius: 18px; box-shadow: 0 0 0 1px #e6e9ee; padding: 14px 16px; margin: 4px 0 0; }
+.one-sum .sum-t { display: block; font-size: 15px; color: #4a5fa8; margin-bottom: 6px; }
+.one-sum ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 15.5px; line-height: 1.45; color: #2a2d33; }
+.one-sum em { font-style: normal; font-size: 12.5px; font-weight: 700; color: #1e8e3e; background: #e6f4ea; border-radius: 999px; padding: 1px 7px; margin-left: 4px; }
