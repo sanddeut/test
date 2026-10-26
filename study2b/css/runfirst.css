@@ -142,3 +142,6 @@
 
 /* 줄인 앱 화면에 회색 얇은 테두리 (배경과 구분되게) */
 .phone.rf.rf-live[data-view="progress"] .screen-clip { box-shadow: 0 0 0 1px #c9cdd6, 0 4px 18px rgba(0, 0, 0, .12) !important; }
+
+/* 대화창 입력창 위의 기다림 띠(빨간 점 · ~하고 있어요 · 잠시만 기다려 주세요 · 멈추기)는 쓰지 않음 */
+.chat-wait { display: none !important; }
