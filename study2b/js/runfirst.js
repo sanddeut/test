@@ -4,7 +4,7 @@
 // - 위 헤더: 「AI가 앱 사용중..」 + 「멈추기」「내가 하기」
 // - 아래 AI 패널: 늘 같은 자리·같은 높이. 위 줄은 지금 하는 일("출발지를 찾는 중…", AI가 화면을 누르는 동안만), 아래는 AI의 마지막 말
 //   확인·선택할 일이 있으면 앱 화면을 거의 안 보일 만큼 어둡게 하고, 패널이 위로 커져 확인할 내용(호출 내용 등)·선택지·입력창을 함께 보여 줌
-// - 대화창으로 가는 길은 없음: 한 과정을 두 화면(대화창·실행화면)으로 본다는 개념 없이, 보이는 이 화면이 전부
+// - 대화창은 따로 버튼 없이 AI 프로필을 누를 때만 (보이는 이 화면이 기본)
 "use strict";
 
 const RF_LOADING_MS = 900; // 허용한 뒤 로딩 화면
@@ -24,10 +24,10 @@ function setupRunFirst() {
   L.innerHTML = `<div class="rf-dim"></div>
     <p class="rf-intro">AI가 ‘${esc(TAXI_APP)}’ 앱을 사용합니다.</p>
     <div class="rf-border"></div>
-    <div class="rf-head"><div class="rf-chip" role="status">AI가 앱 사용중..</div>
-      <div class="rf-ctrl"><button type="button" class="rf-stop">멈추기</button><button type="button" class="rf-manual">내가 하기</button></div></div>
+    <div class="rf-head"><div class="rf-chip" role="status">AI가 앱 사용중..</div></div>
+    <div class="rf-ctrl"><button type="button" class="rf-stop">멈추기</button><button type="button" class="rf-manual">내가 하기</button></div>
     <div class="rf-msgs" role="region" aria-label="AI 도우미" aria-live="polite">
-      <span class="rf-avatar" aria-hidden="true">AI</span>
+      <button type="button" class="rf-avatar" aria-label="AI 도우미 (대화창 보기)">AI</button>
       <p class="rf-q"></p>
       <button type="button" class="rf-undo" hidden><span class="ms">undo</span>되돌리기</button>
     </div>
@@ -38,7 +38,14 @@ function setupRunFirst() {
   load.id = "rf-loading";
   load.innerHTML = '<span class="rf-spinner"></span>';
   phone.appendChild(load);
-  // 오른쪽 위: 멈추기(대화창의 멈추기와 같음 → 패널에서 멈춘 뒤 메뉴), 내가 하기(직접 조작)
+  // 프로필을 누르면 대화창으로 (따로 버튼은 두지 않음). 진행 카드의 「실행화면 보기」로 돌아옴
+  L.querySelector(".rf-avatar").onclick = () => {
+    if (!rfOn()) return;
+    logEvent("rf_avatar_chat");
+    S.showRun = false;
+    syncControls();
+  };
+  // 작은 화면 아래: 멈추기(대화창의 멈추기와 같음 → 패널에서 멈춘 뒤 메뉴), 내가 하기(직접 조작)
   L.querySelector(".rf-stop").onclick = () => { if (rfOn() && !$("#btn-stop").disabled) { logEvent("rf_stop"); handleStop("rf"); } };
   // 되돌리기: 대화창의 마지막 「되돌리기」와 같음 (방금 끝낸 단계를 취소할지 한 번 묻고 다시 함)
   L.querySelector(".rf-undo").onclick = () => { const u = chat().querySelector(":scope > .undo-link"); if (u && rfOn()) { logEvent("rf_undo"); u.click(); } };
@@ -59,8 +66,8 @@ function rfPlacePanel() {
   const L = $("#rf-layer");
   if (!L || !$(".phone").classList.contains("rf-live")) return;
   const m = L.querySelector(".rf-msgs");
-  const box = $(".screen-box");
-  const top = Math.max(m.offsetTop + m.offsetHeight, box.offsetTop + box.offsetHeight) + 14;
+  const c = L.querySelector(".rf-ctrl");
+  const top = Math.max(m.offsetTop + m.offsetHeight, c.offsetTop + c.offsetHeight) + 14;
   const bottom = L.querySelector(".rf-bottom");
   const panel = L.querySelector(".rf-panel");
   panel.style.top = `${top}px`;
@@ -84,7 +91,7 @@ async function rfEnter() {
   S.runIntroShown = true; // improve.js의 [확인] 안내 대신 아래 안내
   Object.assign(rf, { line: "", msgStep: null, stepSeen: null, doing: "", ask: null, picks: null, note: "", last: "", typing: false, key: "" });
   L.classList.remove("intro", "live");
-  $(".phone").classList.remove("rf-live", "rf-big");
+  $(".phone").classList.remove("rf-live", "rf-big", "rf-headfull");
   $("#rf-loading").classList.add("on");
   logEvent("rf_enter");
   await sleep(RF_LOADING_MS);
@@ -109,7 +116,11 @@ async function rfEnter() {
   gLog(["G6", "G23"], "run_intro");
   await sleep(RF_INTRO_MS);
   L.classList.remove("intro");
+  // 헤더가 먼저 화면 위에 나타난 뒤, 앱 화면과 함께 작은 화면 위로 줄어들어 붙음
+  $(".phone").classList.add("rf-headfull");
   L.classList.add("live");
+  await sleep(700);
+  $(".phone").classList.remove("rf-headfull");
   // 스플래시가 끝나면 전체 화면이던 앱 화면이 85%로 줄어들며 위 헤더·아래 AI 패널이 나타남
   const clip = $(".screen-clip");
   const before = clip.getBoundingClientRect();
@@ -132,11 +143,11 @@ runAuto = async function (step) {
   return _runAutoRF(step);
 };
 
-// 실행화면이 전부: 허용한 뒤로는 끝날 때까지 실행화면 (대화창으로 가지 않음. 직접 조작·비밀번호 입력 화면은 원래대로)
+// 실행화면이 기본: 프로필을 눌러 대화창으로 가지 않았으면 끝날 때까지 실행화면 (직접 조작·비밀번호 입력 화면은 원래대로)
 const _wantedViewRF = wantedView;
 wantedView = function () {
   const v = _wantedViewRF();
-  if (v !== "chat" || !S?.runFirst || !S.running || S.finished) return v; // 대화창으로 가는 길은 없음 (보이는 화면이 전부)
+  if (v !== "chat" || !S?.runFirst || !S.showRun || !S.running || S.finished) return v;
   return "progress";
 };
 
@@ -160,7 +171,7 @@ syncView = function () {
 
 // 실행화면 크기: 스플래시·안내 동안은 기기 전체 화면, 그 뒤에는 왼쪽 위 아주 작은 화면 (굳이 보려고 하지 않을 만큼)
 // 작은 화면을 누르면 크게(화면 가운데), 다시 누르면 작게. 앱은 늘 기기 전체 크기로 그리고 줄이기만 함 (잘리지 않음)
-const RF_THUMB = 0.22;
+const RF_THUMB = 0.24;
 const _fitScreenRF = fitScreen;
 fitScreen = function () {
   _fitScreenRF();
@@ -198,7 +209,7 @@ startManual = function () {
 const _endManualRF = endManual;
 endManual = function () {
   const r = _endManualRF();
-  if (S?.runFirst) { S.showRun = true; syncControls(); }
+  if (S?.runFirst && rf.runBeforeManual) { S.showRun = true; syncControls(); }
   return r;
 };
 
@@ -292,7 +303,7 @@ function rfRender() {
   const asking = Boolean(pin || picks || ask || talk);
   L.dataset.mode = asking ? "ask" : "";
   $(".phone").classList.toggle("rf-asking", asking);
-  rfComposer(talk);
+  rfComposer(on && live); // 입력창은 늘 맨 아래에
   // 되돌릴 수 있는 단계가 있으면(대화창에 「되돌리기」가 붙어 있으면) 패널 위 줄 오른쪽에 「되돌리기」
   L.querySelector(".rf-undo").hidden = !(on && live && !asking && chat().querySelector(":scope > .undo-link"));
   // 메시지 자리 하나에: 답을 준비하는 중 "…" / 화면을 누르는 동안 "~하는 중…" / 멈췄을 때 / 그 외에는 AI의 마지막 말 (한 번에 하나만)
