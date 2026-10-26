@@ -11,7 +11,8 @@ const RF_LOADING_MS = 900; // 허용한 뒤 로딩 화면
 const RF_SWAP_MS = 1200; // 튕기며 화면이 바뀌는 시간 (slideSwap과 같게)
 const RF_HEAD = 58; // 위 헤더 높이 (태그 + 멈추기 · 내가 하기)
 const RF_PANEL = 132; // 아래 AI 패널 높이 (진행 중)
-const RF_INTRO_MS = 3800; // "AI가 '마음택시' 앱을 사용합니다." 안내를 보여 주는 시간
+const RF_INTRO_MS = 3800;
+const RF_FIRST_MS = 2500; // 스플래시가 끝난 뒤 앱 첫 화면을 보여 주는 시간 (줄어드는 1.1초 포함) // "AI가 '마음택시' 앱을 사용합니다." 안내를 보여 주는 시간
 const rf = { doing: "", ask: null, picks: null, note: "", noteStep: null, last: "", typing: false, key: "", runBeforeManual: false, composerHome: null };
 
 const rfOn = () => Boolean(S?.runFirst && !S.finished && $(".phone").dataset.view === "progress");
@@ -27,7 +28,7 @@ function setupRunFirst() {
     <div class="rf-head"><div class="rf-chip" role="status">AI가 앱 사용중..</div>
       <div class="rf-ctrl"><button type="button" class="rf-stop">멈추기</button><button type="button" class="rf-manual">내가 하기</button></div></div>
     <div class="rf-panel" role="region" aria-label="AI 도우미" aria-live="polite">
-      <div class="rf-ptop"><button type="button" class="rf-avatar" aria-label="AI 도우미 (대화창 보기)">AI</button><span class="rf-status"></span></div>
+      <div class="rf-ptop"><button type="button" class="rf-avatar" aria-label="AI 도우미 (대화창 보기)">AI</button><span class="rf-status"></span><button type="button" class="rf-undo" hidden><span class="ms">undo</span>되돌리기</button></div>
       <p class="rf-q"></p><div class="rf-pv"></div><div class="rf-opts"></div><div class="rf-talk"></div><div class="rf-fab-slot"></div>
     </div>`;
   phone.appendChild(L);
@@ -45,6 +46,8 @@ function setupRunFirst() {
   };
   // 오른쪽 위: 멈추기(대화창의 멈추기와 같음 → 패널에서 멈춘 뒤 메뉴), 내가 하기(직접 조작)
   L.querySelector(".rf-stop").onclick = () => { if (rfOn() && !$("#btn-stop").disabled) { logEvent("rf_stop"); handleStop("rf"); } };
+  // 되돌리기: 대화창의 마지막 「되돌리기」와 같음 (방금 끝낸 단계를 취소할지 한 번 묻고 다시 함)
+  L.querySelector(".rf-undo").onclick = () => { const u = chat().querySelector(":scope > .undo-link"); if (u && rfOn()) { logEvent("rf_undo"); u.click(); } };
   L.querySelector(".rf-manual").onclick = () => { if (rfOn() && !$("#btn-manual").disabled) { logEvent("rf_manual"); startManual(); } };
   // 말로(글로) 답할 때는 개선안의 입력창(#composer)을 그대로 패널 안으로 옮겨 씀. 원래 자리를 기억해 둠
   rf.composerHome = document.createComment("composer-home");
@@ -66,7 +69,7 @@ async function rfEnter() {
   const L = $("#rf-layer");
   S.runFirst = true;
   S.runIntroShown = true; // improve.js의 [확인] 안내 대신 아래 안내
-  Object.assign(rf, { doing: "", ask: null, picks: null, note: "", last: "", typing: false, key: "" });
+  Object.assign(rf, { stepSeen: null, doing: "", ask: null, picks: null, note: "", last: "", typing: false, key: "" });
   L.classList.remove("intro", "live");
   $(".phone").classList.remove("rf-live");
   $("#rf-loading").classList.add("on");
@@ -94,8 +97,12 @@ async function rfEnter() {
   await sleep(RF_INTRO_MS);
   L.classList.remove("intro");
   L.classList.add("live");
-  $(".phone").classList.add("rf-live"); // 스플래시가 끝나면 위 헤더를 보여 주고 앱 화면을 헤더 아래로
+  // 스플래시가 끝나면 전체 화면이던 앱 화면이 85%로 줄어들며 위 헤더·아래 AI 패널이 나타남
+  const clip = $(".screen-clip");
+  const before = clip.getBoundingClientRect();
+  $(".phone").classList.add("rf-live");
   fitScreen();
+  animateZoom(clip, before);
 }
 
 // 택시 앱은 실행화면으로 넘어올 때 이미 열었으므로, 앱 실행 단계는 스플래시가 끝나기를 기다리기만 함
@@ -105,6 +112,7 @@ runAuto = async function (step) {
     logEvent("taxi_open_rf");
     await waitLoading();
     rf.doing = ""; rfRender();
+    await sleep(RF_FIRST_MS * PACE); // 앱 첫 화면을 조금 더 보여 준 뒤 시작
     await gate();
     return true;
   }
@@ -137,7 +145,9 @@ syncView = function () {
   rfRender();
 };
 
-// 실행화면을 기기 전체 크기로 (축소하지 않음)
+// 실행화면 크기: 스플래시·안내 동안은 기기 전체 화면, 그 뒤에는 위 헤더와 아래 AI 패널 사이에 85%로 줄여 가운데
+const RF_SCALE = 0.85;
+const RF_GAP = 14; // 줄인 앱 화면 위아래 여백
 const _fitScreenRF = fitScreen;
 fitScreen = function () {
   _fitScreenRF();
@@ -146,11 +156,17 @@ fitScreen = function () {
   const clip = $(".screen-clip");
   const W = phone.clientWidth;
   const H = parseFloat(phone.style.getPropertyValue("--app-h")) || phone.clientHeight;
-  const cut = phone.classList.contains("rf") ? (phone.classList.contains("rf-live") ? RF_HEAD : 0) + RF_PANEL : 0; // 위 헤더와 아래 AI 패널만큼 앱 화면을 줄임
-  phone.style.setProperty("--scale", "1");
-  phone.style.setProperty("--app-h", `${H - cut}px`);
-  clip.style.width = `${W}px`;
-  clip.style.height = `${H - cut}px`;
+  if (!phone.classList.contains("rf-live")) {
+    phone.style.setProperty("--scale", "1");
+    clip.style.width = `${W}px`;
+    clip.style.height = `${H}px`;
+    return;
+  }
+  const avail = H - RF_HEAD - RF_PANEL - RF_GAP * 2;
+  phone.style.setProperty("--scale", String(RF_SCALE));
+  phone.style.setProperty("--app-h", `${Math.floor(avail / RF_SCALE)}px`); // 앱은 기기 폭 그대로 그리고 85%로 줄임
+  clip.style.width = `${Math.floor(W * RF_SCALE)}px`;
+  clip.style.height = `${Math.floor(avail)}px`;
 };
 
 // 실행화면에서 「내가 앱 조작하기」로 들어갔다가 돌아오면 다시 실행화면으로 (원래는 대화창으로)
@@ -240,6 +256,9 @@ function rfRender() {
   L.querySelector(".rf-stop").disabled = $("#btn-stop").disabled;
   L.querySelector(".rf-manual").disabled = $("#btn-manual").disabled;
   const on = rfOn() && !S.manual && !S.pinOpen;
+  // 되돌리기로 앞 단계로 돌아가면 지난 단계의 말은 지움
+  if (S && rf.stepSeen != null && S.stepIdx < rf.stepSeen) rf.last = "";
+  if (S) rf.stepSeen = S.stepIdx;
   const pin = on && S.waiter?.pin && S.pinResolve && !S.paused && !S.ivWaiter; // 취소(멈춤) 뒤에는 멈춘 뒤 질문을 보여 줌
   const picks = on && !pin && rf.picks && S.waiter === rf.picks.waiter ? rf.picks : null;
   const ask = on && !pin && !picks && rf.ask && (S.waiter || S.ivWaiter) ? rf.ask : null;
@@ -248,6 +267,8 @@ function rfRender() {
   L.dataset.mode = asking ? "ask" : "";
   $(".phone").classList.toggle("rf-asking", asking);
   rfComposer(talk);
+  // 되돌릴 수 있는 단계가 있으면(대화창에 「되돌리기」가 붙어 있으면) 패널 위 줄 오른쪽에 「되돌리기」
+  L.querySelector(".rf-undo").hidden = !(on && live && !asking && chat().querySelector(":scope > .undo-link"));
   // 위 줄: AI가 답을 준비하는 중 "…" / 화면을 누르는 동안 "~하는 중…" / 멈췄을 때
   const st = L.querySelector(".rf-status");
   const typing = on && rf.typing;

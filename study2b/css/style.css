@@ -757,7 +757,7 @@ body.show-src [data-src="rules"][data-err]::after { content: "규칙 대체 (Gem
 .lm-pin.origin > span { background: #1c1d21; }
 .lm-pin.dest > span { background: #e8453c; }
 .tx-from { cursor: default; border-radius: 12px; padding: 4px 2px; }
-.tx-from > span { flex: 1; min-width: 0; }
+.tx-from > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* 출발지 이름이 줄바꿈되지 않게 (기존안·개선안 공통) */
 .tx-from b { color: #1c1d21; font-weight: 700; }
 .tx-from .tx-from-go { color: #9aa0ab; font-size: 20px; }
 .tx-from.hl { box-shadow: 0 0 0 3px #ffc72c; }
