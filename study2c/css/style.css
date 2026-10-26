@@ -1071,3 +1071,9 @@ body:not(.guide):not(.unified) .why-link { display: none; }
 
 /* study2c: 맨 위 「AI 도우미」 헤더는 두 안 모두 없앰 (AI 말풍선에 프로필이 붙어 누가 말하는지 보임) */
 .phone[data-view] .chat-head.only-chat { display: none !important; }
+
+/* study2c 기존안: 헤더를 뺀 대신 첫 인사 위에 AI 프로필 + 「AI 도우미」 (개선안 첫 인사와 같은 모양) */
+body:not(.unified) .chat > .bubble.agent:first-child { position: relative; margin-top: 46px; overflow: visible; }
+body:not(.unified) .chat > .bubble.agent:first-child::before { content: "auto_awesome"; position: absolute; left: 0; top: -44px; width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #4c8df6, #a36bf5); color: #fff; font-family: "Material Symbols Rounded"; font-size: 20px; font-weight: normal; line-height: 36px; text-align: center; font-variation-settings: "FILL" 1; }
+body:not(.unified) .chat > .bubble.agent:first-child::after { content: "AI 도우미"; position: absolute; left: 46px; top: -36px; font-size: 16px; font-weight: 600; color: #3c4048; line-height: 20px; white-space: nowrap; }
