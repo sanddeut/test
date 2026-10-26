@@ -49,3 +49,7 @@
 .one-nav { align-self: center; flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: 2px auto; border: 0; border-radius: 50%; background: #fff; color: #3c4048; box-shadow: 0 1px 6px rgba(0, 0, 0, .12); }
 .one-nav[hidden] { display: none !important; }
 .one-nav .ms { font-size: 30px; }
+
+/* 쉐브론: 동그란 배경 없이 회색 아이콘만 */
+.one-nav { width: 48px; height: 32px; margin: 0 auto; background: none; box-shadow: none; color: #9aa0aa; }
+.one-nav .ms { font-size: 34px; }

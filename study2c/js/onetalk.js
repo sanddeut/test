@@ -131,14 +131,18 @@ function onePlain(c, bar) {
   for (const el of c.children) if (el.classList.contains("one-cur") !== (el === cur)) el.classList.toggle("one-cur", el === cur);
 }
 
-// 한 세트씩: 내 말(말풍선)에서 새 세트가 시작되고, 다음 내 말 전까지 이어진 AI 응답이 한 세트 (첫 인사는 첫 세트)
+// 한 세트씩: 내 말 + 그에 대한 AI 말 하나가 한 세트. AI가 혼자 이어서 진행한 단계는 AI 말 하나씩 따로 (첫 인사는 첫 세트)
 one.page = null; // null = 지금 세트(맨 끝)
 one.curKey = null;
 function onePages(c) {
   const pages = [[]];
   for (const el of c.children) {
     if (el.id === "chips" || el.id === "chat-spacer") continue;
-    if (el.classList.contains("bubble") && el.classList.contains("user") && pages.at(-1).some((x) => x.classList.contains("bubble"))) pages.push([]);
+    const page = pages.at(-1);
+    const isAI = (x) => (x.classList.contains("bubble") && x.classList.contains("agent") && !x.classList.contains("typing")) || x.id === "run-card";
+    // 내 말이 오면 새 세트. AI 말도 한 세트에 하나만 (AI가 혼자 이어서 진행한 단계는 단계마다 따로)
+    if (el.classList.contains("bubble") && el.classList.contains("user") && page.some((x) => x.classList.contains("bubble") || x.id === "run-card")) pages.push([]);
+    else if (isAI(el) && page.some(isAI)) pages.push([]);
     pages.at(-1).push(el);
   }
   return pages;
