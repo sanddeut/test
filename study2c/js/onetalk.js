@@ -35,6 +35,11 @@ function setupOneTalk() {
   down.setAttribute("aria-label", "지금 단계로 돌아가기"); down.innerHTML = '지금 단계로 돌아가기 <span class="ms">keyboard_arrow_down</span>';
   down.onclick = () => oneHistory(false);
   chat().after(down);
+  // 지난 대화를 볼 때 맨 위에 얇은 회색 머리 「지난 대화 보는 중」
+  const head = document.createElement("div");
+  head.id = "one-hist-head"; head.className = "one-hist-head only-chat"; head.hidden = true;
+  head.textContent = "지난 대화 보는 중";
+  chat().before(head);
   new MutationObserver(() => oneUpdate()).observe(chat(), { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "hidden"] });
 }
 document.addEventListener("DOMContentLoaded", setupOneTalk);
@@ -137,7 +142,7 @@ one.curKey = null;
 function onePages(c) {
   const pages = [[]];
   for (const el of c.children) {
-    if (el.id === "chips" || el.id === "chat-spacer" || el.id === "one-undo") continue;
+    if (el.id === "chips" || el.id === "chat-spacer" || el.id === "one-ctrl") continue;
     const page = pages.at(-1);
     const isAI = (x) => (x.classList.contains("bubble") && x.classList.contains("agent") && !x.classList.contains("typing")) || x.id === "run-card";
     // 내 말이 오면 새 세트. AI 말도 한 세트에 하나만 (AI가 혼자 이어서 진행한 단계는 단계마다 따로)
@@ -178,9 +183,9 @@ function onePage(c, bar) {
   const key = `${c.querySelectorAll(":scope > .bubble:not(.typing)").length}|${$("#run-card")?.classList.contains("asking") ? 1 : 0}`; // 새 말풍선이 오거나 질문이 뜰 때만
   if (key !== one.curKey) one.curKey = key; // (지난 대화를 보는 동안에는 AI가 멈춰 있으므로 화면을 바꾸지 않음)
   const past = one.page != null;
-  const show = new Set(past ? pages.flat() : pages[last]); // 지난 대화 보기: 모두 / 평소: 지금 세트만
+  const show = new Set(past ? pages.slice(0, -1).flat() : pages[last]); // 지난 대화 보기: 지금 세트를 뺀 지난 대화 모두 / 평소: 지금 세트만
   for (const el of c.children) {
-    if (el.id === "chips" || el.id === "chat-spacer" || el.id === "one-undo") continue;
+    if (el.id === "chips" || el.id === "chat-spacer" || el.id === "one-ctrl") continue;
     const hide = !show.has(el);
     if (el.classList.contains("one-hide") !== hide) el.classList.toggle("one-hide", hide);
     if (el.classList.contains("one-cur") !== (el === cur)) el.classList.toggle("one-cur", el === cur);
@@ -196,6 +201,8 @@ function onePage(c, bar) {
   }
   if (up) up.hidden = past || last === 0;
   if (down) down.hidden = !past;
+  const hh = $("#one-hist-head");
+  if (hh && hh.hidden === past) hh.hidden = !past;
   c.classList.toggle("one-past-view", past);
   oneUndo(c, show, past);
   onePauseForHistory(past);
@@ -380,19 +387,88 @@ function onePauseForHistory(past) {
   }
 }
 
-// 지금 세트에 「방금 한 일 취소」: 대화 기록의 마지막 「되돌리기」가 지금 세트 밖(지난 세트)에 있으면, 지금 말 아래에 같은 기능의 버튼을 둠
+// 지금 세트의 AI 말(회색 카드) 바로 아래 알약 두 개: 「취소」(방금 한 일 취소) · 「일시정지」/「계속하기」
+// - 대화 속 「되돌리기」는 숨기고 여기에만 둠. 진행 중에는 늘 같은 자리에 있고, 지금 할 수 없으면 흐리게 (떴다 사라지지 않게)
 function oneUndo(c, show, past) {
-  let b = $("#one-undo");
-  const link = [...c.querySelectorAll(":scope > .undo-link")].at(-1);
-  const need = !past && link && !show.has(link) && S?.running && !S.finished;
-  if (!need) { if (b && !b.hidden) b.hidden = true; return; } // 값이 바뀔 때만 (같은 값을 다시 넣어도 대화창 감시가 다시 돌아 무한 반복됨)
-  if (!b) {
-    b = document.createElement("button");
-    b.type = "button"; b.id = "one-undo"; b.className = "one-undo"; // improve.js가 .undo-link를 지웠다 다시 붙이므로 다른 클래스
-    b.innerHTML = '<span class="ms">undo</span>취소'; // 되돌리기와 같은 기능 (바로 전에 끝낸 단계를 취소). 지금 단계에서 보이는 작은 알약 버튼
-    b.onclick = () => { const l = [...chat().querySelectorAll(":scope > .undo-link")].at(-1); if (l) { logEvent("one_undo"); l.click(); } };
+  let row = $("#one-ctrl");
+  if (!row) {
+    row = document.createElement("div");
+    row.id = "one-ctrl"; row.className = "one-ctrl"; row.hidden = true;
+    const u = document.createElement("button");
+    u.type = "button"; u.id = "one-undo"; u.className = "one-pill";
+    u.innerHTML = '<span class="ms">undo</span>취소';
+    u.onclick = () => { const l = [...chat().querySelectorAll(":scope > .undo-link")].at(-1); if (l) { logEvent("one_undo"); l.click(); } };
+    const pz = document.createElement("button");
+    pz.type = "button"; pz.id = "one-pause"; pz.className = "one-pill";
+    pz.onclick = () => onePause(!one.userPaused);
+    row.append(u, pz);
   }
-  if (b.hidden) b.hidden = false;
-  const last = [...c.children].filter((el) => show.has(el)).at(-1);
-  if (last && last.nextElementSibling !== b) last.after(b);
+  if (one.userPaused && S && !S.paused) one.userPaused = false; // 다른 곳(되돌리기 등)에서 다시 시작된 경우
+  const vis = Boolean(!past && S?.running && !S.finished);
+  if (row.hidden === vis) row.hidden = !vis; // 값이 바뀔 때만 (같은 값을 다시 넣어도 대화창 감시가 다시 돌아 무한 반복됨)
+  if (!vis) return;
+  const u = row.querySelector("#one-undo"), pz = row.querySelector("#one-pause");
+  const noUndo = !c.querySelector(":scope > .undo-link");
+  if (u.disabled !== noUndo) u.disabled = noUndo;
+  const pzHTML = one.userPaused ? '<span class="ms">play_arrow</span>계속하기' : '<span class="ms">pause</span>일시정지';
+  if (pz.innerHTML !== pzHTML) pz.innerHTML = pzHTML;
+  const noPause = !one.userPaused && (S.paused || S.undoPending);
+  if (pz.disabled !== noPause) pz.disabled = noPause;
+  // 지금 세트의 마지막 AI 말(진행 카드나 AI 말풍선) 바로 아래
+  const ai = [...c.children].filter((el) => show.has(el) && (el.id === "run-card" || el.classList.contains("agent"))).at(-1);
+  const anchor = ai && ai.nextElementSibling?.id === "chips" && show.has(ai.nextElementSibling) ? ai.nextElementSibling : ai;
+  if (anchor && anchor.nextElementSibling !== row) anchor.after(row);
 }
+
+// 「일시정지」: AI가 하던 일을 멈춤 (대화는 그대로). 「계속하기」로 이어서
+function onePause(on) {
+  if (!S || S.finished) return;
+  if (on) {
+    if (S.paused) return;
+    one.userPaused = true; S.paused = true;
+    S.m.stops++;
+    logEvent("stop", { via: "one_pause" });
+    syncControls();
+  } else {
+    one.userPaused = false;
+    logEvent("one_resume");
+    resume();
+  }
+  oneUpdate();
+}
+
+// 「전달됨」은 「전달 실패」와 같은 자리(내 말풍선 아래 줄)에, 같은 크기로
+const _oneRenderBubble = renderBubble;
+renderBubble = function (role, text) {
+  _oneRenderBubble(role, text);
+  if (role !== "user" || !S?.unified) return;
+  const b = [...chat().querySelectorAll(":scope > .bubble.user")].at(-1);
+  const rc = b?.querySelector(".receipt");
+  if (!rc) return;
+  rc.remove();
+  const row = document.createElement("div");
+  row.className = "resend-row sent-row";
+  row.innerHTML = '<span class="send-ok" role="status"><span class="ms">check_circle</span>전달됨</span>';
+  b.after(row);
+  setTimeout(() => row.classList.add("gone"), RECEIPT_MS);
+};
+const _oneMishear = onMishear;
+onMishear = function (n, text) {
+  const ub = [...chat().querySelectorAll(":scope > .bubble.user")].at(-1);
+  if (ub?.nextElementSibling?.classList.contains("sent-row")) ub.nextElementSibling.remove();
+  return _oneMishear(n, text);
+};
+
+// 실행화면 아래 AI 메시지 칸은 아래에서 올라온 서랍(패널) 모양. 호출 내용 최종 확인은 화면이 작아 안 보이므로 서랍 안에 호출 내용을 함께
+const _setChipsDrawer = setChips;
+setChips = function (options, onPick) {
+  const r = _setChipsDrawer(options, onPick);
+  const box = $("#pv-chips");
+  if (S?.unified && box && options?.length && S.steps[S.stepIdx]?.id === "final" && !S.consentAsk) {
+    const sum = rideSummary();
+    sum.classList.add("pv-drawer-sum");
+    box.prepend(sum);
+  }
+  requestAnimationFrame(() => { if ($(".phone").dataset.view === "progress") fitScreen(); });
+  return r;
+};

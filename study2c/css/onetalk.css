@@ -140,3 +140,35 @@
 .one-undo .ms { font-size: 17px; }
 /* 작은 앱 화면은 눌러도 이동하지 않음 */
 .rc-mini { cursor: default; }
+
+/* 지난 대화 보는 중: 맨 위 얇은 회색 머리 */
+.one-hist-head { flex: none; padding: 7px 14px; text-align: center; font-size: 13.5px; font-weight: 600; color: #6b6f7a; background: #eceef2; border-bottom: 1px solid #e0e3e8; }
+.one-hist-head[hidden] { display: none !important; }
+
+/* AI 말풍선의 뾰족한 모서리는 위쪽 AI 프로필 쪽(왼쪽 위)으로 */
+.chat.one-page > .bubble.agent, .chat.one-page > #typing { border-radius: 6px 22px 22px 22px; }
+
+/* 지난 대화 보기: 살짝 흐리게 */
+.chat.one-page.one-past-view > :not(.one-hide) { opacity: .85; }
+
+/* AI 말 아래 알약 두 개 「취소」「일시정지」: 보내기 버튼과 같은 크기 */
+.chat.one-page > .undo-link { display: none !important; }
+.one-ctrl { flex: none; align-self: flex-start; display: flex; gap: 8px; margin: 2px 0 0 4px; }
+.one-ctrl[hidden] { display: none !important; }
+.one-pill { display: inline-flex; align-items: center; gap: 4px; height: 38px; padding: 0 16px 0 12px; border: 0; border-radius: 999px; background: #fff; box-shadow: 0 0 0 1px #d6dce6; color: #3c4048; font: inherit; font-size: 15.5px; font-weight: 700; }
+.one-pill .ms { font-size: 20px; }
+.one-pill:disabled { opacity: .4; }
+
+/* 「전달됨」: 「전달 실패」와 같은 자리·크기, 초록 */
+.resend-row .send-ok { display: inline-flex; align-items: center; gap: 4px; color: #1e8e3e; font-size: 15px; font-weight: 500; }
+.resend-row .send-ok .ms { font-size: 18px; }
+.sent-row { transition: opacity .6s; }
+.sent-row.gone { opacity: 0; }
+
+/* 실행화면: 렌더링 화면은 위쪽으로, 아래 AI 메시지 칸은 아래에서 올라온 서랍(패널) */
+.phone[data-view="progress"] .screen-box { justify-content: flex-start; padding-top: 2px; }
+.phone[data-view="progress"] .pv-panel { position: relative; margin: 0; min-height: 140px; max-height: 58%; border: 0; border-radius: 24px 24px 0 0; padding: 22px 0 12px; background: #fff; box-shadow: 0 -6px 24px rgba(0, 0, 0, .12); }
+.phone[data-view="progress"] .pv-panel::before { content: ""; position: absolute; top: 8px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: #d6dae1; }
+.phone[data-view="progress"] .pv-bottom { display: none !important; }
+.pv-chips .pv-drawer-sum { width: 100%; margin: 0 0 10px; text-align: left; }
+.pv-chips .pv-drawer-sum div { font-size: 15px; }

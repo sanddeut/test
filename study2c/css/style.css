@@ -1077,3 +1077,4 @@ body:not(.unified) .chat > .bubble.agent:first-child { position: relative; margi
 body:not(.unified) .chat > .bubble.agent:first-child::before { content: "auto_awesome"; position: absolute; left: 0; top: -44px; width: 36px; height: 36px; border-radius: 50%;
   background: linear-gradient(135deg, #4c8df6, #a36bf5); color: #fff; font-family: "Material Symbols Rounded"; font-size: 20px; font-weight: normal; line-height: 36px; text-align: center; font-variation-settings: "FILL" 1; }
 body:not(.unified) .chat > .bubble.agent:first-child::after { content: "AI 도우미"; position: absolute; left: 46px; top: -36px; font-size: 16px; font-weight: 600; color: #3c4048; line-height: 20px; white-space: nowrap; }
+body:not(.unified) .chat > .bubble.agent:first-child { border-radius: 6px 22px 22px 22px; } /* 첫 인사 말풍선의 뾰족한 모서리는 위 프로필 쪽으로 */
