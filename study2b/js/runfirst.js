@@ -66,7 +66,7 @@ function rfPlacePanel() {
   const L = $("#rf-layer");
   if (!L || !$(".phone").classList.contains("rf-live")) return;
   const m = L.querySelector(".rf-msgs");
-  const c = L.querySelector(".rf-ctrl");
+  const c = L.querySelector(".rf-ctrl").offsetHeight ? L.querySelector(".rf-ctrl") : $(".screen-box"); // 멈추기·내가 하기를 숨기면 작은 화면 아래부터
   const top = Math.max(m.offsetTop + m.offsetHeight, c.offsetTop + c.offsetHeight) + 14;
   const bottom = L.querySelector(".rf-bottom");
   const panel = L.querySelector(".rf-panel");
