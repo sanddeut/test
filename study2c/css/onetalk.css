@@ -1,0 +1,19 @@
+/* 개선안 c(study2c): 지금 말 하나만 크게 (onetalk.js) */
+
+/* 위 한 줄: 지난 대화 N개 · 펼치기 / 접기 */
+.one-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 14px 0; padding: 10px 14px; border: 0; border-radius: 14px; background: #fff; box-shadow: 0 0 0 1px #e3e6ec; color: #6b6f7a; font: inherit; font-size: 15px; font-weight: 600; flex: none; }
+.one-bar[hidden] { display: none !important; }
+.one-bar .ms { font-size: 20px; vertical-align: -5px; }
+.one-bar .one-more { color: #0b57d0; }
+
+/* 접힌 상태: 지금 말만, 위에서부터, 큰 글씨 */
+.chat.one { -webkit-mask-image: none !important; mask-image: none !important; padding-top: 20px !important; }
+.chat.one > .one-hide { display: none !important; }
+.chat.one > #chat-spacer { display: none !important; }
+.chat.one > .bubble.agent.one-cur { max-width: 100%; font-size: 21px; font-weight: 600; line-height: 1.55; padding: 18px 18px; }
+.chat.one > #run-card.one-cur .rc-q { font-size: 21px; line-height: 1.55; }
+.chat.one > #run-card.one-cur #rc-who, .chat.one > #run-card.one-cur .think-t { font-size: 17px; }
+.chat.one > #run-card.one-cur .choice b, .chat.one > #run-card.one-cur .chip { font-size: 17px; }
+.chat.one > .one-cur { animation: one-in .45s ease both; }
+@keyframes one-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .chat.one > .one-cur { animation: none; } }
