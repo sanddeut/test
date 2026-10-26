@@ -136,3 +136,6 @@
 /* 「되돌리기」: 패널 밖, 패널 바로 위 오른쪽 */
 .rf-undo { position: absolute; right: 12px; bottom: calc(var(--rf-panel, 132px) + 10px); z-index: 3; pointer-events: auto; box-shadow: 0 2px 10px rgba(0, 0, 0, .18); border-color: #fff; padding: 7px 14px; font-size: 14.5px; }
 .rf-layer:not(.live) .rf-undo, .rf-layer[data-mode="ask"] .rf-undo { display: none; }
+
+/* 앱 화면 뒤 배경: 기존 개선안처럼 옅은 파랑·보라 그라데이션 */
+.phone.rf.rf-live[data-view="progress"] .screen-box { background: linear-gradient(160deg, #e8f0fe 0%, #eeeafc 55%, #f1e8fb 100%); }
