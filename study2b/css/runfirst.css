@@ -1,6 +1,6 @@
-/* 새 개선안(study2b): 실행화면 기본 (runfirst.js) */
+/* 새 개선안(study2b): 실행화면 기본 · 하단 고정 AI 패널 (runfirst.js) */
 
-/* 실행화면을 기기 전체 크기로: 위 제목, 아래 문구·버튼, 축소 화면 장식은 숨김 */
+/* 실행화면을 기기 폭 그대로: 원래 실행화면의 제목·문구·버튼·축소 화면 장식은 숨김 */
 .phone.rf[data-view="progress"] { background: #fff; }
 .phone.rf[data-view="progress"] .pv-head,
 .phone.rf[data-view="progress"] .pv-panel,
@@ -10,7 +10,8 @@
 .phone.rf[data-view="progress"] .ai-live-chip,
 .phone.rf[data-view="progress"] .ai-veil,
 .phone.rf[data-view="progress"] .run-intro { display: none !important; }
-.phone.rf[data-view="progress"] .screen-box { padding: 0 !important; display: block !important; flex: 1 1 auto; }
+/* 앱 화면은 위 헤더와 아래 AI 패널 사이 */
+.phone.rf[data-view="progress"] .screen-box { padding: 58px 0 var(--rf-panel, 132px) !important; display: block !important; flex: 1 1 auto; }
 .phone.rf[data-view="progress"] .run-frame { display: block !important; border: 0 !important; background: none !important; border-radius: 0 !important; padding: 0 !important; animation: none !important; box-shadow: none !important; }
 .phone.rf[data-view="progress"] .screen-clip,
 .phone.rf.acting[data-view="progress"] .screen-clip { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; animation: none !important; }
@@ -21,62 +22,79 @@
 /* 덮개 층: 실행화면에서만 */
 .rf-layer { display: none; position: absolute; inset: 0; z-index: 40; pointer-events: none; }
 .phone.rf[data-view="progress"] .rf-layer { display: block; }
-.rf-dim { position: absolute; inset: 0; background: rgba(20, 22, 26, 0); transition: background .6s ease; }
-.rf-layer.intro .rf-dim { background: rgba(20, 22, 26, .66); pointer-events: auto; }
+.rf-dim { position: absolute; inset: 0; background: rgba(20, 22, 26, 0); transition: background .5s ease; }
+.rf-layer.intro .rf-dim { background: rgba(20, 22, 26, .66); pointer-events: auto; z-index: 3; }
 .rf-layer.live .rf-dim { background: rgba(20, 22, 26, .14); }
-.rf-layer.live[data-mode="note"] .rf-dim { background: rgba(20, 22, 26, .5); pointer-events: auto; }
-/* 확인·선택할 일: 앱 화면이 거의 안 보일 만큼 (확인할 내용은 말풍선 안에) */
+/* 확인·선택할 일: 앱 화면이 거의 안 보일 만큼 (확인할 내용은 패널 안에) */
 .rf-layer.live[data-mode="ask"] .rf-dim { background: rgba(20, 22, 26, .9); pointer-events: auto; }
 
 /* 처음 안내: 흰 글씨 */
-.rf-intro { position: absolute; left: 16px; right: 16px; top: 50%; transform: translateY(-50%); margin: 0; text-align: center; color: #fff; font-size: 19px; font-weight: 700; line-height: 1.5; word-break: keep-all; opacity: 0; transition: opacity .5s ease; }
+.rf-intro { position: absolute; left: 16px; right: 16px; top: 50%; transform: translateY(-50%); margin: 0; text-align: center; color: #fff; font-size: 19px; font-weight: 700; line-height: 1.5; word-break: keep-all; opacity: 0; transition: opacity .5s ease; z-index: 4; }
 .rf-layer.intro .rf-intro { opacity: 1; }
 
-/* 화면 전체 테두리 + 오른쪽 위 알약 (같은 색으로 이어지게) */
-.rf-border { position: absolute; inset: 0; border: 4px solid transparent; opacity: 0; transition: opacity .6s ease;
+/* 화면 전체 테두리 */
+.rf-border { position: absolute; inset: 0; z-index: 1; border: 4px solid transparent; opacity: 0; transition: opacity .6s ease;
   background: conic-gradient(from var(--ring, 0deg), #4c8df6, #a36bf5 180deg, #4c8df6 360deg) border-box;
   -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
   animation: ring-spin 3s linear infinite; }
-.rf-chip { position: absolute; top: 0; right: 14px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px 7px; border-radius: 0 0 999px 999px;
-  background: linear-gradient(90deg, #4c8df6, #a36bf5); color: #fff; font-size: 13.5px; font-weight: 700; line-height: 18px; white-space: nowrap;
-  box-shadow: 0 3px 10px rgba(76, 141, 246, .35); opacity: 0; transform: translateY(-100%); transition: opacity .5s ease, transform .5s cubic-bezier(.3, 1.3, .5, 1); }
-.rf-chip .dots { display: inline-flex; gap: 3px; }
-.rf-chip .dots i { width: 4px; height: 4px; border-radius: 50%; background: #fff; animation: rf-dot 1.2s infinite ease-in-out; }
-.rf-chip .dots i:nth-child(2) { animation-delay: .15s; }
-.rf-chip .dots i:nth-child(3) { animation-delay: .3s; }
+.rf-layer.live .rf-border { opacity: 1; }
+.rf-layer[data-mode="ask"] .rf-border { animation-play-state: paused; }
+
+/* 위 헤더: 「AI가 앱 사용중..」 + 멈추기 · 내가 하기 (테두리와 같은 색 배경) */
+.rf-head { position: absolute; top: 0; left: 0; right: 0; height: 58px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px 0 16px;
+  background: linear-gradient(90deg, #4c8df6, #a36bf5); pointer-events: auto; }
+.rf-chip { color: #fff; font-size: 17px; font-weight: 700; line-height: 24px; white-space: nowrap; }
+.rf-ctrl { display: flex; gap: 8px; }
+.rf-ctrl button { border: 0; border-radius: 999px; padding: 9px 17px; font: inherit; font-size: 15.5px; font-weight: 700; }
+.rf-stop { background: #fff; color: #d93025; }
+.rf-manual { background: #d93025; color: #fff; box-shadow: 0 0 0 1.5px #fff; }
+.rf-ctrl button:disabled { opacity: .45; }
+
+/* 아래 AI 패널: 늘 같은 자리·같은 높이, 내용만 바뀜. 확인할 때만 위로 커짐 */
+.rf-panel { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; height: var(--rf-panel, 132px); max-height: calc(100% - 66px); overflow: hidden; display: flex; flex-direction: column;
+  background: #fff; border-radius: 20px 20px 0 0; box-shadow: 0 -4px 16px rgba(0, 0, 0, .12); padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); pointer-events: auto; }
+.rf-layer[data-mode="ask"] .rf-panel { height: auto; min-height: var(--rf-panel, 132px); overflow-y: auto; animation: rf-rise .35s cubic-bezier(.2, .8, .2, 1); }
+@keyframes rf-rise { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
+.rf-ptop { display: flex; align-items: center; gap: 8px; min-height: 30px; flex: none; }
+.rf-avatar { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 0; padding: 0; background: linear-gradient(135deg, #4c8df6, #a36bf5); color: #fff; font: inherit; font-size: 12px; font-weight: 700; }
+.rf-status { font-size: 14.5px; font-weight: 700; color: #0b57d0; }
+.rf-status:empty::before { content: "AI 도우미"; color: #6b6f7a; font-weight: 600; }
+.rf-status.typing { display: inline-flex; gap: 4px; }
+.rf-status.typing i { width: 7px; height: 7px; border-radius: 50%; background: #9aa0aa; animation: rf-dot 1.2s infinite ease-in-out; }
+.rf-status.typing i:nth-child(2) { animation-delay: .15s; }
+.rf-status.typing i:nth-child(3) { animation-delay: .3s; }
 @keyframes rf-dot { 0%, 80%, 100% { opacity: .35; } 40% { opacity: 1; } }
-.rf-layer.live .rf-border, .rf-layer.live .rf-chip { opacity: 1; }
-.rf-layer.live .rf-chip { transform: none; }
-.rf-layer[data-mode="note"] .rf-border, .rf-layer[data-mode="ask"] .rf-border { animation-play-state: paused; }
+.rf-q { margin: 8px 0 0; color: #1c1d21; font-size: 16.5px; font-weight: 600; line-height: 1.5; white-space: pre-line; word-break: keep-all; }
+.rf-layer:not([data-mode="ask"]) .rf-q { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.rf-q.fresh { animation: rf-fresh .5s ease; }
+@keyframes rf-fresh { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
-/* 오른쪽 아래 AI 프로필 */
-.rf-avatar { position: absolute; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); width: 54px; height: 54px; border-radius: 50%; border: 3px solid #fff;
-  background: linear-gradient(135deg, #4c8df6, #a36bf5); color: #fff; font: inherit; font-size: 17px; font-weight: 700; pointer-events: auto;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, .22); opacity: 0; transform: scale(.6); transition: opacity .4s ease, transform .4s cubic-bezier(.3, 1.4, .5, 1); }
-.rf-layer.live .rf-avatar { opacity: 1; transform: none; }
-.rf-layer:not([data-mode="note"]):not([data-mode="ask"]) .rf-avatar { animation: rf-breathe 2.4s ease-in-out infinite; }
-@keyframes rf-breathe { 0%, 100% { box-shadow: 0 4px 14px rgba(0, 0, 0, .22), 0 0 0 0 rgba(120, 130, 245, .45); } 50% { box-shadow: 0 4px 14px rgba(0, 0, 0, .22), 0 0 0 8px rgba(120, 130, 245, 0); } }
-
-/* 프로필에서 나오는 말풍선 */
-.rf-bubble { position: absolute; right: 16px; left: 16px; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); background: #fff; border-radius: 20px 20px 6px 20px; padding: 16px 16px 14px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, .28); pointer-events: auto; transform-origin: calc(100% - 27px) calc(100% + 40px); max-height: calc(100% - 140px); overflow-y: auto; }
-.rf-bubble[hidden] { display: none; }
-.rf-bubble::after { content: ""; position: absolute; right: 22px; bottom: -9px; width: 18px; height: 18px; background: #fff; transform: rotate(45deg); border-radius: 0 0 4px 0; }
-.rf-bubble.pop { animation: rf-pop .42s cubic-bezier(.3, 1.4, .5, 1) both; }
-@keyframes rf-pop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
-.rf-q { margin: 0; color: #1c1d21; font-size: 16.5px; font-weight: 600; line-height: 1.55; white-space: pre-line; word-break: keep-all; }
-.rf-opts:empty { display: none; }
+/* 확인할 내용 · 선택지 */
+.rf-pv:empty, .rf-opts:empty, .rf-talk:empty, .rf-fab-slot:empty { display: none; }
+.rf-pv { margin-top: 12px; }
+.rf-pv .rc-summary, .rf-pv .rc-pv { box-shadow: 0 0 0 1px #e3e6ec; }
 .rf-opts { margin-top: 14px; }
 .rf-opts.pills { display: flex; gap: 8px; }
 .rf-opts.pills .rf-btn { flex: 1; }
-.rf-opts.list { display: flex; flex-direction: column; gap: 8px; }
 .rf-btn { border: 0; border-radius: 999px; padding: 12px 14px; background: #0b57d0; color: #fff; font: inherit; font-size: 15.5px; font-weight: 700; }
 .rf-btn.ghost { background: #eef0f4; color: #3c4048; }
-.rf-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; border: 1px solid #e3e6ec; background: #fff; border-radius: 14px; padding: 12px 14px; font: inherit; color: #1c1d21; }
+/* 선택지 목록: 한 카드 안에서 구분선으로 나눔 */
+.rf-opts.list { display: flex; flex-direction: column; border: 1px solid #e3e6ec; border-radius: 14px; overflow: hidden; background: #fff; }
+.rf-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; border: 0; background: #fff; padding: 12px 14px; font: inherit; color: #1c1d21; }
+.rf-row + .rf-row { border-top: 1px solid #eceef2; }
 .rf-row b { display: block; font-size: 15.5px; font-weight: 600; }
 .rf-row small { display: block; margin-top: 2px; font-size: 12.5px; color: #6b6f7a; }
 .rf-row em { font-style: normal; font-size: 14px; color: #3c4048; white-space: nowrap; }
-.rf-row:active, .rf-btn:active { filter: brightness(.95); }
+.rf-row:active { background: #f4f6f9; }
+.rf-btn:active { filter: brightness(.95); }
+.rf-opts.list > .rf-btn { margin: 8px; }
+
+/* 말로(글로) 답하기: 개선안 입력창을 그대로 패널 안에, 「말로 하기/글로 하기」는 그 아래 왼쪽 */
+.rf-talk { margin-top: 24px; }
+.rf-panel .composer { display: flex !important; margin: 0 !important; box-shadow: 0 0 0 1px #d6dce6 !important; animation: none !important; }
+.rf-panel .composer .unsent-hint { right: 0; }
+.rf-fab-slot { display: flex; justify-content: flex-start; margin-top: 10px; }
+.rf-fab-slot .mode-fab { position: static; box-shadow: 0 0 0 1px #e3e6ec; }
 
 /* 허용 뒤 로딩 화면 (튕기며 빠지는 복제본도 같은 모양) */
 #rf-loading { position: absolute; inset: 0; z-index: 60; background: #fff; display: grid; place-items: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -84,85 +102,7 @@
 .rf-ghost { background: #fff; display: grid; place-items: center; z-index: 50 !important; }
 .rf-spinner { width: 36px; height: 36px; border-radius: 50%; border: 3.5px solid #dfe3ea; border-top-color: #0b57d0; animation: spin .8s linear infinite; }
 
-@media (prefers-reduced-motion: reduce) { .rf-border, .rf-avatar, .rf-chip .dots i { animation: none !important; } }
-
-/* AI가 답을 준비하는 동안 "…" */
-.rf-bubble.typing { right: 16px; left: auto; padding: 14px 18px; }
-.rf-bubble.typing .rf-q { display: flex; gap: 5px; }
-.rf-bubble.typing .rf-q span { width: 8px; height: 8px; border-radius: 50%; background: #9aa0aa; animation: rf-dot 1.2s infinite ease-in-out; }
-.rf-bubble.typing .rf-q span:nth-child(2) { animation-delay: .15s; }
-.rf-bubble.typing .rf-q span:nth-child(3) { animation-delay: .3s; }
-.rf-bubble.typing .rf-opts, .rf-bubble.typing .rf-talk, .rf-bubble.typing .rf-pv { display: none; }
-
-/* 선택지 목록: 한 카드 안에서 구분선으로 나눔 */
-.rf-opts.list { gap: 0; border: 1px solid #e3e6ec; border-radius: 14px; overflow: hidden; background: #fff; }
-.rf-opts.list .rf-row { border: 0; border-radius: 0; }
-.rf-opts.list .rf-row + .rf-row { border-top: 1px solid #eceef2; }
-.rf-opts.list .rf-row:active { background: #f4f6f9; filter: none; }
-.rf-opts.list > .rf-btn { margin: 8px; }
-
-/* 왼쪽 위 태그 (테두리에 붙어 이어지게), 오른쪽 위 멈추기 · 내가 하기 */
-.rf-chip { top: 0; left: 0; right: auto; padding: 8px 16px 9px; border-radius: 0 0 12px 0; font-size: 15px; line-height: 20px; transform: translateY(-100%); }
-.rf-ctrl { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; opacity: 0; transition: opacity .5s ease; }
-.rf-layer.live .rf-ctrl { opacity: 1; pointer-events: auto; }
-.rf-ctrl button { border: 0; border-radius: 999px; padding: 7px 13px; font: inherit; font-size: 14px; font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
-.rf-stop { background: #fff; color: #d93025; box-shadow: 0 0 0 1.5px #d93025, 0 2px 8px rgba(0, 0, 0, .18) !important; }
-.rf-manual { background: #d93025; color: #fff; }
-.rf-ctrl button:disabled { opacity: .45; }
-
-/* 말풍선: 위 버튼 줄 아래까지 */
-.rf-bubble { max-height: calc(100% - 150px); }
-.rf-pv:empty { display: none; }
-.rf-pv { margin-top: 12px; }
-.rf-pv .rc-summary, .rf-pv .rc-pv { box-shadow: 0 0 0 1px #e3e6ec; }
-
-/* 평소: 지금 하는 일 ("출발지를 찾는 중…") — 작게, 화면은 어둡게 하지 않음 */
-.rf-bubble.doing { left: auto; right: 16px; max-width: calc(100% - 32px); padding: 10px 16px; animation: none; }
-.rf-bubble.doing .rf-q { font-size: 15px; font-weight: 500; color: #3c4048; }
-.rf-bubble.doing .rf-pv, .rf-bubble.doing .rf-opts, .rf-bubble.doing .rf-talk, .rf-bubble.note .rf-talk { display: none; }
-
-/* 말로(글로) 답하기: 개선안 입력창을 그대로 말풍선 안에 */
-.rf-talk:empty { display: none; }
-.rf-talk { margin-top: 48px; }
-.rf-bubble .composer { display: flex !important; margin: 0 !important; box-shadow: 0 0 0 1px #d6dce6 !important; animation: none !important; }
-.rf-bubble .composer .mode-fab { bottom: calc(100% + 8px); }
-.rf-bubble .composer .unsent-hint { right: 0; }
-
-/* 위 헤더: 태그와 멈추기 · 내가 하기를 한 줄로 묶고 배경을 깔음 (테두리와 같은 색). 앱 화면은 헤더 아래부터 */
-.phone.rf[data-view="progress"] .screen-box { padding-top: 50px !important; }
-.rf-head { position: absolute; top: 0; left: 0; right: 0; height: 50px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px 0 14px;
-  background: linear-gradient(90deg, #4c8df6, #a36bf5); opacity: 0; transition: opacity .5s ease; }
-.rf-layer.live .rf-head { opacity: 1; pointer-events: auto; }
-.rf-head .rf-chip { position: static; opacity: 1; transform: none; padding: 0; background: none; box-shadow: none; border-radius: 0; font-size: 16px; line-height: 22px; }
-.rf-head .rf-ctrl { position: static; opacity: 1; }
-.rf-head .rf-ctrl button { box-shadow: none !important; padding: 7px 14px; }
-.rf-head .rf-stop { background: #fff; color: #d93025; }
-.rf-head .rf-manual { background: #d93025; color: #fff; box-shadow: 0 0 0 1.5px #fff !important; }
-.rf-border { z-index: 1; }
-.rf-head { opacity: 1; pointer-events: auto; }
-.rf-layer.intro .rf-dim { z-index: 3; }
-.rf-layer.intro .rf-intro { z-index: 4; }
-
-/* 말풍선 묶음: 위에 「말로 하기/글로 하기」 전환 버튼(오른쪽), 아래 말풍선 */
-.rf-bwrap { position: absolute; left: 16px; right: 16px; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); max-height: calc(100% - 150px); display: flex; flex-direction: column; align-items: stretch; gap: 8px; pointer-events: none; }
-.rf-bwrap .rf-bubble { position: relative; left: auto; right: auto; bottom: auto; max-height: none; min-height: 0; flex: 0 1 auto; }
-.rf-bwrap .rf-bubble.doing, .rf-bwrap .rf-bubble.typing { align-self: flex-end; max-width: 100%; }
-.rf-fab-slot { display: flex; justify-content: flex-end; pointer-events: auto; }
-.rf-fab-slot:empty { display: none; }
-.rf-fab-slot .mode-fab { position: static; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); }
-.rf-bwrap:has(.rf-bubble[hidden]) .rf-fab-slot, .rf-bwrap:has(.rf-bubble.doing) .rf-fab-slot, .rf-bwrap:has(.rf-bubble.note) .rf-fab-slot { display: none; }
-.rf-talk { margin-top: 12px; }
-
-/* 헤더 조금 더 높게, 버튼 조금 더 크게 */
-.phone.rf[data-view="progress"] .screen-box { padding-top: 58px !important; }
-.rf-head { height: 58px; padding: 0 12px 0 16px; }
-.rf-head .rf-chip { font-size: 17px; line-height: 24px; }
-.rf-head .rf-ctrl { gap: 8px; }
-.rf-head .rf-ctrl button { padding: 9px 17px; font-size: 15.5px; }
-
 /* 뒤로 가기 다이얼로그: 계속하기와 방금 한 일 취소 사이 간격 줄임 */
 .bd-go + .bd-undo { margin-top: -8px; }
 
-/* 「말로 하기/글로 하기」 전환 버튼: 말풍선 아래 왼쪽 끝 / 입력창 위 여백 넉넉히 */
-.rf-fab-slot { order: 2; justify-content: flex-start; }
-.rf-talk { margin-top: 24px; }
+@media (prefers-reduced-motion: reduce) { .rf-border, .rf-status.typing i, .rf-q.fresh, .rf-panel { animation: none !important; } }
