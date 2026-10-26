@@ -261,3 +261,17 @@ setInterval(() => {
   if (told && !mini.endAt) mini.endAt = Date.now() + 3000;
   if ((mini.endAt && Date.now() > mini.endAt) || (id && !["taxi_open", "origin"].includes(id)) || Date.now() - mini.t0 > MINI_MAX_MS || S.finished) miniEnd();
 }, 250);
+
+// 「…」만 오래 보이지 않게: AI가 일하는 동안 프로필 옆에 지금 하는 일 ("택시 종류를 확인하는 중…")
+function oneDoingText() {
+  const id = S?.steps?.[S.stepIdx]?.id;
+  return `${(typeof DOING !== "undefined" && DOING[id]) || "답을 준비하는 중"}…`;
+}
+setInterval(() => {
+  if (!S?.unified || ONE_MODE !== "page") return;
+  const t = oneDoingText();
+  const st = $("#rc-status");
+  if (st && st.dataset.doing !== t) st.dataset.doing = t;
+  const ty = $("#typing");
+  if (ty && ty.dataset.doing !== t) ty.dataset.doing = t;
+}, 200);

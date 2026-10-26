@@ -77,3 +77,13 @@
 
 /* 첫 인사(무엇을 도와드릴까요?)에만 프로필 옆에 「AI 도우미」 */
 .chat.one-page > .bubble.agent.with-guide::after { content: "AI 도우미"; position: absolute; left: 46px; top: -36px; font-size: 16px; font-weight: 600; color: #3c4048; line-height: 20px; white-space: nowrap; }
+
+/* 「…」 대신 지금 하는 일 문구 (진행 카드 머리 · 답을 준비하는 말풍선) */
+.chat.one-page #run-card #rc-status .dots { display: none; }
+.chat.one-page #run-card #rc-status.thinking::after, .chat.one-page #run-card #rc-status:has(.dots)::after { content: attr(data-doing); font-size: 15.5px; font-weight: 500; color: #6b6f7a; }
+.chat.one-page > #typing > span { display: none; }
+.chat.one-page > #typing::after { content: attr(data-doing); font-size: 15.5px; color: #6b6f7a; }
+/* 답을 준비하는 말풍선에도 같은 자리에 AI 프로필 (바로 다음 카드와 같은 모양으로 이어지게) */
+.chat.one-page > #typing { position: relative; margin-top: 46px; overflow: visible; }
+.chat.one-page > #typing::before { content: "auto_awesome"; position: absolute; left: 0; top: -44px; width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #4c8df6, #a36bf5); color: #fff; font-family: "Material Symbols Rounded"; font-size: 20px; font-weight: normal; line-height: 36px; text-align: center; font-variation-settings: "FILL" 1; }
