@@ -11,7 +11,7 @@ const RF_LOADING_MS = 900; // 허용한 뒤 로딩 화면
 const RF_SWAP_MS = 1200; // 튕기며 화면이 바뀌는 시간 (slideSwap과 같게)
 const RF_HEAD = 58; // 위 헤더 높이 (태그 + 멈추기 · 내가 하기)
 const RF_PANEL = 132; // 아래 AI 패널 높이 (진행 중)
-const RF_INTRO_MS = 2600; // "AI가 '마음택시' 앱을 사용합니다." 안내를 보여 주는 시간
+const RF_INTRO_MS = 3800; // "AI가 '마음택시' 앱을 사용합니다." 안내를 보여 주는 시간
 const rf = { doing: "", ask: null, picks: null, note: "", noteStep: null, last: "", typing: false, key: "", runBeforeManual: false, composerHome: null };
 
 const rfOn = () => Boolean(S?.runFirst && !S.finished && $(".phone").dataset.view === "progress");
@@ -75,7 +75,17 @@ async function rfEnter() {
   S.rfSwap = true;
   // 홈 화면을 거치지 않고 택시 앱 스플래시부터 보여 줌 (택시 앱 실행 단계는 여기서 끝냄)
   const open = S.steps.find((x) => x.id === "taxi_open");
-  if (open) { open.apply(S); S.rfOpened = true; rf.doing = `${TAXI_APP} 앱을 여는 중…`; renderPhone(); }
+  if (open) {
+    open.apply(S); S.rfOpened = true; rf.doing = `${TAXI_APP} 앱을 여는 중…`; renderPhone();
+    // 스플래시를 안내("AI가 '마음택시' 앱을 사용합니다.")가 끝날 때까지 띄워 둠
+    const p = S.phone;
+    const ms = RF_SWAP_MS + RF_INTRO_MS + 400;
+    clearTimeout(p.loadingTimer);
+    p.loading = "splash-taxi";
+    p.loadingUntil = Date.now() + ms;
+    p.loadingTimer = setTimeout(() => { p.loading = null; renderPhone(); }, ms);
+    renderPhone();
+  }
   syncControls(); // → syncView에서 로딩 화면이 튕기며 빠지고 앱 화면이 들어옴
   await sleep(RF_SWAP_MS);
   L.classList.add("intro");

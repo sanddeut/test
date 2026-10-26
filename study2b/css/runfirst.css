@@ -29,7 +29,7 @@
 .rf-layer.live[data-mode="ask"] .rf-dim { background: rgba(20, 22, 26, .9); pointer-events: auto; }
 
 /* 처음 안내: 흰 글씨 */
-.rf-intro { position: absolute; left: 16px; right: 16px; top: 50%; transform: translateY(-50%); margin: 0; text-align: center; color: #fff; font-size: 19px; font-weight: 700; line-height: 1.5; word-break: keep-all; opacity: 0; transition: opacity .5s ease; z-index: 4; }
+.rf-intro { position: absolute; left: 16px; right: 16px; top: 66%; transform: translateY(-50%); margin: 0; text-align: center; color: #fff; font-size: 19px; font-weight: 700; line-height: 1.5; word-break: keep-all; opacity: 0; transition: opacity .5s ease; z-index: 4; }
 .rf-layer.intro .rf-intro { opacity: 1; }
 
 /* 화면 전체 테두리 */
