@@ -20,7 +20,7 @@ function setupRunFirst() {
   L.innerHTML = `<div class="rf-dim"></div>
     <p class="rf-intro">AI가 ‘${esc(TAXI_APP)}’ 앱을 사용합니다.</p>
     <div class="rf-border"></div>
-    <div class="rf-chip" role="status"><span class="dots"><i></i><i></i><i></i></span>AI가 앱 사용중..</div>
+    <div class="rf-chip" role="status">AI가 앱 사용중..</div>
     <div class="rf-bubble" role="dialog" aria-live="polite" hidden><p class="rf-q"></p><div class="rf-opts"></div></div>
     <button type="button" class="rf-avatar" aria-label="AI 도우미 (대화창 보기)">AI</button>`;
   phone.appendChild(L);
