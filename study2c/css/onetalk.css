@@ -256,3 +256,9 @@
 .chat.one-page #run-card:not(.one-said):not(.asking) #rc-status { font-size: 0; visibility: visible; }
 .chat.one-page #run-card:not(.one-said):not(.asking) #rc-status > * { display: none !important; }
 .chat.one-page #run-card:not(.one-said):not(.asking) #rc-status::after { content: attr(data-doing) !important; font-size: 15.5px; font-weight: 500; color: #6b6f7a; }
+
+/* 깜빡임 막기: 카드 안 글이 바뀔 때마다 숨었다 나타나던 효과 없앰. 새 말일 때만 한 번 부드럽게 */
+.chat.one-page #run-card .rc-body.enter { animation: none !important; }
+.chat.one-page #run-card .rc-body.one-fresh { animation: one-fresh .3s ease-out both; }
+@keyframes one-fresh { from { opacity: .35; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .chat.one-page #run-card .rc-body.one-fresh { animation: none; } }

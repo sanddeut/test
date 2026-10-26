@@ -208,6 +208,7 @@ function onePage(c, bar) {
   const hh = $("#one-hist-head");
   if (hh && hh.hidden === past) hh.hidden = !past;
   c.classList.toggle("one-past-view", past);
+  oneDoingSync(); // 단계가 바뀌는 순간 「~하는 중」도 바로 (지난 단계 문구가 잠깐 보이지 않게)
   oneUndo(c, show, past);
   oneOpenBtn(c, show, past);
   onePauseForHistory(past);
@@ -328,7 +329,7 @@ function oneDoingText() {
   const id = S?.steps?.[S.stepIdx]?.id;
   return `${(typeof DOING !== "undefined" && DOING[id]) || "답을 준비하는 중"}…`;
 }
-setInterval(() => {
+function oneDoingSync() {
   if (!S?.unified || ONE_MODE !== "page") return;
   const t = oneDoingText();
   const st = $("#rc-status");
@@ -339,7 +340,8 @@ setInterval(() => {
   const card = $("#run-card"), q = $("#rc-q");
   const said = Boolean(card && q && !q.hidden && q.textContent.trim());
   if (card && card.classList.contains("one-said") !== said) card.classList.toggle("one-said", said);
-}, 200);
+}
+setInterval(oneDoingSync, 200);
 
 // 앱 여는 단계가 너무 길지 않게: 읽을 시간 6초 → 2초, 연 뒤 기다림 3.5초 → 1.2초 (원래 약 14초 → 약 6초)
 const _runAutoOne = runAuto;
@@ -437,9 +439,13 @@ async function onePlanEdit() {
   }
   if (c.id === "p_origin" || c.id === "p_dest") {
     const q2 = c.id === "p_origin" ? "어디에서 출발할까요? 말이나 글로 알려 주세요." : "어디로 갈까요? 말이나 글로 알려 주세요.";
-    await agentSay(q2, { gated: true });
-    const c2 = await askChoice([], q2, [c.id === "p_origin" ? "set_origin" : "set_dest"], c.id === "p_origin" ? "출발지를 고치는 중이야. 말한 곳이 출발지면 set_origin." : "도착지를 고치는 중이야. 말한 곳이 목적지면 set_dest.");
-    if (c2.out) planApply(c2.out);
+    renderBubble("agent", q2); // 말·글로 답하는 질문은 대화창 AI 말풍선으로 (실행화면 패널에도)
+    S.lastQuestion = q2;
+    const text = await waitText();
+    if (text) {
+      const o = await turn(text, { said: q2, intents: [c.id === "p_origin" ? "set_origin" : "set_dest", "other"], hint: c.id === "p_origin" ? "출발지를 고치는 중이야. 말한 곳이 출발지면 set_origin." : "도착지를 고치는 중이야. 말한 곳이 목적지면 set_dest." });
+      if (o) planApply(o);
+    }
     return true;
   }
   return true;
@@ -743,3 +749,29 @@ setInterval(() => {
   const lastUser = kids.filter((el) => el.classList.contains("bubble") && el.classList.contains("user")).at(-1);
   if (lastUser && kids.indexOf(card) < kids.indexOf(lastUser)) c.insertBefore(card, $("#chips"));
 }, 150);
+
+// 이미 정한 택시 종류(처음 요청·계획에서): 다시 묻지 않고 출발지·목적지처럼 「~로 할게요」 → 읽을 시간 막대(일시정지·취소 가능) → 반영
+const _askCarOne = askCar;
+askCar = async function (step) {
+  if (!S?.unified || !(S.userSet?.car && CAR_TYPES[S.form.car])) return _askCarOne(step);
+  await doPre(step);
+  await agentSay(`말씀하신 ${CAR_TYPES[S.form.car].label}로 할게요.`, { gated: true });
+  for (let t = 0; t < READ_MS; t += 250) { S.readProg = { t, total: READ_MS }; await sleep(250 * PACE); await gate(); }
+  S.readProg = { t: READ_MS, total: READ_MS }; setTimeout(() => { if (S) S.readProg = null; }, 400);
+  await doApply(step, S.form.car);
+  await dwell();
+  return true;
+};
+
+// 깜빡임 막기: 카드 안 글이 바뀔 때마다 다시 나타나던 효과(.rc-body.enter, 0.25초 숨었다 나타남)는 쓰지 않고,
+// 카드 안 말이 실제로 새 말로 바뀔 때만 한 번 부드럽게 나타남
+setInterval(() => {
+  if (!S?.unified) return;
+  const q = $("#rc-q"), body = $("#run-card .rc-body");
+  if (!q || !body) return;
+  const t = !q.hidden ? q.textContent.trim() : "";
+  if (t && t !== one.lastQ) {
+    one.lastQ = t;
+    body.classList.remove("one-fresh"); void body.offsetWidth; body.classList.add("one-fresh");
+  } else if (!t) one.lastQ = one.lastQ || "";
+}, 60);
