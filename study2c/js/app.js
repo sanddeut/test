@@ -1900,7 +1900,8 @@ async function runHighStep(step) {
     }
   };
   // 단계 간격(S.cfg.delay)은 "문구를 읽는 시간"으로 씀: 문구가 나온 뒤 기다렸다가 다음 조작으로
-  const read = async () => { await sleep(S.cfg.delay); await gate(); };
+  // 출발지 설정 안내(「말씀하신 ‘…’로 출발지를 설정했어요」)는 다른 단계보다 오래 보여 줌 (잘못된 출발지를 알아챌 시간)
+  const read = async () => { await sleep(S.cfg.delay * (step.id === "origin" ? 2 : 1)); await gate(); };
   const split = step.high.split;
   if (split != null) {
     await say(msgs.slice(0, split));
