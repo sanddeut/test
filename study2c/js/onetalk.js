@@ -8,7 +8,8 @@ const one = { open: false, hidden: 0 };
 // fade: 지난 대화를 접지 않고 제자리에 작고 흐리게 남김 (지금 말만 크게, 늘 화면 안에) / fold: 위 한 줄 「지난 대화 N개 · 펼치기」로 접음
 // plain(기본): 원래 개선안 대화창 그대로(지난 말은 위로 밀려 올라감), 지금 말만 크게
 // 주소 끝에 ?one=fold / ?one=fade 를 붙이면 접는 방식 / 흐리게 남기는 방식으로 볼 수 있음
-const ONE_MODE = ["fold", "fade"].includes(new URLSearchParams(location.search).get("one")) ? new URLSearchParams(location.search).get("one") : "plain";
+// page(기본): 한 번에 한 세트(내 입력 + 이어진 AI 응답)만. 위 ⌃로 이전 세트, 아래 ⌄로 다음 세트
+const ONE_MODE = ["fold", "fade", "plain"].includes(new URLSearchParams(location.search).get("one")) ? new URLSearchParams(location.search).get("one") : "page";
 
 function setupOneTalk() {
   const bar = document.createElement("button");
@@ -23,6 +24,17 @@ function setupOneTalk() {
     if (one.open) chat().scrollTop = chat().scrollHeight;
   };
   $(".chat-head").after(bar);
+  // 한 세트씩 보기: 위 ⌃(이전 세트) · 아래 ⌄(다음 세트)
+  const up = document.createElement("button");
+  up.type = "button"; up.id = "one-up"; up.className = "one-nav one-up only-chat"; up.hidden = true;
+  up.setAttribute("aria-label", "이전 대화"); up.innerHTML = '<span class="ms">keyboard_arrow_up</span>';
+  up.onclick = () => oneGo(-1);
+  $(".chat-head").after(up);
+  const down = document.createElement("button");
+  down.type = "button"; down.id = "one-down"; down.className = "one-nav one-down only-chat"; down.hidden = true;
+  down.setAttribute("aria-label", "다음 대화"); down.innerHTML = '<span class="ms">keyboard_arrow_down</span>';
+  down.onclick = () => oneGo(1);
+  chat().after(down);
   new MutationObserver(() => oneUpdate()).observe(chat(), { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "hidden"] });
 }
 document.addEventListener("DOMContentLoaded", setupOneTalk);
@@ -48,6 +60,7 @@ function oneUpdate() {
     const on = Boolean(S?.unified) && !one.open;
     if (ONE_MODE === "fade") return oneFade(c, bar);
     if (ONE_MODE === "plain") return onePlain(c, bar);
+    if (ONE_MODE === "page") return onePage(c, bar);
     c.classList.toggle("one", on);
     if (!bar) return;
     if (!S?.unified) { bar.hidden = true; return; }
@@ -116,4 +129,49 @@ function onePlain(c, bar) {
   if (!on) return;
   const cur = oneCurrent();
   for (const el of c.children) if (el.classList.contains("one-cur") !== (el === cur)) el.classList.toggle("one-cur", el === cur);
+}
+
+// 한 세트씩: 내 말(말풍선)에서 새 세트가 시작되고, 다음 내 말 전까지 이어진 AI 응답이 한 세트 (첫 인사는 첫 세트)
+one.page = null; // null = 지금 세트(맨 끝)
+one.curKey = null;
+function onePages(c) {
+  const pages = [[]];
+  for (const el of c.children) {
+    if (el.id === "chips" || el.id === "chat-spacer") continue;
+    if (el.classList.contains("bubble") && el.classList.contains("user") && pages.at(-1).some((x) => x.classList.contains("bubble"))) pages.push([]);
+    pages.at(-1).push(el);
+  }
+  return pages;
+}
+function oneGo(d) {
+  const pages = onePages(chat());
+  const last = pages.length - 1;
+  const at = one.page ?? last;
+  const next = Math.max(0, Math.min(last, at + d));
+  one.page = next >= last ? null : next;
+  if (S) logEvent("one_page", { page: next + 1, of: last + 1 });
+  oneUpdate();
+}
+function onePage(c, bar) {
+  if (bar) bar.hidden = true;
+  const on = Boolean(S?.unified);
+  c.classList.toggle("one-page", on);
+  const up = $("#one-up"), down = $("#one-down");
+  if (!on) { if (up) up.hidden = true; if (down) down.hidden = true; return; }
+  const pages = onePages(c);
+  const last = pages.length - 1;
+  // 새 AI 말이 오면 지금 세트로 돌아옴
+  const cur = oneCurrent();
+  const key = `${c.querySelectorAll(":scope > .bubble:not(.typing)").length}|${$("#run-card")?.classList.contains("asking") ? 1 : 0}`; // 새 말풍선이 오거나 질문이 뜰 때만
+  if (key !== one.curKey) { one.curKey = key; one.page = null; }
+  if (one.page != null && one.page >= last) one.page = null;
+  const show = new Set(pages[one.page ?? last]);
+  for (const el of c.children) {
+    if (el.id === "chips" || el.id === "chat-spacer") continue;
+    const hide = !show.has(el);
+    if (el.classList.contains("one-hide") !== hide) el.classList.toggle("one-hide", hide);
+    if (el.classList.contains("one-cur") !== (el === cur)) el.classList.toggle("one-cur", el === cur);
+  }
+  if (up) up.hidden = (one.page ?? last) === 0;
+  if (down) down.hidden = one.page == null;
 }

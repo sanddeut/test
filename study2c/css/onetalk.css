@@ -37,3 +37,15 @@
 .chat.one-plain > #run-card.one-cur .rc-q { font-size: 21px; line-height: 1.55; }
 .chat.one-plain > #run-card.one-cur #rc-who, .chat.one-plain > #run-card.one-cur .think-t { font-size: 17px; }
 .chat.one-plain > #run-card.one-cur .choice b, .chat.one-plain > #run-card.one-cur .chip { font-size: 17px; }
+
+/* 한 세트씩 보기: 지금 보는 세트만, 위 ⌃ · 아래 ⌄ */
+.chat.one-page { -webkit-mask-image: none !important; mask-image: none !important; padding-top: 8px !important; }
+.chat.one-page > .one-hide { display: none !important; }
+.chat.one-page > #chat-spacer { display: none !important; }
+.chat.one-page > .bubble.agent.one-cur { max-width: 100%; font-size: 21px; font-weight: 600; line-height: 1.55; padding: 18px; }
+.chat.one-page > #run-card.one-cur .rc-q { font-size: 21px; line-height: 1.55; }
+.chat.one-page > #run-card.one-cur #rc-who, .chat.one-page > #run-card.one-cur .think-t { font-size: 17px; }
+.chat.one-page > #run-card.one-cur .choice b, .chat.one-page > #run-card.one-cur .chip { font-size: 17px; }
+.one-nav { align-self: center; flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: 2px auto; border: 0; border-radius: 50%; background: #fff; color: #3c4048; box-shadow: 0 1px 6px rgba(0, 0, 0, .12); }
+.one-nav[hidden] { display: none !important; }
+.one-nav .ms { font-size: 30px; }
