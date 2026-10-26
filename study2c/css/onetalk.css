@@ -72,7 +72,7 @@
 .rc-mini { display: flex; justify-content: center; padding: 4px 0 2px; max-height: 420px; overflow: hidden; transition: max-height .55s ease, opacity .45s ease; cursor: pointer; }
 .rc-mini.closing { max-height: 0; opacity: 0; }
 .rc-mini .screen-clip { width: var(--mini-w) !important; height: var(--mini-h) !important; flex: none; position: relative; overflow: hidden; border-radius: 14px; box-shadow: 0 0 0 1px #c9cdd6, 0 3px 10px rgba(0, 0, 0, .12); background: #fff; pointer-events: none; }
-.rc-mini .screen { transform: scale(0.42); transform-origin: 0 0; }
+.rc-mini .screen { transform: scale(0.3); transform-origin: 0 0; }
 #run-card.mini-on #rc-open { display: none !important; }
 
 /* 첫 인사(무엇을 도와드릴까요?)에만 프로필 옆에 「AI 도우미」 */

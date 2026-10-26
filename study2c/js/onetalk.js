@@ -193,7 +193,7 @@ function onePage(c, bar) {
 // 허용 뒤 진행 카드 안에 실제 앱 화면을 작게 보여 줌 (스플래시 → 첫 화면 → 출발지 검색)
 // 출발지를 알리고 잠시 뒤 작은 화면은 접히고 「실행화면 보기」 버튼으로 바뀜
 // =====================================================================
-const MINI_SCALE = 0.42;
+const MINI_SCALE = 0.3;
 const MINI_MAX_MS = 30000;
 const mini = { on: false, home: null, t0: 0, endAt: 0 };
 const _showPermDialogOne = showPermDialog;
