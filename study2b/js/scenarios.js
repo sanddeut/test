@@ -4,21 +4,22 @@
 
 const TAXI_APP = "마음택시";
 
-// 출발지 장소 세트 (설정의 버전으로 고름): dongcheon = 용인 신분당선 동천역(오류: 대구 동천역) / sinchon = 서울 신촌역(오류: 광주 신촌동)
+// 출발지 장소 세트 (설정의 버전으로 고름): dongcheon = 용인 신분당선 동천역(오류: 대구 동천역) / sinchon = 서울 연세대학교(오류: 원주 연세대)
 // 코드 안의 키는 두 세트 모두 dongcheon(타려는 곳) · daegu(AI가 잘못 고르는 먼 곳)로 같게 씀
 const PLACE_SET = window.__PLACE === "sinchon" ? "sinchon" : "dongcheon";
 const SPOT = PLACE_SET === "sinchon"
   ? {
-      word: /신촌/, // 참가자가 이 이름을 말하면 타려는 곳(또는 같은 이름의 먼 곳)
-      near: /서울|서대문|2호선|연세|이대|신촌역/, far: /광주|광산|송정/, // 어느 쪽인지 가리는 말
-      target: { name: "신촌역", addr: "서울 서대문구 신촌동 · 지하철 2호선", lat: 37.55527, lng: 126.93693 },
-      wrong: { name: "광주 신촌동", say: "광주광역시 광산구 신촌동", addr: "광주광역시 광산구 신촌동 · 송정역 부근", lat: 35.1530, lng: 126.8030, ic: "location_on" },
-      query: "신촌",
-      others: [{ key: null, name: "신촌역 버스정류장", addr: "서울 서대문구 신촌로" }],
+      // study2b·2c: 신촌 세트를 연세대로 바꿈 (서울 연세대학교 신촌캠퍼스 → AI는 원주 연세대(미래캠퍼스)로 판단)
+      word: /연세/, // 참가자가 이 이름을 말하면 타려는 곳(또는 같은 이름의 먼 곳)
+      near: /서울|서대문|신촌|본교|연세로/, far: /원주|미래|강원|흥업/, // 어느 쪽인지 가리는 말
+      target: { name: "연세대학교", addr: "서울 서대문구 연세로 50 · 신촌캠퍼스", lat: 37.56588, lng: 126.93805 },
+      wrong: { name: "원주 연세대", say: "강원도 원주시 연세대학교 미래캠퍼스", addr: "강원도 원주시 흥업면 연세대길 1 · 미래캠퍼스", lat: 37.27670, lng: 127.90190, ic: "location_on" },
+      query: "연세대학교",
+      others: [{ key: null, name: "연세대학교 정문 버스정류장", addr: "서울 서대문구 연세로" }],
       geo: { lat: 37.56592, lng: 126.93675, label: "서울 서대문구 연희동" },
-      road: { gangnam: 14.2, gucheong: 13.6, yeoksam: 13.8, drop: 14.0 }, // 신촌역에서의 도로 거리(km)
-      situ: "택시는 집 근처 ‘신촌역’(서울 서대문구)에서 타려고 합니다.",
-      taskFrom: "‘신촌역’",
+      road: { gangnam: 14.2, gucheong: 13.6, yeoksam: 13.8, drop: 14.0 }, // 연세대학교에서의 도로 거리(km)
+      situ: "택시는 집 근처 ‘연세대학교’(서울 서대문구)에서 타려고 합니다.",
+      taskFrom: "‘연세대학교’",
     }
   : {
       word: /동천/,
@@ -253,7 +254,8 @@ const won0 = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
 function fareOf(f, destKey = f.dest) {
   const km = distKm(f.origin || "current", destKey || TARGET_PLACE, typeof S !== "undefined" ? S?.geo : null);
   const base = 4800 + Math.max(0, km - 1.6) * (11200 / 19.6);
-  const fare = Math.round(base / 100) * 100 + CAR_TYPES[f.car].extra;
+  // 잘못 고른 출발지(원주 연세대)에서는 요금이 12만 원대 (먼 거리임을 알아차릴 수 있게)
+  const fare = (f.origin === WRONG_ORIGIN ? 121900 : Math.round(base / 100) * 100) + CAR_TYPES[f.car].extra;
   return Math.max(0, fare * (f.count || 1) - (f.coupon ? COUPON.amount : 0)); // 호출 대수만큼 (쿠폰은 한 번)
 }
 
