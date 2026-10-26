@@ -333,3 +333,15 @@ const _dwellRF = dwell;
 dwell = function (ms = 1800) {
   return _dwellRF(S?.runFirst ? Math.min(ms, RF_DWELL_MAX) : ms);
 };
+
+// AI가 화면을 누르고 글자를 치는 속도만 늦춤 (읽을 시간·대기 시간은 그대로)
+const RF_ACT_SLOW = 1.6;
+const _tapRF = tap;
+tap = function (sel, { pre = 450, hold = 350, after = 450, quick = false } = {}) {
+  const k = S?.runFirst ? RF_ACT_SLOW : 1;
+  return _tapRF(sel, { pre: pre * k, hold: hold * k, after: after * k, quick });
+};
+const _typeTextRF = typeText;
+typeText = function (set, text, ms = 170) {
+  return _typeTextRF(set, text, S?.runFirst ? ms * RF_ACT_SLOW : ms);
+};
