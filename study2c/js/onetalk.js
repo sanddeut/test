@@ -198,6 +198,9 @@ function onePage(c, bar) {
     one.shownEl = firstEl; one.shownIdx = shown;
     c.classList.remove("one-in-up", "one-in-down"); void c.offsetWidth;
     c.classList.add(back ? "one-in-down" : "one-in-up");
+    // 효과가 끝나면 바로 뗌 (붙어 있으면 같은 세트 안에서 카드가 자리를 옮길 때마다 다시 나타나는 효과가 되풀이되어 깜빡임)
+    clearTimeout(one.fadeT);
+    one.fadeT = setTimeout(() => c.classList.remove("one-in-up", "one-in-down"), 300);
   }
   if (up) up.hidden = past || last === 0;
   if (down) down.hidden = !past;
@@ -404,7 +407,11 @@ function oneUndo(c, show, past) {
     row.append(pz, u); // 왼쪽 일시정지, 오른쪽 취소
   }
   if (one.userPaused && S && !S.paused) one.userPaused = false; // 다른 곳(되돌리기 등)에서 다시 시작된 경우
-  const vis = Boolean(!past && S?.running && !S.finished);
+  // 지금 세트의 마지막 AI 말(진행 카드나 AI 말풍선). 「~하는 중…」만 보일 때(진행 카드에 아직 할 말이 없을 때)는 두 버튼을 숨김
+  const ai = [...c.children].filter((el) => show.has(el) && (el.id === "run-card" || (el.classList.contains("agent") && !el.classList.contains("typing")))).at(-1);
+  const rq = ai?.id === "run-card" ? ai.querySelector("#rc-q") : null;
+  const said = ai && (ai.id !== "run-card" || ai.classList.contains("asking") || (rq && !rq.hidden && rq.textContent.trim()));
+  const vis = Boolean(!past && S?.running && !S.finished && said);
   if (row.hidden === vis) row.hidden = !vis; // 값이 바뀔 때만 (같은 값을 다시 넣어도 대화창 감시가 다시 돌아 무한 반복됨)
   if (!vis) return;
   const u = row.querySelector("#one-undo"), pz = row.querySelector("#one-pause");
@@ -414,8 +421,7 @@ function oneUndo(c, show, past) {
   if (pz.innerHTML !== pzHTML) pz.innerHTML = pzHTML;
   const noPause = !one.userPaused && (S.paused || S.undoPending);
   if (pz.disabled !== noPause) pz.disabled = noPause;
-  // 지금 세트의 마지막 AI 말(진행 카드나 AI 말풍선) 바로 아래
-  const ai = [...c.children].filter((el) => show.has(el) && (el.id === "run-card" || el.classList.contains("agent"))).at(-1);
+  // 그 AI 말 바로 아래
   const anchor = ai && ai.nextElementSibling?.id === "chips" && show.has(ai.nextElementSibling) ? ai.nextElementSibling : ai;
   if (anchor && anchor.nextElementSibling !== row) anchor.after(row);
 }
@@ -472,3 +478,11 @@ setChips = function (options, onPick) {
   requestAnimationFrame(() => { if ($(".phone").dataset.view === "progress") fitScreen(); });
   return r;
 };
+
+// 「일시정지」 중에 말이나 글로 고쳐 달라고 보내면 바로 이어서 진행 (보낸 말은 평소처럼 처리됨)
+const _onSubmitOne = onSubmit;
+onSubmit = function (e) {
+  if (one.userPaused && S && !S.finished && $("#msg").value.trim()) { logEvent("one_resume_by_message"); onePause(false); }
+  return _onSubmitOne(e);
+};
+$("#composer").onsubmit = (e) => onSubmit(e);
