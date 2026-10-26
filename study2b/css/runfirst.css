@@ -127,7 +127,7 @@
 /* 뒤로 가기 다이얼로그: 계속하기와 방금 한 일 취소 사이 간격 줄임 */
 .bd-go + .bd-undo { margin-top: -8px; }
 /* 대화창 입력창 위의 기다림 띠(빨간 점 · ~하고 있어요 · 잠시만 기다려 주세요 · 멈추기)는 쓰지 않음 */
-.chat-wait { display: none !important; }
+.phone[data-view] .chat-wait { display: none !important; }
 
 @media (prefers-reduced-motion: reduce) { .rf-border, .rf-q.typing i, .rf-q.fresh, .rf-panel { animation: none !important; } }
 

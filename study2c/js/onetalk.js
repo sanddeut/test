@@ -6,8 +6,9 @@
 
 const one = { open: false, hidden: 0 };
 // fade: 지난 대화를 접지 않고 제자리에 작고 흐리게 남김 (지금 말만 크게, 늘 화면 안에) / fold: 위 한 줄 「지난 대화 N개 · 펼치기」로 접음
-// 주소 끝에 ?one=fold 를 붙이면 접는 방식으로 볼 수 있음
-const ONE_MODE = new URLSearchParams(location.search).get("one") === "fold" ? "fold" : "fade";
+// plain(기본): 원래 개선안 대화창 그대로(지난 말은 위로 밀려 올라감), 지금 말만 크게
+// 주소 끝에 ?one=fold / ?one=fade 를 붙이면 접는 방식 / 흐리게 남기는 방식으로 볼 수 있음
+const ONE_MODE = ["fold", "fade"].includes(new URLSearchParams(location.search).get("one")) ? new URLSearchParams(location.search).get("one") : "plain";
 
 function setupOneTalk() {
   const bar = document.createElement("button");
@@ -46,6 +47,7 @@ function oneUpdate() {
     const bar = $("#one-bar");
     const on = Boolean(S?.unified) && !one.open;
     if (ONE_MODE === "fade") return oneFade(c, bar);
+    if (ONE_MODE === "plain") return onePlain(c, bar);
     c.classList.toggle("one", on);
     if (!bar) return;
     if (!S?.unified) { bar.hidden = true; return; }
@@ -104,4 +106,14 @@ function oneFade(c, bar) {
     oneFadeCur = cur;
     requestAnimationFrame(() => cur.scrollIntoView({ block: "end", behavior: "smooth" }));
   }
+}
+
+// 원래 대화창 그대로: 지금 말에만 크게 표시 (지난 말은 원래 개선안처럼 위로 밀려 올라감)
+function onePlain(c, bar) {
+  if (bar) bar.hidden = true;
+  const on = Boolean(S?.unified);
+  c.classList.toggle("one-plain", on);
+  if (!on) return;
+  const cur = oneCurrent();
+  for (const el of c.children) if (el.classList.contains("one-cur") !== (el === cur)) el.classList.toggle("one-cur", el === cur);
 }

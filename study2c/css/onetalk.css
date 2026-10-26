@@ -30,4 +30,10 @@
 .chat.one-fade > #run-card.one-cur .choice b, .chat.one-fade > #run-card.one-cur .chip { font-size: 17px; }
 
 /* 입력창 위의 기다림 띠(빨간 점 · ~하고 있어요 · 잠시만 기다려 주세요 · 멈추기)는 쓰지 않음 */
-.chat-wait { display: none !important; }
+.phone[data-view] .chat-wait { display: none !important; }
+
+/* 원래 대화창 그대로, 지금 말만 크게 */
+.chat.one-plain > .bubble.agent.one-cur { max-width: 100%; font-size: 21px; font-weight: 600; line-height: 1.55; padding: 18px; }
+.chat.one-plain > #run-card.one-cur .rc-q { font-size: 21px; line-height: 1.55; }
+.chat.one-plain > #run-card.one-cur #rc-who, .chat.one-plain > #run-card.one-cur .think-t { font-size: 17px; }
+.chat.one-plain > #run-card.one-cur .choice b, .chat.one-plain > #run-card.one-cur .chip { font-size: 17px; }
