@@ -1068,3 +1068,6 @@ body.talk-unstarted .phone[data-view] .composer.only-chat { display: none !impor
 .why-link .ms { font-size: 16px; }
 .why-link:disabled { color: #9aa0a6; }
 body:not(.guide):not(.unified) .why-link { display: none; }
+
+/* study2c: 맨 위 「AI 도우미」 헤더는 두 안 모두 없앰 (AI 말풍선에 프로필이 붙어 누가 말하는지 보임) */
+.phone[data-view] .chat-head.only-chat { display: none !important; }

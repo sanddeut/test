@@ -23,13 +23,13 @@ function setupOneTalk() {
     oneUpdate();
     if (one.open) chat().scrollTop = chat().scrollHeight;
   };
-  $(".chat-head").after(bar);
+  chat().before(bar);
   // 한 세트씩 보기: 위 ⌃(이전 세트) · 아래 ⌄(다음 세트)
   const up = document.createElement("button");
   up.type = "button"; up.id = "one-up"; up.className = "one-nav one-up only-chat"; up.hidden = true;
   up.setAttribute("aria-label", "이전 대화"); up.innerHTML = '<span class="ms">keyboard_arrow_up</span>';
   up.onclick = () => oneGo(-1);
-  $(".chat-head").after(up);
+  chat().before(up);
   const down = document.createElement("button");
   down.type = "button"; down.id = "one-down"; down.className = "one-nav one-down only-chat"; down.hidden = true;
   down.setAttribute("aria-label", "다음 대화"); down.innerHTML = '<span class="ms">keyboard_arrow_down</span>';
@@ -176,6 +176,88 @@ function onePage(c, bar) {
     if (el.classList.contains("one-hide") !== hide) el.classList.toggle("one-hide", hide);
     if (el.classList.contains("one-cur") !== (el === cur)) el.classList.toggle("one-cur", el === cur);
   }
+  // 세트가 바뀌면 전환 효과: 다음·새 세트는 아래에서 올라오고, 이전 세트는 위에서 내려옴
+  const shown = one.page ?? last;
+  const firstEl = pages[shown][0];
+  if (one.shownEl !== firstEl) {
+    const back = one.shownIdx != null && shown < one.shownIdx;
+    one.shownEl = firstEl; one.shownIdx = shown;
+    c.classList.remove("one-in-up", "one-in-down"); void c.offsetWidth;
+    c.classList.add(back ? "one-in-down" : "one-in-up");
+  }
   if (up) up.hidden = (one.page ?? last) === 0;
   if (down) down.hidden = one.page == null;
 }
+
+// =====================================================================
+// 허용 뒤 진행 카드 안에 실제 앱 화면을 작게 보여 줌 (스플래시 → 첫 화면 → 출발지 검색)
+// 출발지를 알리고 잠시 뒤 작은 화면은 접히고 「실행화면 보기」 버튼으로 바뀜
+// =====================================================================
+const MINI_SCALE = 0.42;
+const MINI_MAX_MS = 30000;
+const mini = { on: false, home: null, t0: 0, endAt: 0 };
+const _showPermDialogOne = showPermDialog;
+showPermDialog = function () {
+  return _showPermDialogOne().then((ok) => { if (ok && S && !S.finished) miniStart(); return ok; });
+};
+function miniStart() {
+  const clip = $(".screen-clip");
+  const card = $("#run-card");
+  if (!clip || !card || mini.on) return;
+  mini.home = { parent: clip.parentNode, next: clip.nextSibling };
+  const box = document.createElement("div");
+  box.id = "rc-mini";
+  box.className = "rc-mini";
+  box.setAttribute("role", "button");
+  box.setAttribute("aria-label", "AI가 누르는 화면 크게 보기");
+  box.appendChild(clip);
+  (card.querySelector("#rc-open") || card.lastElementChild).before(box);
+  box.onclick = () => { miniEnd(true); showRun(true); };
+  card.classList.add("mini-on");
+  mini.on = true; mini.t0 = Date.now(); mini.endAt = 0;
+  miniFit();
+  logEvent("rc_mini_start");
+}
+function miniFit() {
+  const phone = $(".phone");
+  const clip = $("#rc-mini .screen-clip");
+  if (!clip) return;
+  const W = phone.clientWidth;
+  const H = phone.clientHeight;
+  phone.style.setProperty("--app-w", `${W}px`);
+  phone.style.setProperty("--app-h", `${H}px`);
+  phone.style.setProperty("--mini-w", `${Math.floor(W * MINI_SCALE)}px`);
+  phone.style.setProperty("--mini-h", `${Math.floor(H * MINI_SCALE)}px`);
+}
+function miniEnd(now = false) {
+  if (!mini.on) return;
+  const box = $("#rc-mini");
+  const clip = box?.querySelector(".screen-clip");
+  const restore = () => {
+    if (clip && mini.home) mini.home.parent.insertBefore(clip, mini.home.next);
+    box?.remove();
+    $("#run-card")?.classList.remove("mini-on");
+    mini.on = false;
+    fitScreen();
+  };
+  logEvent("rc_mini_end");
+  if (now || !box) return restore();
+  box.classList.add("closing"); // 접히는 효과 뒤 「실행화면 보기」로
+  setTimeout(restore, 600);
+}
+// 실행화면·직접 조작으로 갈 때는 바로 원래 자리로
+const _syncViewOne = syncView;
+syncView = function () {
+  if (mini.on && wantedView() !== "chat") miniEnd(true);
+  _syncViewOne();
+  if (mini.on) miniFit();
+};
+// 출발지를 알리고 3초 뒤(또는 다른 단계로 넘어가면) 접음
+setInterval(() => {
+  if (!mini.on || !S) return;
+  const id = S.steps[S.stepIdx]?.id;
+  const q = $("#rc-q");
+  const told = id === "origin" && q && !q.hidden && q.textContent.includes("출발지");
+  if (told && !mini.endAt) mini.endAt = Date.now() + 3000;
+  if ((mini.endAt && Date.now() > mini.endAt) || (id && !["taxi_open", "origin"].includes(id)) || Date.now() - mini.t0 > MINI_MAX_MS || S.finished) miniEnd();
+}, 250);
