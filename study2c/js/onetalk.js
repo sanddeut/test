@@ -471,7 +471,9 @@ function oneUndo(c, show, past) {
   const ai = [...c.children].filter((el) => show.has(el) && (el.id === "run-card" || (el.classList.contains("agent") && !el.classList.contains("typing")))).at(-1);
   const rq = ai?.id === "run-card" ? ai.querySelector("#rc-q") : null;
   const said = ai && (ai.id !== "run-card" || ai.classList.contains("asking") || (rq && !rq.hidden && rq.textContent.trim()));
-  const vis = Boolean(!past && S?.running && !S.finished && said);
+  // 카드에 이미 고를 버튼(수정·승인 등)이 있으면 「일시정지」「취소」는 빼 둠
+  const asking = ai?.id === "run-card" && ai.classList.contains("asking");
+  const vis = Boolean(!past && S?.running && !S.finished && said && !asking);
   if (row.hidden === vis) row.hidden = !vis; // 값이 바뀔 때만 (같은 값을 다시 넣어도 대화창 감시가 다시 돌아 무한 반복됨)
   if (!vis) return;
   const u = row.querySelector("#one-undo"), pz = row.querySelector("#one-pause");
@@ -593,8 +595,10 @@ setInterval(() => {
 setInterval(() => {
   if (!S?.unified) return;
   let box = $("#one-sum");
-  if (!S.rideDone) { if (box) box.remove(); return; }
+  if (!S.rideDone) { if (box) box.remove(); one.sumAt = null; return; }
   if (box) return;
+  if (!one.sumAt) one.sumAt = Date.now() + 2000; // 호출 완료 말이 먼저 뜨고, 요약은 조금 뒤에
+  if (Date.now() < one.sumAt) return;
   const f = S.form;
   const mine = (k) => (S.userSet?.[k] ? ' <em>내가 고름</em>' : "");
   const rows = [
@@ -607,7 +611,7 @@ setInterval(() => {
   ];
   box = document.createElement("div");
   box.id = "one-sum"; box.className = "one-sum";
-  box.innerHTML = `<b class="sum-t">AI가 한 일</b><ol>${rows.map((r) => `<li>${r}</li>`).join("")}</ol>`;
+  box.innerHTML = `<b class="sum-t">오늘 사용자님과 함께 한 일</b><ol>${rows.map((r) => `<li>${r}</li>`).join("")}</ol>`;
   const c = chat();
   const ai = [...c.children].filter((el) => el.id === "run-card" || (el.classList.contains("agent") && !el.classList.contains("typing"))).at(-1);
   if (ai) ai.after(box); else c.insertBefore(box, $("#chips"));

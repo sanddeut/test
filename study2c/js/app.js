@@ -2594,7 +2594,7 @@ function finish(status) {
   if (status === "completed" && !S.unified && S.session === 0 && S.rideDone && !S.postWaited) {
     S.postWaited = true;
     const sess = S;
-    setTimeout(() => { if (S === sess && !S.finished) finish("completed"); }, 10000);
+    setTimeout(() => { if (S === sess && !S.finished) finish("completed"); }, 15000); // study2c: 개선안과 같이 5초 늘림
     return false;
   }
   S.finished = true;
