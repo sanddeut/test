@@ -145,3 +145,6 @@
 
 /* 대화창 입력창 위의 기다림 띠(빨간 점 · ~하고 있어요 · 잠시만 기다려 주세요 · 멈추기)는 쓰지 않음 */
 .chat-wait { display: none !important; }
+
+/* 패널 메시지는 모두 같은 검은 글씨 (하는 중 · 검색 중 · 할게요) */
+.rf-layer:not([data-mode="ask"]) .rf-q { color: #1c1d21; font-weight: 500; }

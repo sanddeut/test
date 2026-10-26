@@ -69,7 +69,7 @@ async function rfEnter() {
   const L = $("#rf-layer");
   S.runFirst = true;
   S.runIntroShown = true; // improve.js의 [확인] 안내 대신 아래 안내
-  Object.assign(rf, { shown: "", stepSeen: null, doing: "", ask: null, picks: null, note: "", last: "", typing: false, key: "" });
+  Object.assign(rf, { line: "", msgStep: null, stepSeen: null, doing: "", ask: null, picks: null, note: "", last: "", typing: false, key: "" });
   L.classList.remove("intro", "live");
   $(".phone").classList.remove("rf-live");
   $("#rf-loading").classList.add("on");
@@ -80,7 +80,7 @@ async function rfEnter() {
   // 홈 화면을 거치지 않고 택시 앱 스플래시부터 보여 줌 (택시 앱 실행 단계는 여기서 끝냄)
   const open = S.steps.find((x) => x.id === "taxi_open");
   if (open) {
-    open.apply(S); S.rfOpened = true; rf.doing = `${TAXI_APP} 앱을 여는 중…`; renderPhone();
+    open.apply(S); S.rfOpened = true; rf.line = `${TAXI_APP} 앱을 여는 중…`; renderPhone();
     // 스플래시를 안내("AI가 '마음택시' 앱을 사용합니다.")가 끝날 때까지 띄워 둠
     const p = S.phone;
     const ms = RF_SWAP_MS + RF_INTRO_MS;
@@ -111,7 +111,7 @@ runAuto = async function (step) {
   if (step.id === "taxi_open" && S?.rfOpened) {
     logEvent("taxi_open_rf");
     await waitLoading();
-    rf.doing = ""; rfRender();
+    rf.line = `${TAXI_APP} 앱을 열었어요.`; rfRender();
     await sleep(RF_FIRST_MS * PACE); // 앱 첫 화면을 조금 더 보여 준 뒤 시작
     await gate();
     return true;
@@ -216,6 +216,8 @@ agentSay = async function (text, opts = {}) {
     rf.note = rf.note && rf.noteStep === S.stepIdx ? `${rf.note}\n${text}` : text;
     rf.noteStep = S.stepIdx;
     rf.last = text;
+    rf.line = text; // 패널 메시지는 화면에 맞춰 차례로: ~하는 중… → '…' 검색 중… → ~할게요 → 다음 단계 ~하는 중…
+    rf.msgStep = S.stepIdx;
     rfRender();
   }
   return r;
@@ -232,10 +234,10 @@ const _setActingRF = setActing;
 setActing = function (on) {
   _setActingRF(on);
   if (!S?.runFirst) return;
-  if (!on) { rf.doing = ""; rfRender(); return; } // 조작이 끝나면 "~하는 중…"을 내림 (끝난 화면에 하는 중 문구가 남지 않게)
-  // "~하는 중…"은 AI가 실제로 화면을 누르는 동안에만 (화면보다 먼저 바뀌거나 늦게 남지 않게)
+  if (!on) return;
+  // 이 단계에서 AI가 아직 말하기 전에 화면을 누르기 시작하면 "~하는 중…" (말한 뒤의 조작은 그 말을 그대로 둠)
   const id = S.steps[S.stepIdx]?.id;
-  if (id) rf.doing = `${DOING[id] || "앱을 조작하는 중"}…`;
+  if (id && rf.msgStep !== S.stepIdx) rf.line = `${DOING[id] || "앱을 조작하는 중"}…`;
   rf.note = "";
   rfRender();
 };
@@ -259,7 +261,7 @@ function rfRender() {
   L.querySelector(".rf-manual").disabled = $("#btn-manual").disabled;
   const on = rfOn() && !S.manual && !S.pinOpen;
   // 되돌리기로 앞 단계로 돌아가면 지난 단계의 말은 지움
-  if (S && rf.stepSeen != null && S.stepIdx < rf.stepSeen) rf.last = "";
+  if (S && rf.stepSeen != null && S.stepIdx < rf.stepSeen) { rf.last = ""; rf.line = ""; rf.msgStep = null; }
   if (S) rf.stepSeen = S.stepIdx;
   const pin = on && S.waiter?.pin && S.pinResolve && !S.paused && !S.ivWaiter; // 취소(멈춤) 뒤에는 멈춘 뒤 질문을 보여 줌
   const picks = on && !pin && rf.picks && S.waiter === rf.picks.waiter ? rf.picks : null;
@@ -273,9 +275,8 @@ function rfRender() {
   L.querySelector(".rf-undo").hidden = !(on && live && !asking && chat().querySelector(":scope > .undo-link"));
   // 메시지 자리 하나에: 답을 준비하는 중 "…" / 화면을 누르는 동안 "~하는 중…" / 멈췄을 때 / 그 외에는 AI의 마지막 말 (한 번에 하나만)
   const typing = on && !asking && rf.typing;
-  const status = !on || asking || typing ? "" : S.paused ? "멈춰 있어요" : live ? rf.doing : "";
-  const q = pin || ask ? rfQuestion() : picks ? picks.question : talk ? rf.last || lastAgentText() : typing ? "" : status || rf.last || rf.shown || "";
-  if (!asking && !typing && q) rf.shown = q; // 조작이 끝나고 아직 할 말이 없으면 빈칸 대신 방금 문구를 그대로 둠
+  const status = !on || asking || typing ? "" : S.paused ? "멈춰 있어요" : "";
+  const q = pin || ask ? rfQuestion() : picks ? picks.question : talk ? rf.last || lastAgentText() : typing ? "" : status || rf.line || rf.last || "";
   const sig = ask ? ask.options.map((o) => o.id + o.label).join(",") : picks ? picks.list.map((o) => o.label).join(",") : "";
   const kind = pin ? "pin" : picks ? "picks" : ask ? "ask" : talk ? "talk" : "";
   const key = `${kind}|${typing}|${status ? 1 : 0}|${q}|${sig}|${asking ? S.stepIdx : ""}`;
@@ -283,7 +284,6 @@ function rfRender() {
   rf.key = key;
   const qEl = L.querySelector(".rf-q");
   const prevQ = qEl.textContent;
-  qEl.classList.toggle("doing", Boolean(status));
   qEl.classList.toggle("typing", typing);
   if (typing) qEl.innerHTML = "<i></i><i></i><i></i>"; else qEl.textContent = q || "";
   if (q && q !== prevQ) { qEl.classList.remove("fresh"); void qEl.offsetWidth; qEl.classList.add("fresh"); }
@@ -374,5 +374,6 @@ tap = function (sel, { pre = 450, hold = 350, after = 450, quick = false } = {})
 };
 const _typeTextRF = typeText;
 typeText = function (set, text, ms = 170) {
+  if (S?.runFirst) { rf.line = `‘${text}’ 검색 중…`; rfRender(); } // 검색어를 치는 동안
   return _typeTextRF(set, text, S?.runFirst ? ms * RF_ACT_SLOW : ms);
 };
