@@ -27,8 +27,9 @@ function setupRunFirst() {
     <div class="rf-border"></div>
     <div class="rf-head"><div class="rf-chip" role="status">AI가 앱 사용중..</div>
       <div class="rf-ctrl"><button type="button" class="rf-stop">멈추기</button><button type="button" class="rf-manual">내가 하기</button></div></div>
+    <button type="button" class="rf-undo" hidden><span class="ms">undo</span>되돌리기</button>
     <div class="rf-panel" role="region" aria-label="AI 도우미" aria-live="polite">
-      <div class="rf-ptop"><button type="button" class="rf-avatar" aria-label="AI 도우미 (대화창 보기)">AI</button><p class="rf-q"></p><button type="button" class="rf-undo" hidden><span class="ms">undo</span>되돌리기</button></div><div class="rf-pv"></div><div class="rf-opts"></div><div class="rf-talk"></div><div class="rf-fab-slot"></div>
+      <div class="rf-ptop"><button type="button" class="rf-avatar" aria-label="AI 도우미 (대화창 보기)">AI</button><p class="rf-q"></p></div><div class="rf-pv"></div><div class="rf-opts"></div><div class="rf-talk"></div><div class="rf-fab-slot"></div>
     </div>`;
   phone.appendChild(L);
   phone.style.setProperty("--rf-panel", `${RF_PANEL}px`);
@@ -144,7 +145,7 @@ syncView = function () {
   rfRender();
 };
 
-// 실행화면 크기: 스플래시·안내 동안은 기기 전체 화면, 그 뒤에는 위 헤더와 아래 AI 패널 사이에 85%로 줄여 가운데
+// 실행화면 크기: 스플래시·안내 동안은 기기 전체 화면, 그 뒤에는 앱 화면 전체가 위 헤더와 아래 AI 패널 사이에 들어가게 줄여 가운데
 const RF_SCALE = 0.85;
 const RF_GAP = 14; // 줄인 앱 화면 위아래 여백
 const _fitScreenRF = fitScreen;
@@ -161,11 +162,13 @@ fitScreen = function () {
     clip.style.height = `${H}px`;
     return;
   }
+  // 앱은 기기 전체 크기 그대로 그리고, 잘리지 않고 한눈에 보이게 헤더와 패널 사이에 맞춰 줄임 (최대 85%)
   const avail = H - RF_HEAD - RF_PANEL - RF_GAP * 2;
-  phone.style.setProperty("--scale", String(RF_SCALE));
-  phone.style.setProperty("--app-h", `${Math.floor(avail / RF_SCALE)}px`); // 앱은 기기 폭 그대로 그리고 85%로 줄임
-  clip.style.width = `${Math.floor(W * RF_SCALE)}px`;
-  clip.style.height = `${Math.floor(avail)}px`;
+  const scale = Math.min(RF_SCALE, avail / H);
+  phone.style.setProperty("--scale", scale.toFixed(4));
+  phone.style.setProperty("--app-h", `${H}px`);
+  clip.style.width = `${Math.floor(W * scale)}px`;
+  clip.style.height = `${Math.floor(H * scale)}px`;
 };
 
 // 실행화면에서 「내가 앱 조작하기」로 들어갔다가 돌아오면 다시 실행화면으로 (원래는 대화창으로)
