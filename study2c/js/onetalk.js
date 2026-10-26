@@ -33,6 +33,12 @@ function setupOneTalk() {
   const down = document.createElement("button");
   down.type = "button"; down.id = "one-down"; down.className = "one-nav one-down only-chat"; down.hidden = true;
   down.setAttribute("aria-label", "다음 대화"); down.innerHTML = '<span class="ms">keyboard_arrow_down</span>';
+  // 지난 대화를 보는 중임을 알림 (위) · 지금 대화로 바로 돌아가기 (아래)
+  const where = document.createElement("div");
+  where.id = "one-where"; where.className = "one-where only-chat"; where.hidden = true;
+  where.innerHTML = '<span class="one-where-t"><span class="ms">history</span>지난 대화 · AI는 잠시 멈춤</span><button type="button" id="one-now" class="one-now">지금으로 <span class="ms">keyboard_double_arrow_down</span></button>';
+  chat().before(where);
+  where.querySelector("#one-now").onclick = () => { one.page = null; if (S) logEvent("one_page_now"); oneUpdate(); };
   down.onclick = () => oneGo(1);
   chat().after(down);
   new MutationObserver(() => oneUpdate()).observe(chat(), { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "hidden"] });
@@ -167,7 +173,7 @@ function onePage(c, bar) {
   // 새 AI 말이 오면 지금 세트로 돌아옴
   const cur = oneCurrent();
   const key = `${c.querySelectorAll(":scope > .bubble:not(.typing)").length}|${$("#run-card")?.classList.contains("asking") ? 1 : 0}`; // 새 말풍선이 오거나 질문이 뜰 때만
-  if (key !== one.curKey) { one.curKey = key; one.page = null; }
+  if (key !== one.curKey) one.curKey = key; // (지난 대화를 보는 동안에는 AI가 멈춰 있으므로 화면을 바꾸지 않음)
   if (one.page != null && one.page >= last) one.page = null;
   const show = new Set(pages[one.page ?? last]);
   for (const el of c.children) {
@@ -187,6 +193,10 @@ function onePage(c, bar) {
   }
   if (up) up.hidden = (one.page ?? last) === 0;
   if (down) down.hidden = one.page == null;
+  const past = one.page != null;
+  $("#one-where") && ($("#one-where").hidden = !past);
+  c.classList.toggle("one-past-view", past);
+  onePauseForHistory(past);
 }
 
 // =====================================================================
@@ -314,3 +324,57 @@ syncView = function () {
     setTimeout(() => { if (!intro.hidden) intro.querySelector(".run-intro-ok")?.click(); delete intro.dataset.auto; }, INTRO_MS);
   }
 };
+
+// =====================================================================
+// 지나간 AI 질문에 선택지를 남기고, 내가 고른 것에 표시 (✓)
+// 질문에 답하면 질문은 대화 기록(말풍선)으로 옮겨지는데, 그 말풍선 안에 그때의 선택지를 작게 붙임
+// =====================================================================
+let oneChoices = null;
+const _setChipsHist = setChips;
+setChips = function (options, onPick) {
+  if (options?.length) {
+    const opts = typeof relabel === "function" ? relabel(options, choiceLabels()) : options;
+    oneChoices = opts.map((o) => ({ label: o.label, desc: o.desc, price: o.price }));
+  }
+  return _setChipsHist(options, onPick);
+};
+const _renderPicksHist = renderPicks;
+renderPicks = function (list, waiter, question) {
+  oneChoices = list.map((o) => ({ label: o.label }));
+  return _renderPicksHist(list, waiter, question);
+};
+const _appendBubbleHist = appendBubble;
+appendBubble = function (role, text, opts) {
+  const choices = role === "user" ? oneChoices : null;
+  if (role === "user") oneChoices = null;
+  const r = _appendBubbleHist(role, text, opts);
+  if (choices?.length && S?.unified) oneAttachChoices(choices, text);
+  return r;
+};
+function oneAttachChoices(choices, answer) {
+  const users = chat().querySelectorAll(":scope > .bubble.user");
+  let q = users[users.length - 1]?.previousElementSibling;
+  while (q && !(q.classList.contains("bubble") && q.classList.contains("agent") && !q.classList.contains("typing"))) q = q.previousElementSibling;
+  if (!q || q.querySelector(".hist-opts")) return;
+  const said = String(answer || "").trim();
+  const picked = choices.find((o) => o.label === said) || choices.find((o) => said && said.includes(o.label));
+  const box = document.createElement("div");
+  box.className = "hist-opts";
+  box.innerHTML = choices.map((o) => `<div class="${o === picked ? "on" : ""}"><span>${esc(o.label)}${o.desc ? `<small>${esc(o.desc)}</small>` : ""}</span>${o.price ? `<em>${esc(o.price)}</em>` : ""}${o === picked ? '<span class="ms">check_circle</span>' : ""}</div>`).join("");
+  q.appendChild(box);
+}
+
+// 지난 대화를 보는 동안에는 AI를 잠시 멈추고, 지금 대화로 돌아오면 이어서 진행
+function onePauseForHistory(past) {
+  if (!S || S.finished) return;
+  if (past && !one.histPaused && S.running && !S.paused) {
+    one.histPaused = true;
+    S.paused = true;
+    logEvent("one_history_pause");
+    syncControls();
+  } else if (!past && one.histPaused) {
+    one.histPaused = false;
+    logEvent("one_history_resume");
+    resume();
+  }
+}

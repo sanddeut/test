@@ -97,3 +97,22 @@
 .run-intro .run-intro-ok { display: none !important; }
 
 .rc-mini[hidden] { display: none !important; }
+
+/* 지나간 질문의 선택지 (내가 고른 것에 ✓) */
+.bubble .hist-opts { margin-top: 10px; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px #e3e6ec; font-size: 14.5px; font-weight: 500; }
+.bubble .hist-opts > div { display: flex; align-items: center; gap: 8px; padding: 9px 12px; color: #8a8e98; }
+.bubble .hist-opts > div + div { border-top: 1px solid #eef0f3; }
+.bubble .hist-opts > div > span:first-child { flex: 1; min-width: 0; }
+.bubble .hist-opts small { display: block; font-size: 12px; color: #a0a4ad; }
+.bubble .hist-opts em { font-style: normal; font-size: 13px; }
+.bubble .hist-opts > div.on { color: #0b57d0; font-weight: 700; background: #eef3fd; }
+.bubble .hist-opts > div.on em { color: #0b57d0; }
+.bubble .hist-opts .ms { font-size: 20px; color: #0b57d0; font-variation-settings: "FILL" 1; }
+
+/* 지난 대화를 보는 중: 위에 알림 + 「지금으로」 */
+.one-where { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 14px 0; padding: 6px 6px 6px 12px; border-radius: 12px; background: #fff4e5; color: #8a5a00; font-size: 14px; font-weight: 600; flex: none; }
+.one-where[hidden] { display: none !important; }
+.one-where-t { display: inline-flex; align-items: center; gap: 5px; }
+.one-where .ms { font-size: 18px; }
+.one-now { display: inline-flex; align-items: center; gap: 2px; padding: 6px 12px; border: 0; border-radius: 999px; background: #fff; color: #0b57d0; font: inherit; font-size: 14px; font-weight: 700; box-shadow: 0 1px 4px rgba(0, 0, 0, .1); }
+.chat.one-page.one-past-view > :not(.one-hide) { opacity: .85; }
