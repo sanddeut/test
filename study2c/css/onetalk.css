@@ -130,3 +130,7 @@
 .chat.one-page.one-past-view > :not(.one-hide) { opacity: 1; }
 .chat.one-page.one-past-view { -webkit-mask-image: none !important; mask-image: none !important; }
 .one-nav.one-down { margin: 4px auto 50px; } /* 「말로 하기」 버튼 줄보다 위에 (겹치지 않게) */
+
+/* 입력창 위 「말로 하기 / 글로 하기」 전환 버튼은 없앰 (처음 「눌러서 대화 시작」에서 고른 방식으로 계속) */
+.phone .mode-fab { display: none !important; }
+.one-nav.one-down { margin-bottom: 8px; }
