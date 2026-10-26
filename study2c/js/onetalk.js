@@ -72,3 +72,10 @@ start = function () {
   one.open = false;
   return _startOne();
 };
+
+// 마음택시 앱을 열 때 진행 카드의 앱 카드(마음택시 · 택시 앱)는 빼 둠 (앱을 연다는 걸 알릴 다른 방법을 정할 때까지)
+const _stepPreviewOne = stepPreview;
+stepPreview = function () {
+  if (S?.steps[S.stepIdx]?.id === "taxi_open") return null;
+  return _stepPreviewOne();
+};
