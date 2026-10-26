@@ -197,3 +197,19 @@
 .one-sum .sum-t { display: block; font-size: 15px; color: #4a5fa8; margin-bottom: 6px; }
 .one-sum ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 15.5px; line-height: 1.45; color: #2a2d33; }
 .one-sum em { font-style: normal; font-size: 12.5px; font-weight: 700; color: #1e8e3e; background: #e6f4ea; border-radius: 999px; padding: 1px 7px; margin-left: 4px; }
+
+/* 읽을 시간 막대: 말풍선(카드) 맨 위에 붙어 위쪽 테두리처럼 */
+.chat.one-page > #run-card, .chat.one-page > .bubble.agent { position: relative; }
+.one-read { position: absolute; inset: 0; margin: 0 !important; height: auto; border-radius: inherit; background: none; overflow: hidden; pointer-events: none; }
+.one-read i { position: absolute; left: 0; top: 0; height: 5px; border-radius: 0; }
+
+/* 읽을 시간 막대는 회색 말풍선(.rc-body) 맨 위에 */
+.chat.one-page #run-card .rc-body { position: relative; }
+/* 결과(카드 안 말)가 뜨면 위 줄의 「~하는 중」은 숨김 */
+.chat.one-page #run-card.one-said #rc-status::after { content: none !important; }
+.chat.one-page #run-card.one-said #rc-status { visibility: hidden; }
+
+/* 「~하는 중…」(답을 준비하는 중 · 앱을 살펴보는 중 등): 말풍선 없이 카드 위 줄과 같은 모양 (AI 프로필 옆 회색 글씨) */
+.chat.one-page > #typing { background: none !important; box-shadow: none !important; border-radius: 0; margin-top: 0; padding: 0 0 0 46px; min-height: 36px; display: flex; align-items: center; }
+.chat.one-page > #typing::before { top: 0; }
+.chat.one-page > #typing, .chat.one-page > #typing::after { font-size: 15.5px !important; font-weight: 500 !important; color: #6b6f7a; line-height: 1.4; }

@@ -145,7 +145,7 @@ function onePages(c) {
   for (const el of c.children) {
     if (el.id === "chips" || el.id === "chat-spacer" || el.id === "one-ctrl") continue;
     const page = pages.at(-1);
-    const isAI = (x) => (x.classList.contains("bubble") && x.classList.contains("agent") && !x.classList.contains("typing")) || x.id === "run-card";
+    const isAI = (x) => (x.classList.contains("bubble") && x.classList.contains("agent") && !x.classList.contains("typing")) || x.id === "run-card" || x.classList.contains("one-own"); // one-own: 새 화면에 따로 띄우는 「~하는 중」
     // 내 말이 오면 새 세트. AI 말도 한 세트에 하나만 (AI가 혼자 이어서 진행한 단계는 단계마다 따로)
     if (el.classList.contains("bubble") && el.classList.contains("user") && page.some((x) => x.classList.contains("bubble") || x.id === "run-card")) pages.push([]);
     else if (isAI(el) && page.some(isAI)) pages.push([]);
@@ -306,6 +306,10 @@ setInterval(() => {
   if (st && st.dataset.doing !== t) st.dataset.doing = t;
   const ty = $("#typing");
   if (ty && ty.dataset.doing !== t) ty.dataset.doing = t;
+  // 「~하는 중」과 그 결과(카드 안 말)가 함께 보이지 않게: 결과가 뜨면 「~하는 중」은 숨김
+  const card = $("#run-card"), q = $("#rc-q");
+  const said = Boolean(card && q && !q.hidden && q.textContent.trim());
+  if (card && card.classList.contains("one-said") !== said) card.classList.toggle("one-said", said);
 }, 200);
 
 // 앱 여는 단계가 너무 길지 않게: 읽을 시간 6초 → 2초, 연 뒤 기다림 3.5초 → 1.2초 (원래 약 14초 → 약 6초)
@@ -341,10 +345,14 @@ function planCard() {
   return d;
 }
 async function onePlan() {
-  one.doing = "앱을 살펴보는 중…"; // 카드 위 줄에만 (따로 「…」 말풍선은 띄우지 않음)
+  // 다음 화면(새 세트)에 「앱을 살펴보는 중…」만 떴다가, 그 자리에 「이렇게 진행할게요.」
+  one.doing = "앱을 살펴보는 중…";
+  showTyping(true);
+  $("#typing")?.classList.add("one-own");
   await sleep(2200 * PACE);
+  showTyping(false);
   one.doing = null;
-  const said = "앱을 살펴보고 이렇게 진행할게요.";
+  const said = "이렇게 진행할게요.";
   await agentSay(said, { gated: true });
   for (;;) {
     S.planAsk = true;
@@ -553,8 +561,8 @@ setInterval(() => {
     bar.id = "one-read"; bar.className = "one-read";
     bar.innerHTML = "<i></i>";
   }
-  const host = ai.id === "run-card" ? ai.querySelector("#rc-q") : ai;
-  if (host && bar.parentNode !== ai) { if (ai.id === "run-card") host.after(bar); else ai.appendChild(bar); }
+  const host = ai.id === "run-card" ? ai.querySelector(".rc-body") || ai : ai; // 회색 말풍선 맨 위 테두리처럼
+  if (bar.parentNode !== host) host.appendChild(bar);
   bar.firstChild.style.width = `${Math.min(100, ((p.t + 250) / p.total) * 100)}%`;
 }, 120);
 
@@ -584,3 +592,9 @@ setInterval(() => {
   if (ai) ai.after(box); else c.insertBefore(box, $("#chips"));
   logEvent("one_summary");
 }, 400);
+
+// 말풍선 안 「?」(판단 이유 펼쳐 보기)는 쓰지 않음
+decorateOne = function (el) {
+  if (el.classList.contains("has-more") || el.classList.contains("more-open")) el.classList.remove("has-more", "more-open");
+  if (el.nextElementSibling?.classList.contains("more-box")) el.nextElementSibling.remove();
+};
