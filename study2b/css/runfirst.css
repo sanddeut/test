@@ -142,3 +142,13 @@
 .rf-head { opacity: 1; pointer-events: auto; }
 .rf-layer.intro .rf-dim { z-index: 3; }
 .rf-layer.intro .rf-intro { z-index: 4; }
+
+/* 말풍선 묶음: 위에 「말로 하기/글로 하기」 전환 버튼(오른쪽), 아래 말풍선 */
+.rf-bwrap { position: absolute; left: 16px; right: 16px; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); max-height: calc(100% - 150px); display: flex; flex-direction: column; align-items: stretch; gap: 8px; pointer-events: none; }
+.rf-bwrap .rf-bubble { position: relative; left: auto; right: auto; bottom: auto; max-height: none; min-height: 0; flex: 0 1 auto; }
+.rf-bwrap .rf-bubble.doing, .rf-bwrap .rf-bubble.typing { align-self: flex-end; max-width: 100%; }
+.rf-fab-slot { display: flex; justify-content: flex-end; pointer-events: auto; }
+.rf-fab-slot:empty { display: none; }
+.rf-fab-slot .mode-fab { position: static; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); }
+.rf-bwrap:has(.rf-bubble[hidden]) .rf-fab-slot, .rf-bwrap:has(.rf-bubble.doing) .rf-fab-slot, .rf-bwrap:has(.rf-bubble.note) .rf-fab-slot { display: none; }
+.rf-talk { margin-top: 12px; }

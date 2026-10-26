@@ -26,9 +26,10 @@ function setupRunFirst() {
     <div class="rf-border"></div>
     <div class="rf-head"><div class="rf-chip" role="status">AI가 앱 사용중..</div>
       <div class="rf-ctrl"><button type="button" class="rf-stop">멈추기</button><button type="button" class="rf-manual">내가 하기</button></div></div>
-    <div class="rf-bubble" role="dialog" aria-live="polite" hidden>
-      <p class="rf-q"></p><div class="rf-pv"></div><div class="rf-opts"></div><div class="rf-talk"></div>
-    </div>
+    <div class="rf-bwrap"><div class="rf-fab-slot"></div>
+      <div class="rf-bubble" role="dialog" aria-live="polite" hidden>
+        <p class="rf-q"></p><div class="rf-pv"></div><div class="rf-opts"></div><div class="rf-talk"></div>
+      </div></div>
     <button type="button" class="rf-avatar" aria-label="AI 도우미 (대화창 보기)">AI</button>`;
   phone.appendChild(L);
   const load = document.createElement("div");
@@ -271,8 +272,15 @@ function rfComposer(inBubble) {
   const form = $("#composer");
   const slot = $("#rf-layer .rf-talk");
   if (!form || !slot || !rf.composerHome) return;
-  if (inBubble && form.parentNode !== slot) { slot.appendChild(form); if (inputMode.mode === "start" || inputMode.mode === "pick") setInputMode("text"); }
-  else if (!inBubble && form.parentNode === slot) rf.composerHome.after(form);
+  const fab = $("#mode-fab");
+  if (inBubble && form.parentNode !== slot) {
+    slot.appendChild(form);
+    if (inputMode.mode === "start" || inputMode.mode === "pick") setInputMode("text");
+    if (fab) $("#rf-layer .rf-fab-slot").appendChild(fab); // 말로 하기 ↔ 글로 하기는 말풍선 위 오른쪽으로 뺌
+  } else if (!inBubble && form.parentNode === slot) {
+    rf.composerHome.after(form);
+    if (fab) form.appendChild(fab);
+  }
 }
 
 function rfBtn(label, cls, fn) {
