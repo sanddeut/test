@@ -92,3 +92,6 @@
 .chat.one-page > .bubble.agent.one-cur { font-size: 18px; padding: 14px 16px; }
 .chat.one-page > #run-card.one-cur .rc-q { font-size: 18px; }
 .chat.one-page > #run-card.one-cur .choice b, .chat.one-page > #run-card.one-cur .chip { font-size: 16px; }
+
+/* 실행화면 첫 안내는 저절로 닫히므로 [확인] 버튼은 숨김 */
+.run-intro .run-intro-ok { display: none !important; }

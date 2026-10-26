@@ -291,3 +291,15 @@ const _dwellOne = dwell;
 dwell = function (ms = 1800) {
   return _dwellOne(S?.fastOpen ? Math.min(ms, 1200) : ms);
 };
+
+// 실행화면 첫 안내(「AI가 마음택시 앱을 사용하는 실시간 화면을 보여드려요」): [확인]을 누르지 않아도 2.5초 뒤 저절로 닫히고 AI가 이어서 진행
+const INTRO_MS = 2500;
+const _syncViewIntro = syncView;
+syncView = function () {
+  _syncViewIntro();
+  const intro = $(".run-intro");
+  if (intro && !intro.hidden && !intro.dataset.auto) {
+    intro.dataset.auto = "1";
+    setTimeout(() => { if (!intro.hidden) intro.querySelector(".run-intro-ok")?.click(); delete intro.dataset.auto; }, INTRO_MS);
+  }
+};
