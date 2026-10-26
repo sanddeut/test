@@ -254,7 +254,8 @@ const won0 = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
 function fareOf(f, destKey = f.dest) {
   const km = distKm(f.origin || "current", destKey || TARGET_PLACE, typeof S !== "undefined" ? S?.geo : null);
   const base = 4800 + Math.max(0, km - 1.6) * (11200 / 19.6);
-  const fare = Math.round(base / 100) * 100 + CAR_TYPES[f.car].extra;
+  // 잘못 고른 출발지(원주 연세대)에서는 요금이 12만 원대 (먼 거리임을 알아차릴 수 있게)
+  const fare = (f.origin === WRONG_ORIGIN ? 121900 : Math.round(base / 100) * 100) + CAR_TYPES[f.car].extra;
   return Math.max(0, fare * (f.count || 1) - (f.coupon ? COUPON.amount : 0)); // 호출 대수만큼 (쿠폰은 한 번)
 }
 

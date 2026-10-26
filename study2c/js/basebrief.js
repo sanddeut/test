@@ -1,5 +1,5 @@
 // 기존안 간결하게: 대화 기록을 남기지 않고, AI 회색 카드(진행 카드) 안의 내용만 계속 바뀜
-// - 진행 카드가 생기면 그 위의 말풍선(첫 요청·지난 질문·「승인」 답 등)은 숨김
+// - 진행 카드가 처음 나오기 전의 대화(인사·첫 요청 등)는 그대로 두고, 그 뒤에 생긴 말풍선(지난 질문·「승인」 답 등)만 숨김
 // - 카드 안 질문이 비어 있을 때는 바로 앞 AI 말을 카드 안에 보여 줌 (카드 밖 말풍선 대신)
 // - 참가자의 입력·선택이 필요하지 않은 단계(앱 열기·출발지·목적지·예상 금액 등)는 안쪽 카드를 보여 주지 않음
 "use strict";
@@ -18,11 +18,13 @@ function briefUpdate() {
   const kids = [...c.children];
   if (!card) { kids.forEach((el) => el.classList.contains("bb-hide") && el.classList.remove("bb-hide")); return; }
   const before = kids.slice(0, kids.indexOf(card));
+  // 회색 카드가 처음 나오기 전의 대화(인사·첫 요청 등)는 그대로 둠
+  if (!card.dataset.bbInit) { card.dataset.bbInit = "1"; before.forEach((el) => { el.dataset.bbKeep = "1"; }); }
   const q = card.querySelector("#rc-q");
   const qEmpty = q.hidden || !q.textContent.trim();
-  const lastAgent = before.filter((el) => el.classList.contains("bubble") && el.classList.contains("agent") && !el.classList.contains("typing")).at(-1);
+  const lastAgent = before.filter((el) => !el.dataset.bbKeep && el.classList.contains("bubble") && el.classList.contains("agent") && !el.classList.contains("typing")).at(-1);
   for (const el of before) {
-    if (el.id === "chips" || el.id === "chat-spacer") continue;
+    if (el.id === "chips" || el.id === "chat-spacer" || el.dataset.bbKeep) continue;
     if (!el.classList.contains("bb-hide")) el.classList.add("bb-hide");
   }
   let echo = card.querySelector("#rc-echo");
