@@ -131,3 +131,8 @@
 .rf-compose .mode-fab { display: none !important; } /* 말로 하기 전환 버튼은 쓰지 않음 */
 .phone.rf[data-view="progress"] .run-frame { width: 100% !important; }
 .phone.rf[data-view="progress"] .screen-clip { margin: 0 auto !important; }
+
+/* AI 패널 없앰: 평소에는 앱 화면과 맨 아래 입력창만. 확인·선택할 일이 있을 때만 화면을 어둡게 하고 입력창 위에 질문 카드 */
+.rf-layer:not([data-mode="ask"]) .rf-panel { display: none; }
+.phone.rf[data-view="progress"] .screen-box { padding-bottom: calc(var(--rf-compose, 74px) + 12px) !important; }
+.rf-layer[data-mode="ask"] .rf-panel { border-radius: 20px; left: 10px; right: 10px; bottom: calc(var(--rf-compose, 74px) + 8px); }

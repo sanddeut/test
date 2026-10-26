@@ -151,7 +151,7 @@ fitScreen = function () {
   const clip = $(".screen-clip");
   const W = phone.clientWidth;
   const H = parseFloat(phone.style.getPropertyValue("--app-h")) || phone.clientHeight;
-  const cut = phone.classList.contains("rf") ? (phone.classList.contains("rf-live") ? RF_HEAD : 0) + RF_PANEL + RF_COMPOSE : 0; // 위 헤더, 아래 AI 패널과 입력창만큼 앱 화면을 줄임
+  const cut = phone.classList.contains("rf") ? (phone.classList.contains("rf-live") ? RF_HEAD : 0) + RF_COMPOSE : 0; // 위 헤더와 아래 입력창만큼 앱 화면을 줄임 (AI 패널은 없앰. 확인·선택할 때만 화면 위에 질문 카드)
   // 앱 화면은 기기 폭의 88% 크기로 줄여 가운데에 (앱 안의 배치는 기기 폭 그대로, 높이는 남는 칸에 맞춤)
   const room = H - cut - RF_GAP * 2;
   phone.style.setProperty("--scale", String(RF_SCALE));

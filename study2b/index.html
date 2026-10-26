@@ -32,6 +32,8 @@
     if (window.__GUIDE) document.write('<link rel="stylesheet" href="css/improve.css?v=' + window.__V + '">');
     // 새 개선안: 실행화면 기본 (runfirst.css·runfirst.js)
     if (window.__GUIDE) document.write('<link rel="stylesheet" href="css/runfirst.css?v=' + window.__V + '">');
+    // 기존안: study2c와 같음 · 대화 기록 없이 회색 카드 안 내용만 바뀜 (basebrief.css·basebrief.js)
+    else document.write('<link rel="stylesheet" href="css/basebrief.css?v=' + window.__V + '">');
   </script>
 </head>
 <body>
@@ -217,6 +219,6 @@
     </div>
   </aside>
 
-  <script>["scenarios", "llm", "phone", "app"].concat(window.__GUIDE ? ["improve", "runfirst"] : []).forEach(function (n) { document.write('<script src="js/' + n + '.js?v=' + window.__V + '"><\/script>'); });</script>
+  <script>["scenarios", "llm", "phone", "app"].concat(window.__GUIDE ? ["improve", "runfirst"] : ["basebrief"]).forEach(function (n) { document.write('<script src="js/' + n + '.js?v=' + window.__V + '"><\/script>'); });</script>
 </body>
 </html>

@@ -1,0 +1,3 @@
+/* 기존안 간결하게: 진행 카드 위의 대화 기록은 숨김 */
+.chat > .bb-hide { display: none !important; }
+.rc-echo[hidden] { display: none !important; }
