@@ -24,22 +24,16 @@ function setupOneTalk() {
     if (one.open) chat().scrollTop = chat().scrollHeight;
   };
   chat().before(bar);
-  // 한 세트씩 보기: 위 ⌃(이전 세트) · 아래 ⌄(다음 세트)
+  // 위 「지난 대화 ⌃」: 지난 대화 전체 보기 · 아래 「지금 단계로 돌아가기」(지난 대화를 볼 때만)
   const up = document.createElement("button");
   up.type = "button"; up.id = "one-up"; up.className = "one-nav one-up only-chat"; up.hidden = true;
   up.setAttribute("aria-label", "이전 대화"); up.innerHTML = '<span class="one-nav-t">지난 대화</span><span class="ms">keyboard_arrow_up</span>';
-  up.onclick = () => oneGo(-1);
+  up.onclick = () => oneHistory(true);
   chat().before(up);
   const down = document.createElement("button");
   down.type = "button"; down.id = "one-down"; down.className = "one-nav one-down only-chat"; down.hidden = true;
-  down.setAttribute("aria-label", "다음 대화"); down.innerHTML = '<span class="ms">keyboard_arrow_down</span>';
-  // 지난 대화를 보는 중임을 알림 (위) · 지금 대화로 바로 돌아가기 (아래)
-  const where = document.createElement("div");
-  where.id = "one-where"; where.className = "one-where only-chat"; where.hidden = true;
-  where.innerHTML = '<span class="one-where-t"><span class="ms">history</span>지난 대화 · AI는 잠시 멈춤</span><button type="button" id="one-now" class="one-now">지금으로 <span class="ms">keyboard_double_arrow_down</span></button>';
-  chat().before(where);
-  where.querySelector("#one-now").onclick = () => { one.page = null; if (S) logEvent("one_page_now"); oneUpdate(); };
-  down.onclick = () => oneGo(1);
+  down.setAttribute("aria-label", "지금 단계로 돌아가기"); down.innerHTML = '지금 단계로 돌아가기 <span class="ms">keyboard_arrow_down</span>';
+  down.onclick = () => oneHistory(false);
   chat().after(down);
   new MutationObserver(() => oneUpdate()).observe(chat(), { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "hidden"] });
 }
@@ -162,6 +156,15 @@ function oneGo(d) {
   if (S) logEvent("one_page", { page: next + 1, of: last + 1 });
   oneUpdate();
 }
+// 「지난 대화 ⌃」: 지난 대화를 단계로 나누지 않고 한 번에 스크롤해서 봄 (그동안 AI는 잠시 멈춤) · 「지금 단계로 돌아가기」로 지금 세트로
+function oneHistory(on) {
+  one.page = on ? -1 : null;
+  if (S) logEvent(on ? "one_history_open" : "one_page_now");
+  oneUpdate();
+  const c = chat();
+  if (on) requestAnimationFrame(() => { c.scrollTop = c.scrollHeight; if (typeof focusUserMoved !== "undefined") focusUserMoved = true; }); // 원래 개선안의 자동 위치 맞춤이 스크롤을 되돌리지 않게
+  else c.scrollTop = 0;
+}
 function onePage(c, bar) {
   if (bar) bar.hidden = true;
   const on = Boolean(S?.unified);
@@ -174,8 +177,8 @@ function onePage(c, bar) {
   const cur = oneCurrent();
   const key = `${c.querySelectorAll(":scope > .bubble:not(.typing)").length}|${$("#run-card")?.classList.contains("asking") ? 1 : 0}`; // 새 말풍선이 오거나 질문이 뜰 때만
   if (key !== one.curKey) one.curKey = key; // (지난 대화를 보는 동안에는 AI가 멈춰 있으므로 화면을 바꾸지 않음)
-  if (one.page != null && one.page >= last) one.page = null;
-  const show = new Set(pages[one.page ?? last]);
+  const past = one.page != null;
+  const show = new Set(past ? pages.flat() : pages[last]); // 지난 대화 보기: 모두 / 평소: 지금 세트만
   for (const el of c.children) {
     if (el.id === "chips" || el.id === "chat-spacer" || el.id === "one-undo") continue;
     const hide = !show.has(el);
@@ -183,18 +186,16 @@ function onePage(c, bar) {
     if (el.classList.contains("one-cur") !== (el === cur)) el.classList.toggle("one-cur", el === cur);
   }
   // 세트가 바뀌면 전환 효과: 다음·새 세트는 아래에서 올라오고, 이전 세트는 위에서 내려옴
-  const shown = one.page ?? last;
-  const firstEl = pages[shown][0];
+  const shown = past ? -1 : last;
+  const firstEl = past ? null : pages[last][0];
   if (one.shownEl !== firstEl) {
     const back = one.shownIdx != null && shown < one.shownIdx;
     one.shownEl = firstEl; one.shownIdx = shown;
     c.classList.remove("one-in-up", "one-in-down"); void c.offsetWidth;
     c.classList.add(back ? "one-in-down" : "one-in-up");
   }
-  if (up) up.hidden = (one.page ?? last) === 0;
-  if (down) down.hidden = one.page == null;
-  const past = one.page != null;
-  $("#one-where") && ($("#one-where").hidden = !past);
+  if (up) up.hidden = past || last === 0;
+  if (down) down.hidden = !past;
   c.classList.toggle("one-past-view", past);
   oneUndo(c, show, past);
   onePauseForHistory(past);
@@ -380,19 +381,19 @@ function onePauseForHistory(past) {
   }
 }
 
-// 지금 세트에서도 「되돌리기」: 대화 기록의 마지막 「되돌리기」가 지금 세트 밖(지난 세트)에 있으면, 지금 말 아래에 같은 버튼을 둠
+// 지금 세트에 「방금 한 일 취소」: 대화 기록의 마지막 「되돌리기」가 지금 세트 밖(지난 세트)에 있으면, 지금 말 아래에 같은 기능의 버튼을 둠
 function oneUndo(c, show, past) {
   let b = $("#one-undo");
   const link = [...c.querySelectorAll(":scope > .undo-link")].at(-1);
   const need = !past && link && !show.has(link) && S?.running && !S.finished;
-  if (!need) { if (b) b.hidden = true; return; }
+  if (!need) { if (b && !b.hidden) b.hidden = true; return; } // 값이 바뀔 때만 (같은 값을 다시 넣어도 대화창 감시가 다시 돌아 무한 반복됨)
   if (!b) {
     b = document.createElement("button");
     b.type = "button"; b.id = "one-undo"; b.className = "one-undo"; // improve.js가 .undo-link를 지웠다 다시 붙이므로 다른 클래스
-    b.innerHTML = '<span class="ms">undo</span>되돌리기';
+    b.innerHTML = '<span class="ms">undo</span>방금 한 일 취소'; // 되돌리기와 같은 기능. 지금 단계에서 보이게 이름을 「방금 한 일 취소」로
     b.onclick = () => { const l = [...chat().querySelectorAll(":scope > .undo-link")].at(-1); if (l) { logEvent("one_undo"); l.click(); } };
   }
-  b.hidden = false;
+  if (b.hidden) b.hidden = false;
   const last = [...c.children].filter((el) => show.has(el)).at(-1);
   if (last && last.nextElementSibling !== b) last.after(b);
 }
