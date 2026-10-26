@@ -130,3 +130,8 @@
 .chat-wait { display: none !important; }
 
 @media (prefers-reduced-motion: reduce) { .rf-border, .rf-q.typing i, .rf-q.fresh, .rf-panel { animation: none !important; } }
+
+/* 화면 테두리도 앱 화면과 함께 작아져, 작은 화면(헤더 포함)을 감쌈 */
+.rf-border { top: 0; left: 0; width: 100%; height: 100%; inset: auto;
+  transition: opacity .6s ease, top 1.1s cubic-bezier(.2, .8, .2, 1), left 1.1s cubic-bezier(.2, .8, .2, 1), width 1.1s cubic-bezier(.2, .8, .2, 1), height 1.1s cubic-bezier(.2, .8, .2, 1), border-radius 1.1s, border-width 1.1s; }
+.phone.rf-live .rf-border { top: 67px; left: 9px; width: calc(var(--rf-tw, 94px) + 6px); height: calc(30px + var(--rf-th, 192px) + 6px); border-width: 3px; border-radius: 13px; }
