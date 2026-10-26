@@ -1,7 +1,7 @@
 // 새 개선안(study2b): 실행화면을 기본으로 보여 줌 (improve.js 위에 얹음)
 // - 택시를 불러 달라고 하면 허용 팝업 → 허용하면 로딩 화면 뒤 튕기듯 빠지며 앱 전체 화면으로
 // - 처음에는 화면을 어둡게 하고 흰 글씨로 "AI가 '마음택시' 앱을 사용합니다." → 딤이 약하게 남고, 오른쪽 위 「AI가 앱 사용중..」 알약 + 화면 전체 테두리
-// - 오른쪽 아래 AI 원형 프로필: 평소에는 "출발지를 찾는 중…"처럼 지금 하는 일을 말풍선으로, 알릴 말이 있으면 화면을 어둡게 하고 말풍선
+// - 오른쪽 아래 AI 원형 프로필: AI가 화면을 조작하는 동안에는 "출발지를 찾는 중…"처럼 지금 하는 일을 말풍선으로, 알릴 말이 있으면 화면을 어둡게 하고 말풍선
 //   확인·선택할 일이 있으면 거의 안 보일 만큼 어둡게 하고, 확인할 내용(호출 내용 등)은 말풍선 안에 모두 보여 줌
 // - 왼쪽 위 「AI가 앱 사용중..」 태그, 오른쪽 위 「멈추기」「내가 하기」
 // - 참가자가 직접 대화창으로 가지 않는 한 대화창으로 넘어가지 않음: 선택 질문, 말로(글로) 답하는 질문, 멈춘 뒤 대화, AI의 대답 모두 말풍선에서
@@ -10,9 +10,9 @@
 
 const RF_LOADING_MS = 900; // 허용한 뒤 로딩 화면
 const RF_SWAP_MS = 1200; // 튕기며 화면이 바뀌는 시간 (slideSwap과 같게)
-const RF_HEAD = 50; // 위 헤더 높이 (태그 + 멈추기 · 내가 하기)
+const RF_HEAD = 58; // 위 헤더 높이 (태그 + 멈추기 · 내가 하기)
 const RF_INTRO_MS = 2600; // "AI가 '마음택시' 앱을 사용합니다." 안내를 보여 주는 시간
-const rf = { ask: null, picks: null, note: "", noteStep: null, last: "", typing: false, key: "", runBeforeManual: false, composerHome: null };
+const rf = { doing: "", ask: null, picks: null, note: "", noteStep: null, last: "", typing: false, key: "", runBeforeManual: false, composerHome: null };
 
 const rfOn = () => Boolean(S?.runFirst && !S.finished && $(".phone").dataset.view === "progress");
 
@@ -66,13 +66,16 @@ async function rfEnter() {
   const L = $("#rf-layer");
   S.runFirst = true;
   S.runIntroShown = true; // improve.js의 [확인] 안내 대신 아래 안내
-  Object.assign(rf, { ask: null, picks: null, note: "", last: "", typing: false, key: "" });
+  Object.assign(rf, { doing: "", ask: null, picks: null, note: "", last: "", typing: false, key: "" });
   L.classList.remove("intro", "live");
   $("#rf-loading").classList.add("on");
   logEvent("rf_enter");
   await sleep(RF_LOADING_MS);
   S.showRun = true;
   S.rfSwap = true;
+  // 홈 화면을 거치지 않고 택시 앱 스플래시부터 보여 줌 (택시 앱 실행 단계는 여기서 끝냄)
+  const open = S.steps.find((x) => x.id === "taxi_open");
+  if (open) { open.apply(S); S.rfOpened = true; rf.doing = `${TAXI_APP} 앱을 여는 중…`; renderPhone(); }
   syncControls(); // → syncView에서 로딩 화면이 튕기며 빠지고 앱 화면이 들어옴
   await sleep(RF_SWAP_MS);
   L.classList.add("intro");
@@ -81,6 +84,19 @@ async function rfEnter() {
   L.classList.remove("intro");
   L.classList.add("live");
 }
+
+// 택시 앱은 실행화면으로 넘어올 때 이미 열었으므로, 앱 실행 단계는 스플래시가 끝나기를 기다리기만 함
+const _runAutoRF = runAuto;
+runAuto = async function (step) {
+  if (step.id === "taxi_open" && S?.rfOpened) {
+    logEvent("taxi_open_rf");
+    await waitLoading();
+    rf.doing = ""; rfRender();
+    await gate();
+    return true;
+  }
+  return _runAutoRF(step);
+};
 
 // 실행화면이 기본: 참가자가 프로필을 눌러 대화창으로 가지 않았으면, 끝날 때까지 실행화면 (직접 조작·비밀번호 입력 화면은 원래대로)
 const _wantedViewRF = wantedView;
@@ -184,7 +200,13 @@ showTyping = function (on) {
 const _setActingRF = setActing;
 setActing = function (on) {
   _setActingRF(on);
-  if (on && rf.note) { rf.note = ""; rfRender(); }
+  if (!S?.runFirst) return;
+  if (!on) { rf.doing = ""; rfRender(); return; } // 조작이 끝나면 "~하는 중…"을 내림 (끝난 화면에 하는 중 문구가 남지 않게)
+  // "~하는 중…"은 AI가 실제로 화면을 누르는 동안에만 (화면보다 먼저 바뀌거나 늦게 남지 않게)
+  const id = S.steps[S.stepIdx]?.id;
+  if (id) rf.doing = `${DOING[id] || "앱을 조작하는 중"}…`;
+  rf.note = "";
+  rfRender();
 };
 
 // 결제 비밀번호: 말풍선의 [화면 열기]로 앱의 비밀번호 창에 직접 입력
@@ -262,9 +284,7 @@ function rfRender() {
 
 // 평소 말풍선: 지금 하는 일 ("출발지를 찾는 중…")
 function rfDoing() {
-  const id = S.steps[S.stepIdx]?.id;
-  if (!id || S.phone.app === "home" && id !== "taxi_open") return "";
-  return `${DOING[id] || "앱을 조작하는 중"}…`;
+  return rf.doing;
 }
 
 // 개선안 입력창을 말풍선 안으로 옮기거나 원래 자리로 돌려 놓음
@@ -306,3 +326,10 @@ function rfQuestion() {
   if (q && !q.hidden && q.textContent.trim()) return q.textContent.trim();
   return S.lastQuestion || rf.last || lastAgentText();
 }
+
+// AI가 화면 조작을 마친 뒤 다음 단계로 넘어가기 전 기다리는 시간을 줄임 (조작 전 읽을 시간은 그대로)
+const RF_DWELL_MAX = 800;
+const _dwellRF = dwell;
+dwell = function (ms = 1800) {
+  return _dwellRF(S?.runFirst ? Math.min(ms, RF_DWELL_MAX) : ms);
+};

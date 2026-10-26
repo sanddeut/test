@@ -1393,6 +1393,7 @@ async function run() {
     const o = res.output;
     // 참가자가 말한 출발지·택시 종류는 이어진 답에서도 모아 둠 (말하지 않은 정보는 해당 단계에서 물음)
     if (o.origin && ORIGINS[o.origin]) S.req.origin = o.origin;
+    else if (o.origin_name && isTargetOriginName(o.origin_name)) S.req.origin = TARGET_ORIGIN; // "신촌역"처럼 과업 출발지 이름을 그대로 말한 경우 (LLM이 이름으로 돌려줘도 오류② 지점으로)
     else if (o.origin_name) { S.req.origin = null; S.req.originName = o.origin_name; }
     if (o.car_type && CAR_TYPES[o.car_type]) S.req.car = o.car_type;
     if (o.wants_coupon) { S.req.coupon = true; S.m.couponMentioned = true; }
@@ -1827,6 +1828,13 @@ async function prepOrigin(step) {
   if (r === "cancel") return false;
   if (S.automation === "low") await dwell();
   return true;
+}
+
+// 말한 출발지 이름이 과업 출발지(신촌·신촌역 / 동천역·신분당선 동천역)인지
+function isTargetOriginName(name) {
+  const t = String(name).replace(/\s/g, "");
+  const q = SPOT.query.replace(/\s/g, "");
+  return [q, `${q}역`, SPOT.target.name.replace(/\s/g, "")].includes(t);
 }
 
 // 연구2 오류② (버전 2): 처음 정하는 출발지가 '동천역'이면 같은 이름의 '대구 동천역'으로 판단 (한 번만, 두 안 동일)
