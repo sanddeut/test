@@ -4,7 +4,7 @@
 // - 위 헤더: 「AI가 앱 사용중..」 + 「멈추기」「내가 하기」
 // - 아래 AI 패널: 늘 같은 자리·같은 높이. 위 줄은 지금 하는 일("출발지를 찾는 중…", AI가 화면을 누르는 동안만), 아래는 AI의 마지막 말
 //   확인·선택할 일이 있으면 앱 화면을 거의 안 보일 만큼 어둡게 하고, 패널이 위로 커져 확인할 내용(호출 내용 등)·선택지·입력창을 함께 보여 줌
-// - 참가자가 직접 대화창으로 가지 않는 한 대화창으로 넘어가지 않음. 패널의 AI 프로필을 누르면 대화창으로, 진행 카드의 「실행화면 보기」로 돌아옴
+// - 대화창으로 가는 길은 없음: 한 과정을 두 화면(대화창·실행화면)으로 본다는 개념 없이, 보이는 이 화면이 전부
 "use strict";
 
 const RF_LOADING_MS = 900; // 허용한 뒤 로딩 화면
@@ -27,7 +27,7 @@ function setupRunFirst() {
     <div class="rf-head"><div class="rf-chip" role="status">AI가 앱 사용중..</div>
       <div class="rf-ctrl"><button type="button" class="rf-stop">멈추기</button><button type="button" class="rf-manual">내가 하기</button></div></div>
     <div class="rf-msgs" role="region" aria-label="AI 도우미" aria-live="polite">
-      <button type="button" class="rf-avatar" aria-label="AI 도우미 (대화창 보기)">AI</button>
+      <span class="rf-avatar" aria-hidden="true">AI</span>
       <p class="rf-q"></p>
       <button type="button" class="rf-undo" hidden><span class="ms">undo</span>되돌리기</button>
     </div>
@@ -38,13 +38,6 @@ function setupRunFirst() {
   load.id = "rf-loading";
   load.innerHTML = '<span class="rf-spinner"></span>';
   phone.appendChild(load);
-  // 프로필을 누르면 대화창으로 (참가자가 직접 고른 경우에만 대화창으로 감)
-  L.querySelector(".rf-avatar").onclick = () => {
-    if (!rfOn()) return;
-    logEvent("rf_avatar_chat");
-    S.showRun = false;
-    syncControls();
-  };
   // 오른쪽 위: 멈추기(대화창의 멈추기와 같음 → 패널에서 멈춘 뒤 메뉴), 내가 하기(직접 조작)
   L.querySelector(".rf-stop").onclick = () => { if (rfOn() && !$("#btn-stop").disabled) { logEvent("rf_stop"); handleStop("rf"); } };
   // 되돌리기: 대화창의 마지막 「되돌리기」와 같음 (방금 끝낸 단계를 취소할지 한 번 묻고 다시 함)
@@ -139,11 +132,11 @@ runAuto = async function (step) {
   return _runAutoRF(step);
 };
 
-// 실행화면이 기본: 참가자가 프로필을 눌러 대화창으로 가지 않았으면, 끝날 때까지 실행화면 (직접 조작·비밀번호 입력 화면은 원래대로)
+// 실행화면이 전부: 허용한 뒤로는 끝날 때까지 실행화면 (대화창으로 가지 않음. 직접 조작·비밀번호 입력 화면은 원래대로)
 const _wantedViewRF = wantedView;
 wantedView = function () {
   const v = _wantedViewRF();
-  if (v !== "chat" || !S?.runFirst || !S.showRun || !S.running || S.finished) return v;
+  if (v !== "chat" || !S?.runFirst || !S.running || S.finished) return v; // 대화창으로 가는 길은 없음 (보이는 화면이 전부)
   return "progress";
 };
 
@@ -205,7 +198,7 @@ startManual = function () {
 const _endManualRF = endManual;
 endManual = function () {
   const r = _endManualRF();
-  if (S?.runFirst && rf.runBeforeManual) { S.showRun = true; syncControls(); }
+  if (S?.runFirst) { S.showRun = true; syncControls(); }
   return r;
 };
 
