@@ -379,10 +379,10 @@ async function onePlan() {
   showTyping(true);
   $("#typing")?.classList.add("one-own");
   await sleep(2200 * PACE);
+  const said = "이렇게 진행할게요.";
+  await agentSay(said, { gated: true }); // 「~하는 중」을 내리기 전에 새 말이 카드에 들어가야 지난 카드가 다시 보이지 않음
   showTyping(false);
   one.doing = null;
-  const said = "이렇게 진행할게요.";
-  await agentSay(said, { gated: true });
   for (;;) {
     S.planAsk = true;
     let c;
@@ -488,7 +488,10 @@ function oneUndo(c, show, past) {
     const u = document.createElement("button");
     u.type = "button"; u.id = "one-undo"; u.className = "one-pill";
     u.innerHTML = '<span class="ms">undo</span>취소';
-    u.onclick = () => { const l = [...chat().querySelectorAll(":scope > .undo-link")].at(-1); if (l) { logEvent("one_undo"); l.click(); } };
+    u.onclick = () => {
+      if (oneCanCancelPending()) return oneCancelPending(); // 「~할게요」 하고 기다리는 중이면 그 일을 하기 전에 취소
+      const l = [...chat().querySelectorAll(":scope > .undo-link")].at(-1); if (l) { logEvent("one_undo"); l.click(); }
+    };
     const pz = document.createElement("button");
     pz.type = "button"; pz.id = "one-pause"; pz.className = "one-pill";
     pz.onclick = () => onePause(!one.userPaused);
@@ -506,7 +509,7 @@ function oneUndo(c, show, past) {
   if (row.hidden === vis) row.hidden = !vis; // 값이 바뀔 때만 (같은 값을 다시 넣어도 대화창 감시가 다시 돌아 무한 반복됨)
   if (!vis) return;
   const u = row.querySelector("#one-undo"), pz = row.querySelector("#one-pause");
-  const noUndo = !c.querySelector(":scope > .undo-link");
+  const noUndo = !c.querySelector(":scope > .undo-link") && !oneCanCancelPending();
   if (u.disabled !== noUndo) u.disabled = noUndo;
   const pzHTML = one.userPaused ? '<span class="ms">play_arrow</span>계속하기' : '<span class="ms">pause</span>일시정지';
   if (pz.innerHTML !== pzHTML) pz.innerHTML = pzHTML;
@@ -532,12 +535,30 @@ function oneRunFab(make) {
   return b;
 }
 function oneOpenBtn(c, show, past) {
+  // 카드가 자리를 옮기면 화면을 그리기 전에 작은 앱 화면도 바로 카드 아래로 (튀어 보이지 않게)
+  const mb = $("#rc-mini"), mc = $("#run-card");
+  if (mini.on && !mini.closing && mb && mc && mc.nextElementSibling !== mb) mc.after(mb);
   const b = oneRunFab(true);
   if (!b) return;
   const card = $("#run-card"), o = $("#rc-open");
   // 실행화면을 볼 수 있을 때 늘 같은 자리에 (작은 앱 화면이 떠 있는 동안은 숨김: 닫힐 때 이 버튼으로 들어감)
   const vis = Boolean(!past && S?.running && !S.finished && card && o && (mini.closing || (!mini.on && getComputedStyle(o).display !== "none")));
   if (b.hidden === vis) b.hidden = !vis;
+}
+
+// 「~할게요」 하고 읽을 시간을 기다리는 동안의 「취소」: 그 단계를 하기 전 상태로 돌리고 다시 물음 (되돌리기와 같은 방식)
+function oneCanCancelPending() {
+  return Boolean(S?.unified && S.readProg && S.readProg.t < S.readProg.total && !S.undoPending && !S.finished && undoable(S.stepIdx) && S.undoResolve);
+}
+function oneCancelPending() {
+  const i = S.stepIdx;
+  logEvent("one_cancel_pending", { step: S.steps[i]?.id });
+  S.undoPending = true;
+  S.oneCancelled = true; // 되돌림 안내를 「취소했어요」로
+  S.paused = true; // 하던 진행은 여기서 멈춰 두고 버림
+  S.readProg = null;
+  syncControls();
+  setTimeout(() => { S.undoTo = i; S.undoResolve?.("__undo"); }, 400 * PACE);
 }
 
 // 「일시정지」: AI가 하던 일을 멈춤 (대화는 그대로). 「계속하기」로 이어서
@@ -568,9 +589,11 @@ renderBubble = function (role, text) {
   rc.remove();
   const row = document.createElement("div");
   row.className = "resend-row sent-row";
-  row.innerHTML = '<span class="send-ok" role="status"><span class="ms">check_circle</span>전달됨</span>';
+  // 처음 요청은 정해진 대로 못 알아들으므로(오류 ①) 「전달됨」 없이 처음부터 「전달 실패」
+  const willMiss = !S.running && !S.m.request && S.session === 0 && (S.m.mishears || 0) < MISHEAR_COUNT;
+  row.innerHTML = willMiss ? '<span class="send-fail" role="status"><span class="ms">error</span>전달 실패</span>' : '<span class="send-ok" role="status"><span class="ms">check_circle</span>전달됨</span>';
   b.after(row);
-  setTimeout(() => row.classList.add("gone"), RECEIPT_MS);
+  if (!willMiss) setTimeout(() => row.classList.add("gone"), RECEIPT_MS);
 };
 const _oneMishear = onMishear;
 onMishear = function (n, text) {
@@ -654,4 +677,11 @@ setInterval(() => {
 decorateOne = function (el) {
   if (el.classList.contains("has-more") || el.classList.contains("more-open")) el.classList.remove("has-more", "more-open");
   if (el.nextElementSibling?.classList.contains("more-box")) el.nextElementSibling.remove();
+};
+
+// 하기 전에 취소한 경우: 「방금 한 일을 되돌렸어요」 대신 「취소했어요」
+const _renderBubbleCancel = renderBubble;
+renderBubble = function (role, text) {
+  if (role === "agent" && S?.oneCancelled && /^방금 한 일을 되돌렸어요\./.test(text)) { S.oneCancelled = false; text = text.replace(/^방금 한 일을 되돌렸어요\./, "취소했어요."); }
+  return _renderBubbleCancel(role, text);
 };
