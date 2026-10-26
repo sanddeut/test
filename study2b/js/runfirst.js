@@ -68,6 +68,7 @@ async function rfEnter() {
   S.runIntroShown = true; // improve.js의 [확인] 안내 대신 아래 안내
   Object.assign(rf, { doing: "", ask: null, picks: null, note: "", last: "", typing: false, key: "" });
   L.classList.remove("intro", "live");
+  $(".phone").classList.remove("rf-live");
   $("#rf-loading").classList.add("on");
   logEvent("rf_enter");
   await sleep(RF_LOADING_MS);
@@ -79,7 +80,7 @@ async function rfEnter() {
     open.apply(S); S.rfOpened = true; rf.doing = `${TAXI_APP} 앱을 여는 중…`; renderPhone();
     // 스플래시를 안내("AI가 '마음택시' 앱을 사용합니다.")가 끝날 때까지 띄워 둠
     const p = S.phone;
-    const ms = RF_SWAP_MS + RF_INTRO_MS + 400;
+    const ms = RF_SWAP_MS + RF_INTRO_MS;
     clearTimeout(p.loadingTimer);
     p.loading = "splash-taxi";
     p.loadingUntil = Date.now() + ms;
@@ -93,6 +94,8 @@ async function rfEnter() {
   await sleep(RF_INTRO_MS);
   L.classList.remove("intro");
   L.classList.add("live");
+  $(".phone").classList.add("rf-live"); // 스플래시가 끝나면 위 헤더를 보여 주고 앱 화면을 헤더 아래로
+  fitScreen();
 }
 
 // 택시 앱은 실행화면으로 넘어올 때 이미 열었으므로, 앱 실행 단계는 스플래시가 끝나기를 기다리기만 함
@@ -143,7 +146,7 @@ fitScreen = function () {
   const clip = $(".screen-clip");
   const W = phone.clientWidth;
   const H = parseFloat(phone.style.getPropertyValue("--app-h")) || phone.clientHeight;
-  const cut = phone.classList.contains("rf") ? RF_HEAD + RF_PANEL : 0; // 위 헤더와 아래 AI 패널만큼 앱 화면을 줄임
+  const cut = phone.classList.contains("rf") ? (phone.classList.contains("rf-live") ? RF_HEAD : 0) + RF_PANEL : 0; // 위 헤더와 아래 AI 패널만큼 앱 화면을 줄임
   phone.style.setProperty("--scale", "1");
   phone.style.setProperty("--app-h", `${H - cut}px`);
   clip.style.width = `${W}px`;

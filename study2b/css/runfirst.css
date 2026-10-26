@@ -11,7 +11,7 @@
 .phone.rf[data-view="progress"] .ai-veil,
 .phone.rf[data-view="progress"] .run-intro { display: none !important; }
 /* 앱 화면은 위 헤더와 아래 AI 패널 사이 */
-.phone.rf[data-view="progress"] .screen-box { padding: 58px 0 var(--rf-panel, 132px) !important; display: block !important; flex: 1 1 auto; }
+.phone.rf[data-view="progress"] .screen-box { padding: 0 0 var(--rf-panel, 132px) !important; display: block !important; flex: 1 1 auto; }
 .phone.rf[data-view="progress"] .run-frame { display: block !important; border: 0 !important; background: none !important; border-radius: 0 !important; padding: 0 !important; animation: none !important; box-shadow: none !important; }
 .phone.rf[data-view="progress"] .screen-clip,
 .phone.rf.acting[data-view="progress"] .screen-clip { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; animation: none !important; }
@@ -106,3 +106,8 @@
 .bd-go + .bd-undo { margin-top: -8px; }
 
 @media (prefers-reduced-motion: reduce) { .rf-border, .rf-status.typing i, .rf-q.fresh, .rf-panel { animation: none !important; } }
+
+/* 위 헤더는 스플래시가 끝난 뒤부터 (그 전에는 앱 화면이 맨 위까지) */
+.phone.rf.rf-live[data-view="progress"] .screen-box { padding-top: 58px !important; }
+.rf-head { transform: translateY(-100%); transition: transform .45s cubic-bezier(.2, .8, .2, 1); }
+.rf-layer.live .rf-head { transform: none; }
