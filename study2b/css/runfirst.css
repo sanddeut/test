@@ -83,3 +83,27 @@
 .rf-spinner { width: 36px; height: 36px; border-radius: 50%; border: 3.5px solid #dfe3ea; border-top-color: #0b57d0; animation: spin .8s linear infinite; }
 
 @media (prefers-reduced-motion: reduce) { .rf-border, .rf-avatar, .rf-chip .dots i { animation: none !important; } }
+
+/* 말풍선 안에서 말·글로 답하기 */
+.rf-input { display: flex; align-items: center; gap: 6px; margin-top: 12px; padding: 4px; border: 1px solid #d6dce6; border-radius: 999px; background: #f7f8fa; }
+.rf-input[hidden] { display: none; }
+.rf-input input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; font-size: 16px; padding: 8px 4px; outline: none; color: #1c1d21; }
+.rf-mic { flex: none; width: 38px; height: 38px; border: 0; border-radius: 50%; background: #fff; color: #3c4048; display: grid; place-items: center; box-shadow: 0 0 0 1px #e3e6ec; }
+.rf-mic.on { background: #d93025; color: #fff; box-shadow: none; }
+.rf-send { flex: none; border: 0; border-radius: 999px; background: #0b57d0; color: #fff; font: inherit; font-size: 15px; font-weight: 700; padding: 9px 16px; }
+.rf-layer.live[data-mode="typing"] .rf-dim { background: rgba(20, 22, 26, .5); }
+
+/* AI가 답을 준비하는 동안 "…" */
+.rf-bubble.typing { right: 16px; left: auto; padding: 14px 18px; }
+.rf-bubble.typing .rf-q { display: flex; gap: 5px; }
+.rf-bubble.typing .rf-q span { width: 8px; height: 8px; border-radius: 50%; background: #9aa0aa; animation: rf-dot 1.2s infinite ease-in-out; }
+.rf-bubble.typing .rf-q span:nth-child(2) { animation-delay: .15s; }
+.rf-bubble.typing .rf-q span:nth-child(3) { animation-delay: .3s; }
+.rf-bubble.typing .rf-opts, .rf-bubble.typing .rf-input { display: none; }
+
+/* 선택지 목록: 한 카드 안에서 구분선으로 나눔 */
+.rf-opts.list { gap: 0; border: 1px solid #e3e6ec; border-radius: 14px; overflow: hidden; background: #fff; }
+.rf-opts.list .rf-row { border: 0; border-radius: 0; }
+.rf-opts.list .rf-row + .rf-row { border-top: 1px solid #eceef2; }
+.rf-opts.list .rf-row:active { background: #f4f6f9; filter: none; }
+.rf-opts.list > .rf-btn { margin: 8px; }
