@@ -419,7 +419,10 @@ function planCar(k) { S.req.car = k; S.form.car = k; (S.userSet ||= {}).car = tr
 async function onePlanEdit() {
   const q = "무엇을 수정할까요?";
   await agentSay(q, { gated: true });
-  const items = [{ id: "p_origin", label: "출발지" }, { id: "p_dest", label: "도착지" }, { id: "p_car", label: "택시 종류" }];
+  // 계획에 이미 정해진(참가자가 말한) 것만 고를 수 있게
+  const [ro, rd, rc] = planRows();
+  const items = [ro[1] && { id: "p_origin", label: "출발지", desc: ro[1] }, rd[1] && { id: "p_dest", label: "도착지", desc: rd[1] }, rc[1] && { id: "p_car", label: "택시 종류", desc: rc[1] }].filter(Boolean);
+  if (!items.length) items.push({ id: "p_origin", label: "출발지" }, { id: "p_dest", label: "도착지" });
   const c = await askChoice(items, q, [...changeIntents(), "cancel"], "진행 계획에서 무엇을 고칠지 고르는 중이야. 출발지·도착지·택시 종류를 바로 말하면 해당 set_ 의도야.");
   if (c.id === "cancel") { await cancelRide(); return false; }
   if (c.out && String(c.id).startsWith("set_")) { planApply(c.out); return true; }

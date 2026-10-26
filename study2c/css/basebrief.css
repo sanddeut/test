@@ -1,6 +1,6 @@
 /* 기존안 간결하게: 진행 카드 위의 대화 기록은 숨김 */
 .chat > .bb-hide { display: none !important; }
 .rc-echo[hidden] { display: none !important; }
-/* 「실행화면 보기」: 눈에 덜 띄게 (테두리·바탕 없이 회색 작은 글씨) */
-.run-card .rc-open { background: none; box-shadow: none; color: #6b6f7a; font-size: 14px; font-weight: 500; padding: 4px; }
+/* 「실행화면 보기」: 눈에 덜 띄게 (테두리 없이 흰 바탕 90%, 회색 작은 글씨) */
+.run-card .rc-open { background: rgba(255, 255, 255, .9); box-shadow: none; border: 0; color: #6b6f7a; font-size: 14px; font-weight: 500; padding: 9px; border-radius: 999px; }
 .run-card .rc-open .ms { font-size: 16px; }
