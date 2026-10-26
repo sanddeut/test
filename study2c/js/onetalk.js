@@ -230,7 +230,8 @@ function miniFit() {
   phone.style.setProperty("--mini-h", `${Math.floor(H * MINI_SCALE)}px`);
 }
 function miniEnd(now = false) {
-  if (!mini.on) return;
+  if (!mini.on || (mini.closing && !now)) return;
+  mini.closing = true;
   const box = $("#rc-mini");
   const clip = box?.querySelector(".screen-clip");
   const restore = () => {
@@ -238,6 +239,7 @@ function miniEnd(now = false) {
     box?.remove();
     $("#run-card")?.classList.remove("mini-on");
     mini.on = false;
+    mini.closing = false;
     fitScreen();
   };
   logEvent("rc_mini_end");
@@ -275,3 +277,17 @@ setInterval(() => {
   const ty = $("#typing");
   if (ty && ty.dataset.doing !== t) ty.dataset.doing = t;
 }, 200);
+
+// 앱 여는 단계가 너무 길지 않게: 읽을 시간 6초 → 2초, 연 뒤 기다림 3.5초 → 1.2초 (원래 약 14초 → 약 6초)
+const _runAutoOne = runAuto;
+runAuto = async function (step) {
+  if (step.id !== "taxi_open" || !S?.cfg) return _runAutoOne(step);
+  const delay = S.cfg.delay;
+  S.cfg.delay = Math.min(delay, 2000);
+  S.fastOpen = true;
+  try { return await _runAutoOne(step); } finally { S.cfg.delay = delay; S.fastOpen = false; }
+};
+const _dwellOne = dwell;
+dwell = function (ms = 1800) {
+  return _dwellOne(S?.fastOpen ? Math.min(ms, 1200) : ms);
+};
