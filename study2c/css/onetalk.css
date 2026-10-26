@@ -28,3 +28,6 @@
 .chat.one-fade > #run-card.one-cur .rc-q { font-size: 21px; line-height: 1.55; }
 .chat.one-fade > #run-card.one-cur #rc-who, .chat.one-fade > #run-card.one-cur .think-t { font-size: 17px; }
 .chat.one-fade > #run-card.one-cur .choice b, .chat.one-fade > #run-card.one-cur .chip { font-size: 17px; }
+
+/* 입력창 위의 기다림 띠(빨간 점 · ~하고 있어요 · 잠시만 기다려 주세요 · 멈추기)는 쓰지 않음 */
+.chat-wait { display: none !important; }
