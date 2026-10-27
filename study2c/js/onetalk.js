@@ -542,8 +542,8 @@ function oneUndo(c, show, past) {
   // 호출을 마친 뒤에는 「멈추기」「수정」 대신 「되돌리기」 알약 하나 (끝난 일이라 말을 달리함)
   const done = Boolean(S.rideDone);
   if (row.classList.contains("one-ctrl-done") !== done) row.classList.toggle("one-ctrl-done", done);
-  const uLabel = done ? "되돌리기" : "수정";
-  if (u.textContent !== uLabel) u.textContent = uLabel;
+  const uLabel = done ? '<span class="ms">undo</span>되돌리기' : "수정"; // 호출 뒤 「되돌리기」에는 아이콘
+  if (u.innerHTML !== uLabel) u.innerHTML = uLabel;
   const pzHTML = one.userPaused ? "계속하기" : "멈추기"; // 아이콘 없이 글자만
   if (pz.innerHTML !== pzHTML) pz.innerHTML = pzHTML;
   const noPause = !one.userPaused && (S.paused || S.undoPending);
