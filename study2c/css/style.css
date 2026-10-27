@@ -1083,4 +1083,4 @@ body:not(.unified) .chat > .bubble.agent:first-child { border-radius: 6px 22px 2
 .rc-body .pv-origin .pv-pin, .pv-origin .pv-pin { width: 26px; height: 26px; background: #fdecea; color: #e8453c; }
 .rc-body .pv-origin .pv-pin .ms, .pv-origin .pv-pin .ms { font-size: 16px; }
 .pv-origin > span:last-child { min-width: 0; }
-.rc-body .pv-origin small:first-of-type, .pv-origin small:first-of-type { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.unified .rc-body .pv-origin small:first-of-type, body.unified .pv-origin small:first-of-type { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* 한 줄은 개선안만 (기존안은 카드가 좁아 잘리지 않게 줄바꿈) */
