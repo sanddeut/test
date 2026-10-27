@@ -141,14 +141,16 @@ function onePlain(c, bar) {
 one.page = null; // null = 지금 세트(맨 끝)
 one.curKey = null;
 function onePages(c) {
+  // 한 세트 = AI 말이 먼저(늘 맨 위 같은 자리), 그 아래 참가자의 답. 새 AI 말이 오면 다음 세트
+  // (말이 아직 없는 진행 카드·「~하는 중」은 지금 세트에 붙음)
+  const isUser = (x) => x.classList.contains("bubble") && x.classList.contains("user");
+  const isAI = (x) => (x.classList.contains("bubble") && x.classList.contains("agent") && !x.classList.contains("typing"))
+    || x.classList.contains("one-own")
+    || (x.id === "run-card" && (x.classList.contains("asking") || Boolean(x.querySelector("#rc-q:not([hidden])")?.textContent.trim())));
   const pages = [[]];
   for (const el of c.children) {
     if (el.id === "chips" || el.id === "chat-spacer" || el.id === "one-ctrl" || el.id === "one-open") continue;
-    const page = pages.at(-1);
-    const isAI = (x) => (x.classList.contains("bubble") && x.classList.contains("agent") && !x.classList.contains("typing")) || x.id === "run-card" || x.classList.contains("one-own"); // one-own: 새 화면에 따로 띄우는 「~하는 중」
-    // 내 말이 오면 새 세트. AI 말도 한 세트에 하나만 (AI가 혼자 이어서 진행한 단계는 단계마다 따로)
-    if (el.classList.contains("bubble") && el.classList.contains("user") && page.some((x) => x.classList.contains("bubble") || x.id === "run-card")) pages.push([]);
-    else if (isAI(el) && page.some(isAI)) pages.push([]);
+    if (isAI(el) && pages.at(-1).some((x) => isAI(x) || isUser(x))) pages.push([]);
     pages.at(-1).push(el);
   }
   return pages;
@@ -184,7 +186,20 @@ function onePage(c, bar) {
   const key = `${c.querySelectorAll(":scope > .bubble:not(.typing)").length}|${$("#run-card")?.classList.contains("asking") ? 1 : 0}`; // 새 말풍선이 오거나 질문이 뜰 때만
   if (key !== one.curKey) one.curKey = key; // (지난 대화를 보는 동안에는 AI가 멈춰 있으므로 화면을 바꾸지 않음)
   const past = one.page != null;
-  const show = new Set(past ? pages.slice(0, -1).flat() : pages[last]); // 지난 대화 보기: 지금 세트를 뺀 지난 대화 모두 / 평소: 지금 세트만
+  // 참가자가 답하면 그 답을 2초 동안 보여 준 뒤 다음 세트로 (그 사이 새 AI 말이 와도 2초는 지금 세트)
+  const nUser = c.querySelectorAll(":scope > .bubble.user").length;
+  if (nUser !== one.nUser) { if (nUser > (one.nUser || 0)) one.userAt = Date.now(); one.nUser = nUser; }
+  const lastUser = [...c.querySelectorAll(":scope > .bubble.user")].at(-1);
+  const hold = !past && last > 0 && one.userAt && Date.now() - one.userAt < 2000 && lastUser && !pages[last].includes(lastUser);
+  const shownIdx = hold ? last - 1 : last;
+  const show = new Set(past ? pages.slice(0, -1).flat() : pages[shownIdx]);
+  // 말이 없는 진행 카드(「~하는 중」)가 참가자 답보다 위에 있으면 숨김 (답 아래 「~하는 중」 하나만)
+  const rc = $("#run-card");
+  if (rc && show.has(rc) && !rc.classList.contains("asking") && !rc.querySelector("#rc-q:not([hidden])")?.textContent.trim()) {
+    let n = rc.nextElementSibling, later = false;
+    while (n) { if (show.has(n) && ((n.classList.contains("bubble") && n.classList.contains("user")) || n.id === "typing")) { later = true; break; } n = n.nextElementSibling; }
+    if (later) show.delete(rc);
+  } // 지난 대화 보기: 지금 세트를 뺀 지난 대화 모두 / 평소: 지금 세트만
   for (const el of c.children) {
     if (el.id === "chips" || el.id === "chat-spacer" || el.id === "one-ctrl" || el.id === "one-open") continue;
     const hide = !show.has(el);
@@ -193,7 +208,7 @@ function onePage(c, bar) {
   }
   // 세트가 바뀌면 전환 효과: 다음·새 세트는 아래에서 올라오고, 이전 세트는 위에서 내려옴
   const shown = past ? -1 : last;
-  const firstEl = past ? null : pages[last][0];
+  const firstEl = past ? null : pages[shownIdx][0];
   if (one.shownEl !== firstEl) {
     const back = one.shownIdx != null && shown < one.shownIdx;
     one.shownEl = firstEl; one.shownIdx = shown;
@@ -533,7 +548,10 @@ function oneUndo(c, show, past) {
   const said = ai && (ai.id !== "run-card" || ai.classList.contains("asking") || (rq && !rq.hidden && rq.textContent.trim() && !ai.classList.contains("one-stale")));
   // 카드에 이미 고를 버튼(수정·승인 등)이 있으면 「일시정지」「취소」는 빼 둠
   const asking = ai?.id === "run-card" && ai.classList.contains("asking");
-  const vis = Boolean(!past && S?.running && !S.finished && said && !asking); // 마음택시 여는 단계에도 보임
+  // 그 AI 말에 참가자가 이미 답했으면(답이 아래에 있으면) 버튼은 숨김
+  let answered = false;
+  for (let n = ai?.nextElementSibling; n; n = n.nextElementSibling) if (show.has(n) && n.classList.contains("bubble") && n.classList.contains("user")) { answered = true; break; }
+  const vis = Boolean(!past && S?.running && !S.finished && said && !asking && (!answered || S.rideDone)); // 마음택시 여는 단계에도 보임
   if (row.hidden === vis) row.hidden = !vis; // 값이 바뀔 때만 (같은 값을 다시 넣어도 대화창 감시가 다시 돌아 무한 반복됨)
   if (!vis) return;
   const u = row.querySelector("#one-undo"), pz = row.querySelector("#one-pause");
@@ -548,7 +566,12 @@ function oneUndo(c, show, past) {
   if (pz.innerHTML !== pzHTML) pz.innerHTML = pzHTML;
   const noPause = !one.userPaused && (S.paused || S.undoPending);
   if (pz.disabled !== noPause) pz.disabled = noPause;
-  // 카드(말풍선) 밖 바로 아래. 작은 앱 화면이 있으면 그 아래
+  // 작업 카드면 카드 안 맨 아래(구분선 아래 알약 두 개). 호출을 마친 뒤(말풍선)는 그 바로 아래 「되돌리기」
+  if (ai?.id === "run-card" && !done) {
+    const host = ai.querySelector(".rc-body") || ai;
+    if (row.parentNode !== host || host.lastElementChild !== row) host.appendChild(row);
+    return;
+  }
   let anchor = ai;
   if (anchor?.nextElementSibling?.id === "rc-mini") anchor = anchor.nextElementSibling;
   if (anchor?.nextElementSibling?.id === "chips" && show.has(anchor.nextElementSibling)) anchor = anchor.nextElementSibling;

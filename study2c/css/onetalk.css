@@ -281,3 +281,9 @@
 .one-run-fab { background: #f7f8fa; color: #6b6f7a; box-shadow: 0 0 0 1px #e3e6eb; font-weight: 500; }
 .one-ctrl.one-ctrl-done #one-undo.one-pill { gap: 4px; padding: 0 18px 0 14px; }
 .one-ctrl.one-ctrl-done #one-undo .ms { font-size: 18px; }
+
+/* 「멈추기」「수정」: 작업 카드 안 맨 아래, 수정·이대로 호출과 같은 알약 모양(색만 빨간색). 위 구분선 위아래로 넉넉히 */
+.rc-body > .one-ctrl { display: flex; gap: 8px; align-self: stretch; background: none !important; border-radius: 0 !important; border-top: 1px solid #e3e6ea !important; margin: 14px 4px 0 !important; padding: 28px 8px 6px !important; }
+.rc-body > .one-ctrl .one-pill { flex: 1; height: 48px; border-radius: 999px !important; font-size: 16.5px; font-weight: 600; justify-content: center; }
+.rc-body > .one-ctrl #one-pause.one-pill { background: #fff !important; color: #c0605a !important; box-shadow: 0 0 0 1.5px #c0605a !important; }
+.rc-body > .one-ctrl #one-undo.one-pill { background: #c0605a !important; color: #fff !important; box-shadow: none !important; }
