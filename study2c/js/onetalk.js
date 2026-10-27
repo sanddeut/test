@@ -235,7 +235,7 @@ function miniStart() {
   box.className = "rc-mini";
   box.setAttribute("aria-label", "AI가 누르는 마음택시 화면");
   box.appendChild(clip);
-  card.after(box); // 카드 밖, 카드 바로 아래
+  (card.querySelector(".rc-body") || card).appendChild(box); // 카드 안에 잠깐
   // 작게 보일 때는 눌러도 실행화면으로 가지 않음 (보기만)
   card.classList.add("mini-on");
   mini.on = true; mini.t0 = Date.now(); mini.endAt = 0;
@@ -251,9 +251,6 @@ function miniShow() {
 setInterval(() => {
   if (!mini.on) return;
   miniShow();
-  // 카드가 아래로 자리를 옮겨도 작은 앱 화면은 늘 카드 바로 아래
-  const box = $("#rc-mini"), card = $("#run-card");
-  if (box && card && !mini.closing && card.nextElementSibling !== box) card.after(box);
 }, 100);
 function miniFit() {
   const phone = $(".phone");
@@ -278,33 +275,14 @@ function miniEnd(now = false) {
     $("#run-card")?.classList.remove("mini-on");
     mini.on = false;
     mini.closing = false;
+    if (S) S.miniDone = true; // 작은 앱 화면이 끝난 뒤부터 「실행화면」 버튼
     fitScreen();
   };
   logEvent("rc_mini_end");
   if (now || !box) return restore();
-  // 작은 화면이 오른쪽 아래 「실행화면」 버튼 쪽으로 날아가며 작아짐 (대화창 밖으로 꺼내 맨 위에서 움직임)
-  const fab = oneRunFab(true);
-  if (fab) fab.hidden = false; // 날아갈 자리(버튼)를 먼저 보이게
-  const phone = $(".phone");
-  const scr = clip?.querySelector(".screen");
-  const c = clip?.getBoundingClientRect(), f = fab?.getBoundingClientRect(), pr = phone.getBoundingClientRect();
-  const keep = { clip: clip?.style.cssText, scr: scr?.style.cssText };
-  if (clip && c?.width && f?.width) {
-    const k = getComputedStyle(phone).getPropertyValue("--mini-k") || String(MINI_SCALE);
-    phone.appendChild(clip);
-    clip.style.cssText += `;position:absolute;left:${c.left - pr.left}px;top:${c.top - pr.top}px;width:${c.width}px;height:${c.height}px;z-index:80;margin:0;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px #c9cdd6,0 6px 18px rgba(0,0,0,.18);transform-origin:50% 50%;transition:transform 1.4s cubic-bezier(.4,0,.2,1),opacity 1.4s ease;pointer-events:none`;
-    if (scr) scr.style.transform = `scale(${k})`;
-    const dx = f.left + f.width / 2 - (c.left + c.width / 2), dy = f.top + f.height / 2 - (c.top + c.height / 2);
-    box.classList.add("closing");
-    requestAnimationFrame(() => requestAnimationFrame(() => { clip.style.transform = `translate(${dx}px, ${dy}px) scale(${Math.max(0.08, f.height / c.height)})`; clip.style.opacity = "0.15"; }));
-  }
-  setTimeout(() => {
-    if (clip) clip.style.cssText = keep.clip || "";
-    if (scr) scr.style.cssText = keep.scr || "";
-    fab?.classList.add("one-run-pop");
-    setTimeout(() => fab?.classList.remove("one-run-pop"), 500);
-    restore();
-  }, 1450);
+  // 잠깐 보여 준 뒤 그냥 접혀 사라짐. 그다음부터 오른쪽 아래 「실행화면」 버튼
+  box.classList.add("closing");
+  setTimeout(restore, 600);
 }
 // 실행화면·직접 조작으로 갈 때는 바로 원래 자리로
 const _syncViewOne = syncView;
@@ -578,14 +556,11 @@ function oneRunFab(make) {
   return b;
 }
 function oneOpenBtn(c, show, past) {
-  // 카드가 자리를 옮기면 화면을 그리기 전에 작은 앱 화면도 바로 카드 아래로 (튀어 보이지 않게)
-  const mb = $("#rc-mini"), mc = $("#run-card");
-  if (mini.on && !mini.closing && mb && mc && mc.nextElementSibling !== mb) mc.after(mb);
   const b = oneRunFab(true);
   if (!b) return;
   const card = $("#run-card"), o = $("#rc-open");
   // 실행화면을 볼 수 있을 때 늘 같은 자리에 (작은 앱 화면이 떠 있는 동안은 숨김: 닫힐 때 이 버튼으로 들어감)
-  const vis = Boolean(!past && S?.running && !S.finished && card && o && (mini.closing || (!mini.on && getComputedStyle(o).display !== "none")));
+  const vis = Boolean(!past && S?.running && !S.finished && (S.miniDone || (S.steps[S.stepIdx]?.id && S.steps[S.stepIdx].id !== "taxi_open")) && card && o && !mini.on && getComputedStyle(o).display !== "none");
   if (b.hidden === vis) b.hidden = !vis;
 }
 
