@@ -80,6 +80,14 @@ renderPhone = function () {
   if (list && S?.manual) {
     list.classList.add("bb-fold");
     list.classList.toggle("open", Boolean(S.bbCarOpen));
+    // 접혀 있을 때는 결제·쿠폰과 같은 한 줄: 「택시 종류 · 일반택시 ›」 (강조 없이)
+    if (!S.bbCarOpen && !list.previousElementSibling?.classList.contains("bb-car-row")) {
+      const row = document.createElement("div");
+      row.className = "tx-row bb-car-row";
+      row.innerHTML = `<span>택시 종류</span><b>${esc(CAR_TYPES[S.form.car].label)} <span class="ms">chevron_right</span></b>`;
+      row.onclick = (e) => { e.stopPropagation(); S.bbCarOpen = true; logEvent("base_car_expand"); renderPhone(); };
+      list.before(row);
+    }
   }
   return r;
 };
