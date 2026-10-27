@@ -533,8 +533,7 @@ function oneUndo(c, show, past) {
   const said = ai && (ai.id !== "run-card" || ai.classList.contains("asking") || (rq && !rq.hidden && rq.textContent.trim() && !ai.classList.contains("one-stale")));
   // 카드에 이미 고를 버튼(수정·승인 등)이 있으면 「일시정지」「취소」는 빼 둠
   const asking = ai?.id === "run-card" && ai.classList.contains("asking");
-  const opening = S?.steps?.[S.stepIdx]?.id === "taxi_open"; // 마음택시 여는 단계에서만 예외로 빼 둠
-  const vis = Boolean(!past && S?.running && !S.finished && said && !asking && !opening);
+  const vis = Boolean(!past && S?.running && !S.finished && said && !asking); // 마음택시 여는 단계에도 보임
   if (row.hidden === vis) row.hidden = !vis; // 값이 바뀔 때만 (같은 값을 다시 넣어도 대화창 감시가 다시 돌아 무한 반복됨)
   if (!vis) return;
   const u = row.querySelector("#one-undo"), pz = row.querySelector("#one-pause");
