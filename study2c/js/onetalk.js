@@ -302,8 +302,10 @@ setInterval(() => {
 }, 250);
 
 // 「…」만 오래 보이지 않게: AI가 일하는 동안 프로필 옆에 지금 하는 일 ("택시 종류를 확인하는 중…")
+const APPLYING = { origin: "출발지를 설정하는 중", dest: "목적지를 설정하는 중", car: "택시 종류를 바꾸는 중", drop: "하차 지점을 바꾸는 중", count: "호출 대수를 바꾸는 중" };
 function oneDoingText() {
   if (one.doing) return one.doing;
+  if (one.staleQ && S?.stepIdx === one.staleStep) return `${APPLYING[S.steps[S.stepIdx]?.id] || "반영하는 중"}…`;
   const id = S?.steps?.[S.stepIdx]?.id;
   return `${(typeof DOING !== "undefined" && DOING[id]) || "답을 준비하는 중"}…`;
 }
@@ -528,7 +530,7 @@ function oneUndo(c, show, past) {
   // 지금 세트의 마지막 AI 말(진행 카드나 AI 말풍선). 「~하는 중…」만 보일 때(진행 카드에 아직 할 말이 없을 때)는 두 버튼을 숨김
   const ai = [...c.children].filter((el) => show.has(el) && (el.id === "run-card" || (el.classList.contains("agent") && !el.classList.contains("typing")))).at(-1);
   const rq = ai?.id === "run-card" ? ai.querySelector("#rc-q") : null;
-  const said = ai && (ai.id !== "run-card" || ai.classList.contains("asking") || (rq && !rq.hidden && rq.textContent.trim()));
+  const said = ai && (ai.id !== "run-card" || ai.classList.contains("asking") || (rq && !rq.hidden && rq.textContent.trim() && !ai.classList.contains("one-stale")));
   // 카드에 이미 고를 버튼(수정·승인 등)이 있으면 「일시정지」「취소」는 빼 둠
   const asking = ai?.id === "run-card" && ai.classList.contains("asking");
   const opening = S?.steps?.[S.stepIdx]?.id === "taxi_open"; // 마음택시 여는 단계에서만 예외로 빼 둠
@@ -556,7 +558,7 @@ function oneRunFab(make) {
     b = document.createElement("button");
     b.type = "button"; b.id = "one-run-fab"; b.className = "one-run-fab"; b.hidden = true;
     b.innerHTML = '<span class="ms">open_in_full</span>실행화면';
-    b.onclick = () => { const o = $("#rc-open"); if (o && !o.disabled) { logEvent("one_open_run"); o.click(); } };
+    b.onclick = () => { if (!S || S.finished) return; logEvent("one_open_run"); showRun(true); };
     $("#composer")?.appendChild(b);
   }
   return b;
@@ -566,7 +568,7 @@ function oneOpenBtn(c, show, past) {
   if (!b) return;
   const card = $("#run-card"), o = $("#rc-open");
   // 실행화면을 볼 수 있을 때 늘 같은 자리에 (작은 앱 화면이 떠 있는 동안은 숨김: 닫힐 때 이 버튼으로 들어감)
-  const vis = Boolean(!past && S?.running && !S.finished && (S.miniDone || (S.steps[S.stepIdx]?.id && S.steps[S.stepIdx].id !== "taxi_open")) && card && o && !mini.on && getComputedStyle(o).display !== "none");
+  const vis = Boolean(!past && S?.running && !S.finished && (S.miniDone || (S.steps[S.stepIdx]?.id && S.steps[S.stepIdx].id !== "taxi_open")) && card && o && !mini.on); // 질문 중(택시 종류·최종 호출 등)에도 늘 같은 자리에
   if (b.hidden === vis) b.hidden = !vis;
 }
 
@@ -756,3 +758,16 @@ setInterval(() => {
     body.classList.remove("one-fresh"); void body.offsetWidth; body.classList.add("one-fresh");
   } else if (!t) one.lastQ = one.lastQ || "";
 }, 60);
+
+// 읽을 시간 막대가 다 차면 AI가 실제로 앱을 누르는 동안(몇 초) 같은 카드가 멈춰 있는 것처럼 보이지 않게:
+// 다 읽은 말은 내리고 「출발지를 설정하는 중…」을 보여 줌. 다음 말이 카드에 들어오면 다시 보통대로
+setInterval(() => {
+  if (!S?.unified) return;
+  const card = $("#run-card"), q = $("#rc-q");
+  const t = q && !q.hidden ? q.textContent.trim() : "";
+  const p = S.readProg;
+  if (p && p.t >= p.total && t && one.staleQ !== t) { one.staleQ = t; one.staleStep = S.stepIdx; }
+  if (one.staleQ && t !== one.staleQ) one.staleQ = null;
+  const stale = Boolean(card && one.staleQ && t === one.staleQ);
+  if (card && card.classList.contains("one-stale") !== stale) { card.classList.toggle("one-stale", stale); oneDoingSync(); }
+}, 80);

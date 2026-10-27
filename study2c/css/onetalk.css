@@ -264,3 +264,9 @@
 @media (prefers-reduced-motion: reduce) { .chat.one-page #run-card .rc-body.one-fresh { animation: none; } }
 /* 깜빡임 0: 세트가 바뀔 때 나타나는 효과·말풍선 튀어나오는 효과까지 모두 끔 (새 말은 그냥 바로 보임) */
 .chat.one-page > *, .chat.one-page.one-in-up > *, .chat.one-page.one-in-down > *, .chat.one-page #run-card .rc-body, .chat.one-page #run-card .rc-body.one-fresh, .chat.one-page .bubble { animation: none !important; }
+
+/* 다 읽은 말을 반영하는 동안: 말은 내리고 위 줄에 「~하는 중」 */
+.chat.one-page #run-card.one-stale .rc-body { display: none !important; }
+.chat.one-page #run-card.one-stale #rc-status { visibility: visible !important; font-size: 0; }
+.chat.one-page #run-card.one-stale #rc-status > * { display: none !important; }
+.chat.one-page #run-card.one-stale #rc-status::after { content: attr(data-doing) !important; font-size: 15.5px; font-weight: 500; color: #6b6f7a; }
