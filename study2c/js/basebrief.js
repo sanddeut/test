@@ -76,6 +76,8 @@ setInterval(() => {
 const _renderPhoneBrief = renderPhone;
 renderPhone = function () {
   const r = _renderPhoneBrief.apply(this, arguments);
+  // 앱 화면 아래 버튼은 「○○택시 호출하기」 대신 「호출하기」
+  document.querySelectorAll("#screen .tx-call").forEach((x) => { if (/택시 호출하기$/.test(x.textContent.trim())) x.textContent = "호출하기"; });
   const list = document.querySelector("#screen .tx-cars");
   if (list && S?.manual) {
     list.classList.add("bb-fold");
