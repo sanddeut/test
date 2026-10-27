@@ -277,3 +277,5 @@
 .chat.one-page > .one-ctrl.one-ctrl-done { background: none; padding: 0; align-self: flex-start; }
 .one-ctrl.one-ctrl-done #one-pause { display: none !important; }
 .one-ctrl.one-ctrl-done #one-undo.one-pill { flex: none; height: 38px; padding: 0 18px; border-radius: 999px; background: #fff; color: #3c4048; box-shadow: 0 0 0 1px #d6dce6; font-size: 15px; }
+/* 「실행화면」 버튼: 눈에 덜 띄게 (바탕은 대화창과 같은 색, 회색 글씨, 옅은 테두리만) */
+.one-run-fab { background: #f7f8fa; color: #6b6f7a; box-shadow: 0 0 0 1px #e3e6eb; font-weight: 500; }
