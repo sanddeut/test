@@ -101,6 +101,7 @@ start = function () {
 const _stepPreviewOne = stepPreview;
 stepPreview = function () {
   if (S?.planAsk) return planCard();
+  if (S?.unified && S.steps[S.stepIdx]?.id === "final") return finalCard();
   if (S?.steps[S.stepIdx]?.id === "taxi_open") return null;
   return _stepPreviewOne();
 };
@@ -732,7 +733,7 @@ setInterval(() => {
   ];
   box = document.createElement("div");
   box.id = "one-sum"; box.className = "one-sum";
-  box.innerHTML = `<b class="sum-t">오늘 사용자님과 함께 한 일</b><ol>${rows.map((r) => `<li>${r}</li>`).join("")}</ol>`;
+  box.innerHTML = `<b class="sum-t">오늘 한 일 요약</b><ol>${rows.map((r) => `<li><span>${r}</span></li>`).join("")}</ol>`;
   const c = chat();
   const ai = [...c.children].filter((el) => el.id === "run-card" || (el.classList.contains("agent") && !el.classList.contains("typing"))).at(-1);
   if (ai) ai.after(box); else c.insertBefore(box, $("#chips"));
@@ -811,3 +812,65 @@ setInterval(() => {
   const stale = Boolean(card && one.staleQ && t === one.staleQ);
   if (card && card.classList.contains("one-stale") !== stale) { card.classList.toggle("one-stale", stale); oneDoingSync(); }
 }, 80);
+
+// =====================================================================
+// 최종 확인 카드: 호출 대수·결제 행은 빼고 글씨 크게. 각 행을 눌러(›) 바로 수정 ([수정]을 누르지 않아도)
+// - 쿠폰: 누르면 바로 적용/해제 · 출발·도착·택시 종류: 「어떻게 바꿀까요?」 선택지
+// =====================================================================
+// 행을 눌러 바꾼 값(쿠폰 등)이 카드에 바로 보이게: 값이 달라지면 카드 내용을 다시 그림
+setInterval(() => {
+  const d = document.querySelector(".one-final");
+  if (!d || !S?.unified) return;
+  const n = finalCard();
+  if (n.innerHTML !== d.innerHTML) d.innerHTML = n.innerHTML;
+}, 300);
+function finalCard() {
+  const f = S.form;
+  const rows = [
+    ["edit_origin", "출발", ORIGINS[f.origin]?.name || originLabel(f.origin, S.geo)],
+    ["edit_dest", "도착", PLACES[f.dest || TARGET_PLACE].name],
+    ["edit_car", "택시 종류", CAR_TYPES[f.car].label],
+    ["coupon", "쿠폰", f.coupon ? COUPON.name : "적용 안 함"],
+    ["", "예상 요금", won0(fareOf(f))],
+  ];
+  const d = document.createElement("div");
+  d.className = "rc-pv rc-summary one-final";
+  const TAP = ["coupon"]; // 지금은 쿠폰만 눌러서 바로 바꿈 (출발·도착·택시 종류는 아래 [수정]으로)
+  d.innerHTML = rows.map(([k0, label, v]) => { const k = TAP.includes(k0) ? k0 : ""; return `<div ${k ? `data-edit="${k}" role="button" tabindex="0"` : ""}><span>${esc(label)}</span><b>${esc(v)}${k ? '<span class="ms">chevron_right</span>' : ""}</b></div>`; }).join("");
+  d.onclick = (e) => {
+    const row = e.target.closest("[data-edit]");
+    const w = S?.waiter;
+    if (!row || !w?.resolve) return;
+    const k = row.dataset.edit;
+    logEvent("final_row_edit", { item: k });
+    if (k === "coupon") return w.resolve({ type: "button", id: "set_coupon", out: { intent: "set_coupon", coupon: !S.form.coupon } });
+    finalRowEdit(k);
+  };
+  return d;
+}
+const _gAskFinal = gAsk;
+gAsk = function (key, vars, options, opts) {
+  if (key === "final.edit" && S?.finalJump) { const id = S.finalJump; S.finalJump = null; return Promise.resolve({ id, via: "row" }); }
+  return _gAskFinal(key, vars, options, opts);
+};
+
+// 행을 누르면: [수정] → 그 항목(「출발지 바꾸기」 등)을 차례로 눌러 「어떻게 바꿀까요?」 선택지까지 바로
+async function finalRowEdit(k) {
+  const label = { edit_origin: "출발지 바꾸기", edit_dest: "목적지 바꾸기", edit_car: "택시 종류 바꾸기" }[k];
+  const chip = (re) => [...document.querySelectorAll("#rc-choices .chip:not([disabled]), #rc-choices .choice, #rc-choices button")].find((x) => x.offsetParent && re.test(x.textContent.trim()));
+  const waitChip = async (re) => { for (let t = 0; t < 40; t++) { const c = chip(re); if (c) return c; await sleep(100); } return null; };
+  const edit = await waitChip(/^수정/);
+  if (!edit) return;
+  edit.click();
+  const item = await waitChip(new RegExp(label));
+  item?.click();
+}
+// 최종 확인에서 「목적지 바꾸기」도 고를 수 있는 지점 3곳 + 직접 입력
+const _rejectPicksOne = rejectPicks;
+rejectPicks = function () {
+  const r = _rejectPicksOne();
+  if (!r || S?.steps?.[S.stepIdx]?.id !== "final") return r;
+  const d = r.find((x) => x.label === "목적지 바꾸기");
+  if (d) d.sub = [...SEARCH_ORDER.map((k) => ({ label: PLACES[k].name, out: { intent: "set_dest", place: k } })), DIRECT];
+  return r;
+};

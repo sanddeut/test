@@ -287,3 +287,18 @@
 .rc-body > .one-ctrl .one-pill { flex: 1; height: 48px; border-radius: 999px !important; font-size: 16.5px; font-weight: 600; justify-content: center; }
 .rc-body > .one-ctrl #one-pause.one-pill { background: #fff !important; color: #c0605a !important; box-shadow: 0 0 0 1.5px #c0605a !important; }
 .rc-body > .one-ctrl #one-undo.one-pill { background: #c0605a !important; color: #fff !important; box-shadow: none !important; }
+
+/* 최종 확인 카드: 글씨 크게, 행마다 › (눌러서 수정) */
+.one-final > div { padding: 14px 0 !important; font-size: 16.5px !important; align-items: center; }
+.one-final > div[data-edit] { cursor: pointer; }
+.one-final > div b { display: inline-flex; align-items: center; gap: 2px; font-weight: 700; }
+.one-final > div .ms { font-size: 20px; color: #9aa0aa; margin-right: -4px; }
+.one-final > div[data-edit]:active { background: #f4f6f9; }
+
+/* 「오늘 한 일 요약」: 제목 크게·아래 간격, 원형 숫자, 위 구분선 아래 여백 더 */
+.chat.one-page > .one-sum { margin-top: 64px; }
+.chat.one-page > .one-sum::before { top: -40px; }
+.one-sum .sum-t { font-size: 18.5px; margin-bottom: 16px; }
+.one-sum ol { list-style: none; padding-left: 0; counter-reset: sum; gap: 9px; }
+.one-sum ol li { counter-increment: sum; display: flex; align-items: flex-start; gap: 9px; }
+.one-sum ol li::before { content: counter(sum); flex: none; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; background: #dbe6fb; color: #2f4fa0; font-size: 13px; font-weight: 700; display: grid; place-items: center; }
