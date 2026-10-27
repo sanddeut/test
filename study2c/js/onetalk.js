@@ -773,6 +773,12 @@ renderBubble = function (role, text) {
 const _doApplyOne = doApply;
 doApply = async function (step, choice, opts) {
   if (!S?.unified || step?.id !== "car" || !S.userSet?.car) return _doApplyOne(step, choice, opts);
+  // 목록에서 고른 뒤 「○○택시로 할게요」에도 읽을 시간 막대 (이미 막대를 보여 준 경우는 건너뜀)
+  if (!S.carReadDone) {
+    for (let t = 0; t < READ_MS; t += 250) { S.readProg = { t, total: READ_MS }; await sleep(250 * PACE); await gate(); }
+    S.readProg = { t: READ_MS, total: READ_MS }; setTimeout(() => { if (S) S.readProg = null; }, 400);
+  }
+  S.carReadDone = false;
   const pace = PACE;
   one.doing = `${CAR_TYPES[S.form.car]?.label || "고르신 택시"}로 바꾸는 중…`;
   PACE = Math.min(PACE, 0.5);
@@ -798,6 +804,7 @@ askCar = async function (step) {
   await agentSay(`말씀하신 ${CAR_TYPES[S.form.car].label}로 할게요.`, { gated: true });
   for (let t = 0; t < READ_MS; t += 250) { S.readProg = { t, total: READ_MS }; await sleep(250 * PACE); await gate(); }
   S.readProg = { t: READ_MS, total: READ_MS }; setTimeout(() => { if (S) S.readProg = null; }, 400);
+  S.carReadDone = true;
   await doApply(step, S.form.car);
   await dwell();
   return true;
