@@ -502,6 +502,15 @@ function oneAttachChoices(choices, answer) {
   if (!q || q.querySelector(".hist-opts")) return;
   const said = String(answer || "").trim();
   const picked = choices.find((o) => o.label === said) || choices.find((o) => said && said.includes(o.label));
+  // 최종 확인 질문에는 고른 버튼 대신 그때의 호출 내용 정리
+  if (choices.some((o) => o.id === "approve") && /최종 확인/.test(q.textContent)) {
+    const sum = finalCard();
+    sum.querySelectorAll("[data-edit]").forEach((x) => { x.removeAttribute("data-edit"); x.removeAttribute("role"); });
+    sum.querySelectorAll(".ms").forEach((x) => x.remove());
+    sum.classList.add("hist-final");
+    q.appendChild(sum);
+    return;
+  }
   const box = document.createElement("div");
   box.className = "hist-opts";
   box.innerHTML = choices.map((o) => `<div class="${o === picked ? "on" : ""}"><span>${esc(o.label)}${o.desc ? `<small>${esc(o.desc)}</small>` : ""}</span>${o.price ? `<em>${esc(o.price)}</em>` : ""}${o === picked ? '<span class="ms">check_circle</span>' : ""}</div>`).join("");

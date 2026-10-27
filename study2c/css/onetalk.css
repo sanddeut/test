@@ -302,3 +302,6 @@
 .one-sum ol { list-style: none; padding-left: 0; counter-reset: sum; gap: 9px; }
 .one-sum ol li { counter-increment: sum; display: flex; align-items: flex-start; gap: 9px; }
 .one-sum ol li::before { content: counter(sum); flex: none; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; background: #dbe6fb; color: #2f4fa0; font-size: 13px; font-weight: 700; display: grid; place-items: center; }
+/* 지난 대화의 최종 확인: 그때의 호출 내용 정리 */
+.bubble.agent .hist-final { margin-top: 10px; font-weight: 400; }
+.bubble.agent .hist-final > div { padding: 10px 0 !important; font-size: 15px !important; }
