@@ -514,7 +514,7 @@ function oneUndo(c, show, past) {
     row.id = "one-ctrl"; row.className = "one-ctrl"; row.hidden = true;
     const u = document.createElement("button");
     u.type = "button"; u.id = "one-undo"; u.className = "one-pill";
-    u.innerHTML = '<span class="ms">undo</span>취소';
+    u.innerHTML = '<span class="ms">edit</span>수정'; // 일시정지 옆 버튼: 「수정」 (지금·바로 전 단계를 다시 함)
     u.onclick = () => {
       if (oneCanCancelPending()) return oneCancelPending(); // 「~할게요」 하고 기다리는 중이면 그 일을 하기 전에 취소
       const l = [...chat().querySelectorAll(":scope > .undo-link")].at(-1); if (l) { logEvent("one_undo"); l.click(); }
@@ -706,7 +706,7 @@ decorateOne = function (el) {
 // 하기 전에 취소한 경우: 「방금 한 일을 되돌렸어요」 대신 「취소했어요」
 const _renderBubbleCancel = renderBubble;
 renderBubble = function (role, text) {
-  if (role === "agent" && S?.oneCancelled && /^방금 한 일을 되돌렸어요\./.test(text)) { S.oneCancelled = false; text = text.replace(/^방금 한 일을 되돌렸어요\./, "취소했어요."); }
+  if (role === "agent" && S?.oneCancelled && /^방금 한 일을 되돌렸어요\./.test(text)) { S.oneCancelled = false; text = text.replace(/^방금 한 일을 되돌렸어요\./, "수정할게요."); }
   return _renderBubbleCancel(role, text);
 };
 
