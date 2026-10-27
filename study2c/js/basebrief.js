@@ -71,3 +71,25 @@ setInterval(() => {
   if (!S?.baseHandoff || S.finished || S.pinOpen) return;
   if (S.waiter?.pin) $(".pw-card .pw-go")?.click();
 }, 200);
+
+// 기존안 직접 조작 화면: 택시 종류는 고른 것 하나만 접어 두고, 누르면 세 가지가 펼쳐져 고를 수 있음
+const _renderPhoneBrief = renderPhone;
+renderPhone = function () {
+  const r = _renderPhoneBrief.apply(this, arguments);
+  const list = document.querySelector("#screen .tx-cars");
+  if (list && S?.manual) {
+    list.classList.add("bb-fold");
+    list.classList.toggle("open", Boolean(S.bbCarOpen));
+  }
+  return r;
+};
+document.addEventListener("click", (e) => {
+  const list = e.target.closest?.("#screen .tx-cars.bb-fold");
+  if (!list || !S?.manual) return;
+  if (!list.classList.contains("open")) {
+    // 접혀 있으면 펼치기만 (고르지 않음)
+    e.stopPropagation(); e.preventDefault();
+    S.bbCarOpen = true; list.classList.add("open");
+    logEvent("base_car_expand");
+  } else setTimeout(() => { S.bbCarOpen = false; renderPhone(); }, 0); // 고르면 다시 접음
+}, true);
