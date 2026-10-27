@@ -1078,3 +1078,9 @@ body:not(.unified) .chat > .bubble.agent:first-child::before { content: "auto_aw
   background: linear-gradient(135deg, #4c8df6, #a36bf5); color: #fff; font-family: "Material Symbols Rounded"; font-size: 20px; font-weight: normal; line-height: 36px; text-align: center; font-variation-settings: "FILL" 1; }
 body:not(.unified) .chat > .bubble.agent:first-child::after { content: "AI 도우미"; position: absolute; left: 46px; top: -36px; font-size: 16px; font-weight: 600; color: #3c4048; line-height: 20px; white-space: nowrap; }
 body:not(.unified) .chat > .bubble.agent:first-child { border-radius: 6px 22px 22px 22px; } /* 첫 인사 말풍선의 뾰족한 모서리는 위 프로필 쪽으로 */
+
+/* study2c: 출발지 카드 — 목적지와 같은 위치 아이콘을 작게, 주소는 한 줄로 (두 안 공통) */
+.rc-body .pv-origin .pv-pin, .pv-origin .pv-pin { width: 26px; height: 26px; background: #fdecea; color: #e8453c; }
+.rc-body .pv-origin .pv-pin .ms, .pv-origin .pv-pin .ms { font-size: 16px; }
+.pv-origin > span:last-child { min-width: 0; }
+.rc-body .pv-origin small:first-of-type, .pv-origin small:first-of-type { white-space: nowrap; font-size: 13px; letter-spacing: -0.3px; overflow: hidden; text-overflow: ellipsis; }

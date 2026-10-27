@@ -120,7 +120,7 @@ renderBubble = function (role, text) {
   const rc = b?.querySelector(".receipt");
   if (rc && !rc.dataset.timer) { rc.dataset.timer = "1"; setTimeout(() => { if (!rc.classList.contains("fail")) rc.classList.add("gone"); }, RECEIPT_MS); }
   // 승인/거부 버튼으로 답한 경우: 무엇에 답했는지 작은 글씨로 아랫줄에
-  const what = S?.running && ["승인", "거부", "확인", "수정", "허용", "호출하기", "예약하기"].includes(text) ? (S.consentAsk ? "이용내역 확인" : STEP_WHAT[S.steps[S.stepIdx]?.id]) : null;
+  const what = S?.running && ["승인", "거부", "확인", "수정", "허용", "호출하기", "이대로 호출", "예약하기"].includes(text) ? (S.consentAsk ? "이용내역 확인" : STEP_WHAT[S.steps[S.stepIdx]?.id]) : null;
   if (b && what && !b.querySelector(".ub-what")) b.querySelector(".receipt").insertAdjacentHTML("beforebegin", `<small class="ub-what">${what}</small>`);
 };
 
@@ -741,7 +741,7 @@ newSession = function (cfg) {
 function choiceLabels() {
   if (S?.consentAsk) return { reject: "거부", approve: "허용" };
   const id = S?.steps[S.stepIdx]?.id;
-  if (id === "final") return { reject: "수정", approve: "호출하기" };
+  if (id === "final") return { reject: "수정", approve: "이대로 호출" };
   if (id === "reserve") return { reject: "거부", approve: "예약하기" };
   return { reject: "수정", approve: "확인" };
 }

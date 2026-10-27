@@ -278,8 +278,8 @@ function stepPreview() {
     case "taxi_open": return appTile(TAXI_APP, "local_taxi", "#f5b400", "택시 앱");
     case "origin":
       // 출발지를 '바꾼다'는 개념은 드러내지 않고, 설정할 출발지 하나만 보여줌
-      if (S.guide) { const k = S.originTarget || TARGET_ORIGIN; return el("pv-acct pv-place pv-origin", `<span class="pv-pin"><span class="ms">trip_origin</span></span><span><b>${esc(ORIGINS[k].name)}</b><small>${esc(ORIGINS[k].addr || originLabel(k, S.geo))}</small>${hereText(k, S.geo) ? `<small class="pv-here">${esc(hereText(k, S.geo))}</small>` : ""}</span>`); }
-      { const k = S.originTarget && ORIGINS[S.originTarget]?.addr ? S.originTarget : TARGET_ORIGIN; return el("pv-acct pv-place pv-origin", `<span class="pv-pin"><span class="ms">trip_origin</span></span><span><b>${esc(ORIGINS[k].name)}</b><small>${esc(ORIGINS[k].addr)}</small>${hereText(k, S.geo) ? `<small class="pv-here">${esc(hereText(k, S.geo))}</small>` : ""}</span>`); }
+      if (S.guide) { const k = S.originTarget || TARGET_ORIGIN; return el("pv-acct pv-place pv-origin", `<span class="pv-pin"><span class="ms fill">location_on</span></span><span><b>${esc(ORIGINS[k].name)}</b><small>${esc(ORIGINS[k].addr || originLabel(k, S.geo))}</small>${hereText(k, S.geo) ? `<small class="pv-here">${esc(hereText(k, S.geo))}</small>` : ""}</span>`); }
+      { const k = S.originTarget && ORIGINS[S.originTarget]?.addr ? S.originTarget : TARGET_ORIGIN; return el("pv-acct pv-place pv-origin", `<span class="pv-pin"><span class="ms fill">location_on</span></span><span><b>${esc(ORIGINS[k].name)}</b><small>${esc(ORIGINS[k].addr)}</small>${hereText(k, S.geo) ? `<small class="pv-here">${esc(hereText(k, S.geo))}</small>` : ""}</span>`); }
     case "dest": {
       const k = S.phone.pendingDest ?? S.form.dest ?? AGENT_PLACE;
       return el("pv-acct pv-place", `<span class="pv-pin"><span class="ms fill">location_on</span></span><span><b>${esc(PLACES[k].name)}</b><small>${esc(PLACES[k].addr)} · ${esc(distText(S.form.origin, k, S.geo))}</small></span>`);

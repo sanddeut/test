@@ -539,7 +539,7 @@ function oneUndo(c, show, past) {
   const u = row.querySelector("#one-undo"), pz = row.querySelector("#one-pause");
   const noUndo = !c.querySelector(":scope > .undo-link") && !oneCanCancelPending();
   if (u.disabled !== noUndo) u.disabled = noUndo;
-  const pzHTML = one.userPaused ? "계속하기" : "일시정지"; // 아이콘 없이 글자만
+  const pzHTML = one.userPaused ? "계속하기" : "멈추기"; // 아이콘 없이 글자만
   if (pz.innerHTML !== pzHTML) pz.innerHTML = pzHTML;
   const noPause = !one.userPaused && (S.paused || S.undoPending);
   if (pz.disabled !== noPause) pz.disabled = noPause;
@@ -573,10 +573,23 @@ function oneOpenBtn(c, show, past) {
 
 // 「~할게요」 하고 읽을 시간을 기다리는 동안의 「취소」: 그 단계를 하기 전 상태로 돌리고 다시 물음 (되돌리기와 같은 방식)
 function oneCanCancelPending() {
+  if (oneCanRedoOpen()) return true;
   return Boolean(S?.unified && S.readProg && S.readProg.t < S.readProg.total && !S.undoPending && !S.finished && undoable(S.stepIdx) && S.undoResolve);
+}
+// 마음택시를 여는 중의 「수정」: 앱을 열기 전(허용 직전)으로 돌아가 허용할지 다시 물음
+function oneCanRedoOpen() {
+  return Boolean(S?.unified && S.steps?.[S.stepIdx]?.id === "taxi_open" && S.perm?.app === true && S.undoResolve && !S.undoPending && !S.finished);
 }
 function oneCancelPending() {
   const i = S.stepIdx;
+  if (oneCanRedoOpen()) {
+    logEvent("one_redo_open");
+    S.undoPending = true; S.oneCancelled = true; S.paused = true;
+    if (mini.on) miniEnd(true);
+    syncControls();
+    setTimeout(() => { S.perm.app = null; S.undoTo = i; S.undoResolve?.("__undo"); }, 400 * PACE);
+    return;
+  }
   logEvent("one_cancel_pending", { step: S.steps[i]?.id });
   S.undoPending = true;
   S.oneCancelled = true; // 되돌림 안내를 「취소했어요」로
