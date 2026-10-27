@@ -272,3 +272,8 @@
 .chat.one-page #run-card.one-stale #rc-status::after { content: attr(data-doing) !important; font-size: 15.5px; font-weight: 500; color: #6b6f7a; }
 /* 「일시정지」「수정」: 작업 카드와 같은 회색 카드로 묶음 (자리는 그대로, 아이콘 없이) */
 .chat.one-page > .one-ctrl { background: #eef1f6; border-radius: 20px; padding: 12px; gap: 8px; }
+
+/* 호출을 마친 뒤: 회색 카드 없이 「되돌리기」 알약 하나 */
+.chat.one-page > .one-ctrl.one-ctrl-done { background: none; padding: 0; align-self: flex-start; }
+.one-ctrl.one-ctrl-done #one-pause { display: none !important; }
+.one-ctrl.one-ctrl-done #one-undo.one-pill { flex: none; height: 38px; padding: 0 18px; border-radius: 999px; background: #fff; color: #3c4048; box-shadow: 0 0 0 1px #d6dce6; font-size: 15px; }

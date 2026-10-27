@@ -1083,4 +1083,4 @@ body:not(.unified) .chat > .bubble.agent:first-child { border-radius: 6px 22px 2
 .rc-body .pv-origin .pv-pin, .pv-origin .pv-pin { width: 26px; height: 26px; background: #fdecea; color: #e8453c; }
 .rc-body .pv-origin .pv-pin .ms, .pv-origin .pv-pin .ms { font-size: 16px; }
 .pv-origin > span:last-child { min-width: 0; }
-.rc-body .pv-origin small:first-of-type, .pv-origin small:first-of-type { white-space: nowrap; font-size: 13px; letter-spacing: -0.3px; overflow: hidden; text-overflow: ellipsis; }
+.rc-body .pv-origin small:first-of-type, .pv-origin small:first-of-type { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
