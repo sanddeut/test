@@ -552,7 +552,8 @@ function oneUndo(c, show, past) {
   // 그 AI 말에 참가자가 이미 답했으면(답이 아래에 있으면) 버튼은 숨김
   let answered = false;
   for (let n = ai?.nextElementSibling; n; n = n.nextElementSibling) if (show.has(n) && n.classList.contains("bubble") && n.classList.contains("user")) { answered = true; break; }
-  const vis = Boolean(!past && S?.running && !S.finished && said && !asking && (!answered || S.rideDone)); // 마음택시 여는 단계에도 보임
+  const opening = S?.steps?.[S.stepIdx]?.id === "taxi_open"; // 마음택시 여는 단계에서만 예외로 빼 둠
+  const vis = Boolean(!past && S?.running && !S.finished && said && !asking && !opening && (!answered || S.rideDone));
   if (row.hidden === vis) row.hidden = !vis; // 값이 바뀔 때만 (같은 값을 다시 넣어도 대화창 감시가 다시 돌아 무한 반복됨)
   if (!vis) return;
   const u = row.querySelector("#one-undo"), pz = row.querySelector("#one-pause");
