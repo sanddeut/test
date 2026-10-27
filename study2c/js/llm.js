@@ -243,7 +243,11 @@ const LLM = {
       try {
         let schema = REQUEST_SCHEMA;
         if (kind === "turn") schema = turnSchema(context.intents);
-        const output = await geminiCall(this.key, this.model, buildPrompt(kind, text, llmContext), schema);
+        // 응답이 늦으면(재시도·대체 모델 포함 최대 8초) 규칙 기반으로 넘어가 화면이 멈춘 듯 보이지 않게 함
+        const output = await Promise.race([
+          geminiCall(this.key, this.model, buildPrompt(kind, text, llmContext), schema),
+          new Promise((_, rej) => setTimeout(() => rej(new Error("timeout 8s")), 8000)),
+        ]);
         if (kind === "turn" && !context.intents.includes(output.intent)) output.intent = "other";
         this.lastError = null;
         return { output, source: "gemini", model: workingModel || this.model, latency_ms: Math.round(performance.now() - started) };

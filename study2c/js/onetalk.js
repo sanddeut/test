@@ -897,3 +897,12 @@ rejectPicks = function () {
   if (d) d.sub = [...SEARCH_ORDER.map((k) => ({ label: PLACES[k].name, out: { intent: "set_dest", place: k } })), DIRECT];
   return r;
 };
+
+// 입력칸 ✕: 듣는 중이든 다 받아 적은 뒤든, 누르면 듣기를 끝내고 적힌 말을 모두 지움
+document.addEventListener("click", (e) => {
+  if (!e.target.closest?.("#voice-btn .vcancel")) return;
+  e.stopPropagation(); e.preventDefault();
+  window.stopMic?.(false);
+  const m = $("#msg"); m.value = ""; m.dispatchEvent(new Event("input"));
+  if (S) logEvent("voice_clear");
+}, true);

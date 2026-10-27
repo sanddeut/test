@@ -307,3 +307,8 @@
 .bubble.agent .hist-final > div { padding: 10px 0 !important; font-size: 15px !important; }
 /* 작은 앱 화면: 앱이 열리기 전(홈 화면)에는 마음택시 스플래시 모양으로 가림 (메시지와 동시에 보이게) */
 .rc-mini.mini-pre .screen-clip::after { content: "local_taxi"; position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; background: #ffc72c; color: #1c1d21; font-family: "Material Symbols Rounded"; font-size: 22px; font-variation-settings: "FILL" 1; }
+
+/* 받아 적은 뒤에도 ✕ 보임 (누르면 다 지움) */
+.voice-btn.has-text .vcancel { display: inline-flex !important; }
+.voice-btn.has-text { position: relative; padding-right: 44px; }
+.voice-btn.has-text:not(.on) .vcancel { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); margin: 0; }
