@@ -1903,8 +1903,8 @@ async function runHighStep(step) {
   // 출발지 설정 안내(「말씀하신 ‘…’로 출발지를 설정했어요」)는 다른 단계보다 오래 보여 줌 (잘못된 출발지를 알아챌 시간)
   const read = async () => {
     const ms = S.cfg.delay * (step.id === "origin" ? 2 : 1) + (S.unified ? 2000 : 0); // 개선안 막대는 2초 더 길게
-    // 개선안: 읽을 시간을 말풍선 맨 위 막대로 (예상 금액 등). 앱 여는 단계는 막대 없음
-    if (S.unified && step.id !== "taxi_open") {
+    // 개선안: 읽을 시간을 말풍선 맨 위 막대로 (예상 금액·앱 여는 단계 등)
+    if (S.unified) {
       for (let t = 0; t < ms; t += 250) { S.readProg = { t, total: ms }; await sleep(250); await gate(); }
       S.readProg = { t: ms, total: ms }; setTimeout(() => { if (S) S.readProg = null; }, 400);
       return;

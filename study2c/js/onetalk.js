@@ -775,6 +775,11 @@ doApply = async function (step, choice, opts) {
   if (!S?.unified || step?.id !== "car" || !S.userSet?.car) return _doApplyOne(step, choice, opts);
   // 목록에서 고른 뒤 「○○택시로 할게요」에도 읽을 시간 막대 (이미 막대를 보여 준 경우는 건너뜀)
   if (!S.carReadDone) {
+    // 알리고 진행하는 단계처럼 카드에 보이게 (낮은 자동화로 두면 숨겨진 줄로 감)
+    const prev = [S.automation, S.cond];
+    S.automation = "high"; S.cond = "B2";
+    try { await agentSay(`${CAR_TYPES[S.form.car]?.label || "고르신 택시"}로 할게요.`, { gated: true }); } finally { [S.automation, S.cond] = prev; }
+    S.carSaidOne = true; // 뒤에 오는 「○○택시로 할게요」(car.set)는 다시 말하지 않음
     for (let t = 0; t < READ_MS; t += 250) { S.readProg = { t, total: READ_MS }; await sleep(250 * PACE); await gate(); }
     S.readProg = { t: READ_MS, total: READ_MS }; setTimeout(() => { if (S) S.readProg = null; }, 400);
   }
@@ -906,3 +911,12 @@ document.addEventListener("click", (e) => {
   const m = $("#msg"); m.value = ""; m.dispatchEvent(new Event("input"));
   if (S) logEvent("voice_clear");
 }, true);
+
+// 고른 택시를 막대 전에 이미 말했으면 반영 뒤 같은 말을 다시 하지 않음
+const _sayKeyOne = sayKey;
+sayKey = async function (key, vars, opts) {
+  if (key === "car.set" && S?.carSaidOne) { S.carSaidOne = false; return; }
+  // 진행 중에 말로 바꾼 경우(「출발지를 ‘…’로 설정했어요」 등): 해석하느라 잠깐 멈춘 상태라 숨겨진 줄로 가던 것을 대화에 바로 보여 줌
+  if (S?.unified && /^change\./.test(key) && S.running && !S.finished) return _sayKeyOne(key, vars, { ...(opts || {}), talk: true });
+  return _sayKeyOne(key, vars, opts);
+};
