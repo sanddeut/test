@@ -6,14 +6,6 @@
 // 기존안(2c): 단계마다 넘어가는 시간을 절반으로 (화면 조작 속도 배율 0.5 + 문구를 읽는 시간 2.5초)
 PACE = 0.5;
 
-// 답할 일이 없는 알림(앱 실행·출발지·목적지·예상 금액)에는 안쪽 카드 없음. 선택지와 함께 나오는 카드(택시 종류·최종 호출 등)는 그대로
-const _showNoticeBrief = showNotice;
-showNotice = function (text) {
-  const pv = stepPreview;
-  stepPreview = () => null;
-  try { return _showNoticeBrief(text); } finally { stepPreview = pv; }
-};
-
 function briefUpdate() {
   const c = chat();
   const card = $("#run-card");

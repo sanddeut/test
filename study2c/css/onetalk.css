@@ -270,3 +270,5 @@
 .chat.one-page #run-card.one-stale #rc-status { visibility: visible !important; font-size: 0; }
 .chat.one-page #run-card.one-stale #rc-status > * { display: none !important; }
 .chat.one-page #run-card.one-stale #rc-status::after { content: attr(data-doing) !important; font-size: 15.5px; font-weight: 500; color: #6b6f7a; }
+/* 「일시정지」「수정」: 작업 카드와 같은 회색 카드로 묶음 (자리는 그대로, 아이콘 없이) */
+.chat.one-page > .one-ctrl { background: #eef1f6; border-radius: 20px; padding: 12px; gap: 8px; }

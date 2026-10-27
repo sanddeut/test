@@ -516,7 +516,7 @@ function oneUndo(c, show, past) {
     row.id = "one-ctrl"; row.className = "one-ctrl"; row.hidden = true;
     const u = document.createElement("button");
     u.type = "button"; u.id = "one-undo"; u.className = "one-pill";
-    u.innerHTML = '<span class="ms">undo</span>수정'; // 일시정지 옆 버튼: 「수정」 (지금·바로 전 단계를 다시 함)
+    u.textContent = "수정"; // 일시정지 옆 버튼: 「수정」 (지금·바로 전 단계를 다시 함)
     u.onclick = () => {
       if (oneCanCancelPending()) return oneCancelPending(); // 「~할게요」 하고 기다리는 중이면 그 일을 하기 전에 취소
       const l = [...chat().querySelectorAll(":scope > .undo-link")].at(-1); if (l) { logEvent("one_undo"); l.click(); }
@@ -540,7 +540,7 @@ function oneUndo(c, show, past) {
   const u = row.querySelector("#one-undo"), pz = row.querySelector("#one-pause");
   const noUndo = !c.querySelector(":scope > .undo-link") && !oneCanCancelPending();
   if (u.disabled !== noUndo) u.disabled = noUndo;
-  const pzHTML = one.userPaused ? '<span class="ms">play_arrow</span>계속하기' : '<span class="ms">pause</span>일시정지';
+  const pzHTML = one.userPaused ? "계속하기" : "일시정지"; // 아이콘 없이 글자만
   if (pz.innerHTML !== pzHTML) pz.innerHTML = pzHTML;
   const noPause = !one.userPaused && (S.paused || S.undoPending);
   if (pz.disabled !== noPause) pz.disabled = noPause;
