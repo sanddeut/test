@@ -262,7 +262,13 @@ function miniStart() {
 // 휴대폰 홈 화면일 때는 숨겨 두고, 마음택시가 열리는 순간(스플래시)부터 보임
 function miniShow() {
   const box = $("#rc-mini");
-  if (box) box.hidden = S?.phone?.app === "home";
+  if (!box) return;
+  // 「마음택시 앱을 열어서 사용할게요」와 동시에 보임. 앱이 아직 홈 화면이면 스플래시 모양으로 가려 둠
+  const q = $("#rc-q");
+  const said = Boolean(q && !q.hidden && q.textContent.trim());
+  if (box.hidden === said) box.hidden = !said;
+  const pre = S?.phone?.app === "home";
+  if (box.classList.contains("mini-pre") !== pre) box.classList.toggle("mini-pre", pre);
 }
 setInterval(() => {
   if (!mini.on) return;
