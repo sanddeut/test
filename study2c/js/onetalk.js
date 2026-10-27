@@ -322,6 +322,7 @@ function oneDoingSync() {
 setInterval(oneDoingSync, 200);
 
 // 앱 여는 단계가 너무 길지 않게: 읽을 시간 6초 → 2초, 연 뒤 기다림 3.5초 → 1.2초 (원래 약 14초 → 약 6초)
+const ONE_PLAN = /[?&]plan=1/.test(location.search);
 const _runAutoOne = runAuto;
 runAuto = async function (step) {
   if (step.id !== "taxi_open" || !S?.cfg) return _runAutoOne(step);
@@ -332,7 +333,12 @@ runAuto = async function (step) {
   try { r = await _runAutoOne(step); } finally { S.cfg.delay = delay; S.fastOpen = false; }
   // 출발지로 넘어가기 전에 작은 앱 화면을 접어 「실행화면 보기」로 바꾸고 넘어감
   if (mini.on) { miniEnd(); await sleep(900 * PACE); }
-  if (r && S && !S.finished && S.jumpTo == null && !S.planDone) { S.planDone = true; if (!(await onePlan())) return false; }
+  // 시작 전 계획(「이렇게 진행할게요」)은 쓰지 않음 (해 보니 없는 게 나음). ?plan=1 이면 다시 켬
+  if (r && S && !S.finished && S.jumpTo == null && !S.planDone) {
+    S.planDone = true;
+    if (ONE_PLAN) { if (!(await onePlan())) return false; }
+    else if (S.req.car && CAR_TYPES[S.req.car]) planCar(S.req.car); // 처음 요청에서 말한 택시 종류는 다시 묻지 않고 「~로 할게요」
+  }
   return r;
 };
 
