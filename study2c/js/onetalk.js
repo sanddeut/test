@@ -679,7 +679,7 @@ setInterval(() => {
   if (!one.sumAt) one.sumAt = Date.now() + 2000; // 호출 완료 말이 먼저 뜨고, 요약은 조금 뒤에
   if (Date.now() < one.sumAt) return;
   const f = S.form;
-  const mine = (k) => (S.userSet?.[k] ? ' <em>내가 고름</em>' : "");
+  const mine = () => ""; // 「내가 고름」 태그는 쓰지 않음
   const rows = [
     `${esc(TAXI_APP)} 앱을 열었어요`,
     `출발지를 <b>${esc(ORIGINS[f.origin]?.name || originLabel(f.origin, S.geo))}</b>로 정했어요${mine("origin")}`,
