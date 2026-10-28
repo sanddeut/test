@@ -999,3 +999,11 @@ renderPinCard = function () {
   if (head) head.innerHTML = '<span class="one-paycard" aria-hidden="true"><i></i></span><span><b>마음카드 ****1234</b></span>';
   card?.querySelector(".pw-note")?.remove(); // 설명은 AI 메시지에 담음
 };
+
+// 결제 비밀번호 안내: 비밀번호가 AI에게 가지 않는다는 설명을 AI 말에 담음 (카드 안 설명 줄은 뺐음)
+const PW_MSG = "결제를 위해 비밀번호 입력이 필요해요. 비밀번호는 AI에게 전달되지 않으니, ‘마음택시’ 앱을 열어 직접 입력해주세요.";
+const _linesPw = lines;
+lines = function (key, s, vars) {
+  if (key === "password" && (s || S)?.unified) return [PW_MSG];
+  return _linesPw(key, s, vars);
+};
