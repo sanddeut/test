@@ -710,10 +710,33 @@ $("#composer").onsubmit = (e) => onSubmit(e);
 // =====================================================================
 // 알리고 진행하는 단계("~로 할게요"): 읽을 시간을 말풍선 안 막대로 (다 차면 진행, 일시정지하면 멈춤)
 // =====================================================================
+// 막대가 차는 시간에는 읽을 시간 + 실제로 앱을 조작하는 시간이 함께 들어감:
+// 읽는 동안 앞부분이 차고, 남은 부분은 AI가 앱을 조작하는 동안 차서 그 단계가 끝날 때 꽉 참
+const OP_EST_MS = 5000; // 조작 시간 어림값 (실제로 끝나는 때에 맞춰 마지막에 꽉 채움)
+function opEnd() { if (S?.opBar && !S.opBar.done) { S.opBar.done = true; const o = S.opBar; setTimeout(() => { if (S?.opBar === o) S.opBar = null; }, 350); } }
 setInterval(() => {
-  const p = S?.unified && !S.finished ? S.readProg : null;
+  if (!S?.unified) return;
+  const p = S.readProg;
+  if (p && p.t >= p.total && !S.opBar) S.opBar = { read: p.total, t: 0, step: S.stepIdx }; // 읽을 시간이 끝남 → 조작 시작
+  const o = S.opBar;
+  if (!o || o.done) return;
+  if (!S.paused) o.t += 80;
+  // 다음 단계로 넘어가거나, 질문이 뜨거나, 되돌리거나, 끝나면 꽉 채우고 내림
+  if (S.stepIdx !== o.step || S.waiter || S.undoPending || S.finished || (S.readProg && S.readProg.t < S.readProg.total)) opEnd();
+}, 80);
+function barFrac() {
+  if (S.readProg && !S.opBar) return Math.min(1, (S.readProg.t + 250) / (S.readProg.total + OP_EST_MS));
+  const o = S.opBar;
+  if (!o) return null;
+  if (o.done) return 1;
+  const k = o.t / OP_EST_MS; // 어림 시간을 넘기면 끝 직전에서 천천히
+  const f = k < 0.85 ? k : 0.85 + 0.12 * (1 - Math.exp(-(k - 0.85) * 2));
+  return (o.read + f * OP_EST_MS) / (o.read + OP_EST_MS);
+}
+setInterval(() => {
+  const p = S?.unified && !S.finished && (S.readProg || S.opBar) ? barFrac() : null;
   let bar = $("#one-read");
-  if (!p) { if (bar) bar.remove(); return; }
+  if (p == null) { if (bar) bar.remove(); return; }
   const c = chat();
   const ai = [...c.children].filter((el) => !el.classList.contains("one-hide") && (el.id === "run-card" || (el.classList.contains("agent") && !el.classList.contains("typing")))).at(-1);
   if (!ai) return;
@@ -724,7 +747,7 @@ setInterval(() => {
   }
   const host = ai.id === "run-card" ? ai.querySelector(".rc-body") || ai : ai; // 회색 말풍선 맨 위 테두리처럼
   if (bar.parentNode !== host) host.appendChild(bar);
-  bar.firstChild.style.width = `${Math.min(100, ((p.t + 250) / p.total) * 100)}%`;
+  bar.firstChild.style.width = `${p * 100}%`;
 }, 120);
 
 // =====================================================================
