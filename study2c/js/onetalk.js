@@ -1050,3 +1050,68 @@ lines = function (key, s, vars) {
   if (key === "password" && (s || S)?.unified) return [PW_MSG];
   return _linesPw(key, s, vars);
 };
+
+// =====================================================================
+// 판단 근거: AI 프로필 줄 오른쪽 끝(작업 카드 오른쪽 위)에 작은 회색 물음표.
+// 누르면 카드 안에 근거가 펼쳐지고, 읽는 동안은 진행을 잠시 멈춤(「계속하기」로 이어서). 다시 누르면 닫히고 이어서 진행
+// =====================================================================
+const josaEulReul = (w) => { const c = (w || "").trim().slice(-1).charCodeAt(0) - 0xac00; return c >= 0 && c <= 11171 && c % 28 ? "을" : "를"; };
+const _reasonOfOne = reasonOf;
+reasonOf = function (id) {
+  const r = _reasonOfOne(id);
+  return r ? r.replace(/‘([^’]+)’을 검색/, (m, w) => `‘${w}’${josaEulReul(w)} 검색`) : r;
+};
+function oneWhy() {
+  if (!S?.unified) return;
+  const card = $("#run-card"), q = $("#rc-q");
+  const t = q && !q.hidden ? q.textContent.trim() : "";
+  const why = t && S.reasons?.[t] && card?.classList.contains("one-cur") && !card.classList.contains("one-stale") && !S.finished ? S.reasons[t] : null;
+  let btn = $("#one-why");
+  const host = card?.querySelector(".rc-body") || card; // 카드 본문 기준으로 위치 (프로필 줄 오른쪽 끝)
+  if (!btn && host) {
+    btn = document.createElement("button");
+    btn.type = "button"; btn.id = "one-why"; btn.className = "one-why"; btn.setAttribute("aria-label", "왜 이렇게 정했나요?");
+    btn.innerHTML = '<span class="ms">help</span>';
+    btn.onclick = () => oneWhyToggle();
+    host.appendChild(btn);
+  }
+  if (btn) { if (host && btn.parentNode !== host) host.appendChild(btn); btn.hidden = !why; }
+  let box = $("#one-why-box");
+  if (!why || one.whyFor !== t) {
+    if (box) box.remove();
+    if (one.whyFor && one.whyPaused && one.userPaused) onePause(false);
+    one.whyFor = null; one.whyPaused = false;
+    btn?.classList.remove("on");
+    return;
+  }
+  const body = card.querySelector(".rc-body") || card;
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "one-why-box"; box.className = "one-why-box";
+    const [lead, list] = why.split(/\s*검색 결과:\s*/);
+    box.innerHTML = `<p>${esc(lead)}</p>` + (list ? `<ol>${list.split(/,\s*/).map((x, i) => `<li${i === 0 ? ' class="on"' : ""}>${esc(x)}</li>`).join("")}</ol>` : "");
+  }
+  const ctrl = body.querySelector(":scope > .one-ctrl");
+  if (box.parentNode !== body || (ctrl && box.nextElementSibling !== ctrl)) ctrl ? body.insertBefore(box, ctrl) : body.appendChild(box);
+}
+function oneWhyToggle() {
+  const q = $("#rc-q"), t = q?.textContent.trim();
+  if (!t || !S?.reasons?.[t]) return;
+  const open = one.whyFor !== t;
+  if (open) {
+    one.whyFor = t;
+    $("#one-why")?.classList.add("on");
+    logEvent("one_why_open", { text: t });
+    if (S.running && !S.paused) { onePause(true); one.whyPaused = true; } // 근거를 읽는 동안 잠시 멈춤
+  } else {
+    logEvent("one_why_close");
+    $("#one-why-box")?.remove();
+    $("#one-why")?.classList.remove("on");
+    one.whyFor = null;
+    if (one.whyPaused && one.userPaused) onePause(false);
+    one.whyPaused = false;
+  }
+  oneWhy();
+}
+setInterval(oneWhy, 150);
+
