@@ -1033,6 +1033,16 @@ renderPinCard = function () {
   const head = card?.querySelector(".pw-head");
   if (head) head.innerHTML = '<span class="one-paycard" aria-hidden="true"><i></i></span><span><b>마음카드 ****1234</b></span>';
   card?.querySelector(".pw-note")?.remove(); // 설명은 AI 메시지에 담음
+  // 버튼: 최종 확인의 [수정][이대로 호출]처럼 카드 아래 한 줄 [취소][화면 열기] (아이콘 없이)
+  const go = card?.querySelector(".pw-go"), cancel = card?.querySelector(".pw-cancel");
+  if (go && cancel) {
+    go.querySelector(".ms")?.remove();
+    go.textContent = "화면 열기";
+    const row = document.createElement("div");
+    row.className = "one-pw-btns";
+    row.append(cancel, go);
+    card.after(row);
+  }
 };
 
 // 결제 비밀번호 안내: 비밀번호가 AI에게 가지 않는다는 설명을 AI 말에 담음 (카드 안 설명 줄은 뺐음)
