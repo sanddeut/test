@@ -350,3 +350,6 @@
 .one-map-pin { position: absolute; left: 50%; top: 50%; width: 24px; height: 30px; transform: translate(-50%, -80%); }
 .one-map-pin svg { width: 100%; height: 100%; display: block; }
 .one-map-attr { position: absolute; right: 4px; bottom: 2px; font-size: 8.5px; color: #8a8f99; background: rgba(255,255,255,.7); padding: 0 3px; border-radius: 3px; }
+
+/* 결제 비밀번호 카드: 설명을 뺀 뒤 카드 이름과 버튼 사이 간격 */
+.pw-open .pw-go { margin-top: 14px; }

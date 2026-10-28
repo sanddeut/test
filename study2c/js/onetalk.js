@@ -997,6 +997,5 @@ renderPinCard = function () {
   const card = chipsBox().querySelector(".pw-open");
   const head = card?.querySelector(".pw-head");
   if (head) head.innerHTML = '<span class="one-paycard" aria-hidden="true"><i></i></span><span><b>마음카드 ****1234</b></span>';
-  const note = card?.querySelector(".pw-note");
-  if (note) note.textContent = "비밀번호는 AI에게 전달되지 않아요.";
+  card?.querySelector(".pw-note")?.remove(); // 설명은 AI 메시지에 담음
 };
