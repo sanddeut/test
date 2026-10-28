@@ -312,3 +312,6 @@
 .voice-btn.has-text .vcancel { display: inline-flex !important; }
 .voice-btn.has-text { position: relative; padding-right: 44px; }
 .voice-btn.has-text:not(.on) .vcancel { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); margin: 0; }
+
+/* 개선안: 내 말풍선 아래 「전달됨」「전달 실패」 표시는 쓰지 않음 (못 알아들으면 AI 말과 「다시 보내기」로 알림) */
+.chat.one-page .resend-row, .chat.one-page .bubble.user .receipt { display: none !important; }
