@@ -394,12 +394,17 @@ setInterval(() => {
 
 // 「…」만 오래 보이지 않게: AI가 일하는 동안 프로필 옆에 지금 하는 일 ("택시 종류를 확인하는 중…")
 const APPLYING = { origin: "출발지를 설정하는 중", dest: "목적지를 설정하는 중", car: "택시 종류를 바꾸는 중", drop: "하차 지점을 바꾸는 중", count: "호출 대수를 바꾸는 중" };
+// 대화창과 실행화면이 같은 문구: 「AI가 ~하는 중」
 function oneDoingText() {
-  if (one.doing) return one.doing;
-  if (one.staleQ && S?.stepIdx === one.staleStep) return `${APPLYING[S.steps[S.stepIdx]?.id] || "반영하는 중"}…`;
-  const id = S?.steps?.[S.stepIdx]?.id;
-  return `${(typeof DOING !== "undefined" && DOING[id]) || "답을 준비하는 중"}…`;
+  let t;
+  if (one.doing) t = one.doing.replace(/…$/, "");
+  else if (one.staleQ && S?.stepIdx === one.staleStep) t = APPLYING[S.steps[S.stepIdx]?.id] || "반영하는 중";
+  else { const id = S?.running && !S.finished ? S.steps?.[S.stepIdx]?.id : null; t = (typeof DOING !== "undefined" && DOING[id]) || "답을 준비하는 중"; }
+  return `AI가 ${t}`;
 }
+// 실행화면 아래 「AI가 ~하고 있어요」도 대화창과 같은 「AI가 ~하는 중」으로
+const _waitLabelOne = waitLabel;
+waitLabel = function () { return S?.unified ? oneDoingText() : _waitLabelOne(); };
 function oneDoingSync() {
   if (!S?.unified || ONE_MODE !== "page") return;
   const t = oneDoingText();
