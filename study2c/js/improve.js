@@ -140,7 +140,7 @@ function watchUnsent() {
 
 // 보내기 버튼: 화살표 대신 '보내기' 글자 (작업 중 중지 버튼은 원안 그대로)
 // 글로 하기 입력칸 안내 문구: '말하기'가 아니라 글자로 적는 곳임을 알 수 있게
-const STOP_LABEL = "멈추기"; // 멈추기 버튼 이름 (입력창·실행화면 모두)
+const STOP_LABEL = "일시정지"; // 멈추기 버튼 이름 (입력창·실행화면 모두)
 const _syncControlsPh = syncControls;
 syncControls = function () {
   _syncControlsPh();

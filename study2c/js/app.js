@@ -2939,7 +2939,7 @@ function start() {
   promptGuide = S.guide || S.unified;
   setPrompt(savedPrompt(promptGuide));
   document.body.classList.toggle("guide", S.guide);
-  $("#btn-stop").textContent = S.guide ? "멈추기" : "중지";
+  $("#btn-stop").textContent = S.guide ? "일시정지" : "중지";
   $("#btn-manual").textContent = S.guide ? "내가 앱 조작하기" : "직접 조작";
   $(".db-tag").textContent = S.guide ? "내가 앱 조작 중" : "직접 조작 중";
   document.querySelector("#rc-manual") && ($("#rc-manual").textContent = S.guide ? "내가 앱 조작하기" : "직접 조작하기");
