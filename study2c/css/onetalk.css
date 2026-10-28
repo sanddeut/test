@@ -315,3 +315,14 @@
 
 /* 개선안: 내 말풍선 아래 「전달됨」「전달 실패」 표시는 쓰지 않음 (못 알아들으면 AI 말과 「다시 보내기」로 알림) */
 .chat.one-page .resend-row, .chat.one-page .bubble.user .receipt { display: none !important; }
+
+/* 대화창 카드 안 「내가 앱 조작하기」 링크는 빼 둠 (실행화면의 버튼은 그대로) */
+.run-card .rc-manual { display: none !important; }
+
+/* 결제 비밀번호 카드: 「화면 열기」는 조금 작게, 「취소」는 같은 크기의 흰 바탕·파란 테두리 버튼 */
+.pw-open .pw-go { padding: 12px; font-size: 16px; border-radius: 14px; }
+.pw-open .pw-cancel { align-self: stretch; display: flex; align-items: center; justify-content: center; padding: 10.5px 12px; border: 1.5px solid #0b57d0 !important; background: #fff !important; color: #0b57d0 !important; border-radius: 14px; font-size: 16px; font-weight: 600; text-decoration: none !important; margin-top: 2px; }
+
+/* 실행화면 아래 패널: 「AI가 ~하고 있어요」가 패널 가운데 오게 (빈 상태 줄 자리는 비움) */
+.pv-panel:has(.pv-wait:not([hidden])) #pv-status { display: none !important; }
+.pv-panel:has(.pv-wait:not([hidden])) .pv-wait { padding: 26px 16px 30px; }
