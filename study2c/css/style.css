@@ -1084,3 +1084,7 @@ body:not(.unified) .chat > .bubble.agent:first-child { border-radius: 6px 22px 2
 .rc-body .pv-origin .pv-pin .ms, .pv-origin .pv-pin .ms { font-size: 16px; }
 .pv-origin > span:last-child { min-width: 0; }
 body.unified .rc-body .pv-origin small:first-of-type, body.unified .pv-origin small:first-of-type { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* 한 줄은 개선안만 (기존안은 카드가 좁아 잘리지 않게 줄바꿈) */
+
+/* 그림 지도 (실제 지도를 못 불러올 때): 실제 위치를 본뜬 그림 하나로 화면을 채움 */
+.tx-map.ma > * { display: none; }
+.tx-map.ma > .ma-svg { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }

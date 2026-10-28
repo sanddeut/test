@@ -117,7 +117,7 @@ stepPreview = function () {
 };
 // 작은 지도 그림 (앱 지도와 같은 색: 옅은 바탕, 흰 길, 파란 강, 가운데 빨간 핀)
 // 실제 지도: 그 장소 좌표를 가운데 두고 지도 조각(타일)을 이어 붙임. 불러오지 못하면 아래 그림이 그대로 보임
-const MAP_Z = 15;
+const MAP_Z = 16;
 function mapTiles(lat, lng) {
   const n = 2 ** MAP_Z * 256;
   const px = ((lng + 180) / 360) * n;
@@ -138,7 +138,7 @@ function miniMapSVG(v, pl) {
 // 지도를 불러오지 못할 때 보이는 그림 (실제 위치를 본떠 그림: 지도 앱처럼 땅·숲·물·길·건물·이름)
 const MAP_TXT = (x, y, t, o = "") => `<text x="${x}" y="${y}" ${o} font-family="Noto Sans KR, Apple SD Gothic Neo, sans-serif">${t}</text>`;
 // 원주 연세대 미래캠퍼스: 산과 숲 사이 캠퍼스, 매지호수, 굽은 연세대길
-const MAP_WONJU = `<svg viewBox="0 0 320 110" preserveAspectRatio="xMidYMid slice">
+const MAP_WONJU = `<svg viewBox="60 18 200 68" preserveAspectRatio="xMidYMid slice">
 <rect width="320" height="110" fill="#f3f1ea"/>
 <path d="M0 0 H120 C100 18 70 30 40 34 C20 37 8 48 0 60 Z" fill="#d6e8cc"/>
 <path d="M238 0 H320 V70 C300 62 286 50 268 46 C250 42 236 26 238 0 Z" fill="#d6e8cc"/>
@@ -157,7 +157,7 @@ const MAP_WONJU = `<svg viewBox="0 0 320 110" preserveAspectRatio="xMidYMid slic
 <g font-size="7" fill="#7f9a72">${MAP_TXT(270, 40, "매봉산")}${MAP_TXT(14, 20, "백운산 자락")}</g>
 </svg>`;
 // 강남 테헤란로 152: 동서로 지나는 테헤란로, 역삼역(2호선), 네모난 블록과 건물
-const MAP_GANGNAM = `<svg viewBox="0 0 320 110" preserveAspectRatio="xMidYMid slice">
+const MAP_GANGNAM = `<svg viewBox="60 18 200 68" preserveAspectRatio="xMidYMid slice">
 <rect width="320" height="110" fill="#f1efea"/>
 <g fill="#e3dfd6">
 <rect x="6" y="6" width="44" height="30" rx="2"/><rect x="62" y="4" width="50" height="32" rx="2"/><rect x="124" y="6" width="40" height="30" rx="2"/><rect x="186" y="4" width="46" height="32" rx="2"/><rect x="244" y="6" width="34" height="30" rx="2"/><rect x="290" y="4" width="28" height="32" rx="2"/>

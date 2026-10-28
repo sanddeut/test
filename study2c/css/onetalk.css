@@ -360,3 +360,10 @@
 /* 색은 원래 빨간 계열 그대로: 왼쪽 「수정」은 흰 바탕·빨간 테두리(최종 확인의 수정처럼 테두리 버튼), 오른쪽 「일시정지」는 빨간 채움 */
 .rc-body > .one-ctrl #one-undo.one-pill { background: #fff !important; color: #c0605a !important; box-shadow: 0 0 0 1.5px #c0605a !important; }
 .rc-body > .one-ctrl #one-pause.one-pill { background: #c0605a !important; color: #fff !important; box-shadow: none !important; }
+
+/* AI 말 글자는 늘 같은 크기·굵기 (내가 답한 뒤 지난 말이 되어도 작아지지 않게: 잘못 알아들음 → 다시 요청 등) */
+.chat.one-page > .bubble.agent:not(.typing) { max-width: 100%; font-size: 18px; font-weight: 600; line-height: 1.55; padding: 14px 16px; }
+
+/* 카드 안 알약 버튼(수정 / 이대로 호출 등)도 진행 중 카드의 「수정」「일시정지」와 같은 크기·굵기 */
+.chat.one-page #run-card #rc-choices > .chip { flex: 0 0 calc(50% - 16px); box-sizing: border-box; margin: 0; padding: 0 12px; height: 48px; min-height: 48px; font-size: 16.5px !important; font-weight: 600; border-radius: 999px; }
+.chat.one-page #run-card #rc-choices:has(> .chip) { justify-content: center; }
