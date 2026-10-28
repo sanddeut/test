@@ -1738,6 +1738,7 @@ async function handleReject(step, c, said) {
     const proceed = async (key, vars) => {
       S.needReask = false;
       await sayKey(key, vars, { talk: true });
+      if (S.unified) return "reask"; // 개선안: 바꾼 내용으로 최종 확인 카드를 다시 보여 주고 한 번 더 확인 (바로 결제로 넘어가지 않음)
       await doApply(step, "approve", { announced: true });
       return "done";
     };

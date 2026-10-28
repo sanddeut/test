@@ -189,7 +189,7 @@ function onePage(c, bar) {
   const past = one.page != null;
   // 참가자가 답하면 그 답을 2초 동안 보여 준 뒤 다음 세트로 (그 사이 새 AI 말이 와도 2초는 지금 세트)
   const nUser = c.querySelectorAll(":scope > .bubble.user").length;
-  if (nUser !== one.nUser) { if (nUser > (one.nUser || 0)) one.userAt = Date.now(); one.nUser = nUser; }
+  if (nUser !== one.nUser) { if (nUser > (one.nUser || 0)) { one.userAt = Date.now(); setTimeout(oneUpdate, 2100); } one.nUser = nUser; } // 2초 뒤 화면에 다른 변화가 없어도 다음 세트로 넘어가게
   const lastUser = [...c.querySelectorAll(":scope > .bubble.user")].at(-1);
   const hold = !past && last > 0 && one.userAt && Date.now() - one.userAt < 2000 && lastUser && !pages[last].includes(lastUser);
   const shownIdx = hold ? last - 1 : last;
@@ -863,7 +863,7 @@ function finalCard() {
   ];
   const d = document.createElement("div");
   d.className = "rc-pv rc-summary one-final";
-  const TAP = ["coupon"]; // 지금은 쿠폰만 눌러서 바로 바꿈 (출발·도착·택시 종류는 아래 [수정]으로)
+  const TAP = ["edit_origin", "edit_dest", "edit_car", "coupon"];
   d.innerHTML = rows.map(([k0, label, v]) => { const k = TAP.includes(k0) ? k0 : ""; return `<div ${k ? `data-edit="${k}" role="button" tabindex="0"` : ""}><span>${esc(label)}</span><b>${esc(v)}${k ? '<span class="ms">chevron_right</span>' : ""}</b></div>`; }).join("");
   d.onclick = (e) => {
     const row = e.target.closest("[data-edit]");
@@ -919,4 +919,14 @@ sayKey = async function (key, vars, opts) {
   // 진행 중에 말로 바꾼 경우(「출발지를 ‘…’로 설정했어요」 등): 해석하느라 잠깐 멈춘 상태라 숨겨진 줄로 가던 것을 대화에 바로 보여 줌
   if (S?.unified && /^change\./.test(key) && S.running && !S.finished) return _sayKeyOne(key, vars, { ...(opts || {}), talk: true });
   return _sayKeyOne(key, vars, opts);
+};
+
+// 「무엇을 수정할까요?」에서 항목을 고른 뒤 이어지는 질문(「출발지를 어디로 바꿀까요?」 등): 진행 카드가 내 답 위에 남아 한 화면 묶음에서 빠지던 것을, 내 답 아래로 옮겨 보이게
+const _renderPicksOne = renderPicks;
+renderPicks = function (list, waiter, question) {
+  const r = _renderPicksOne(list, waiter, question);
+  const c = chat(), card = $("#run-card");
+  const lastUser = [...c.querySelectorAll(":scope > .bubble.user")].at(-1);
+  if (S?.unified && card && lastUser && (card.compareDocumentPosition(lastUser) & Node.DOCUMENT_POSITION_FOLLOWING)) c.insertBefore(card, $("#chips"));
+  return r;
 };
