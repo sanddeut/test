@@ -383,3 +383,5 @@
 .one-pw-btns > button { flex: 0 0 calc((100% - 32px) * .42); height: 38px; margin: 0 !important; padding: 0 12px !important; border-radius: 999px !important; font: inherit; font-size: 15.5px !important; font-weight: 500 !important; display: flex; align-items: center; justify-content: center; text-decoration: none !important; box-sizing: border-box; }
 .one-pw-btns > .pw-cancel { background: #fff !important; color: #0b57d0 !important; border: 1px solid #0b57d0 !important; }
 .one-pw-btns > .pw-go { background: #0b57d0 !important; color: #fff !important; border: 0 !important; }
+.one-pw-btns > .pw-go { gap: 4px; }
+.one-pw-btns > .pw-go .ms { font-size: 18px; }

@@ -1033,11 +1033,9 @@ renderPinCard = function () {
   const head = card?.querySelector(".pw-head");
   if (head) head.innerHTML = '<span class="one-paycard" aria-hidden="true"><i></i></span><span><b>마음카드 ****1234</b></span>';
   card?.querySelector(".pw-note")?.remove(); // 설명은 AI 메시지에 담음
-  // 버튼: 최종 확인의 [수정][이대로 호출]처럼 카드 아래 한 줄 [취소][화면 열기] (아이콘 없이)
+  // 버튼: 최종 확인의 [수정][이대로 호출]처럼 카드 아래 한 줄 [취소][화면 열기] (화면 열기 아이콘은 그대로)
   const go = card?.querySelector(".pw-go"), cancel = card?.querySelector(".pw-cancel");
   if (go && cancel) {
-    go.querySelector(".ms")?.remove();
-    go.textContent = "화면 열기";
     const row = document.createElement("div");
     row.className = "one-pw-btns";
     row.append(cancel, go);
