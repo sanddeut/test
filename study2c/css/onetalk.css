@@ -343,3 +343,10 @@
 .one-paycard { width: 44px; height: 30px; border-radius: 6px; background: linear-gradient(135deg, #f5b400, #f08c00); position: relative; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
 .one-paycard i { position: absolute; left: 6px; top: 9px; width: 10px; height: 8px; border-radius: 2px; background: #fde9a8; }
 .one-paycard::after { content: ""; position: absolute; left: 0; right: 0; bottom: 6px; height: 3px; background: rgba(255,255,255,.35); }
+.one-map { position: relative; }
+.one-map > svg { position: absolute; inset: 0; }
+.one-map-tiles { position: absolute; inset: 0; }
+.one-map-tiles img { position: absolute; width: 256px; height: 256px; max-width: none; }
+.one-map-pin { position: absolute; left: 50%; top: 50%; width: 24px; height: 30px; transform: translate(-50%, -80%); }
+.one-map-pin svg { width: 100%; height: 100%; display: block; }
+.one-map-attr { position: absolute; right: 4px; bottom: 2px; font-size: 8.5px; color: #8a8f99; background: rgba(255,255,255,.7); padding: 0 3px; border-radius: 3px; }

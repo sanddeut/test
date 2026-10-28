@@ -109,17 +109,35 @@ stepPreview = function () {
     el.querySelector(".pv-pin")?.remove();
     el.querySelector(".pv-here")?.remove();
     el.classList.add("one-place");
-    if (!el.querySelector(".one-map")) el.insertAdjacentHTML("beforeend", miniMapSVG(el.classList.contains("pv-origin") ? 0 : 1));
+    const isO = el.classList.contains("pv-origin");
+    const pl = isO ? ORIGINS[S.originTarget || TARGET_ORIGIN] : PLACES[S.form.dest || S.userDest || AGENT_PLACE];
+    if (!el.querySelector(".one-map")) el.insertAdjacentHTML("beforeend", miniMapSVG(isO ? 0 : 1, pl));
   }
   return el;
 };
 // 작은 지도 그림 (앱 지도와 같은 색: 옅은 바탕, 흰 길, 파란 강, 가운데 빨간 핀)
-function miniMapSVG(v) {
+// 실제 지도: 그 장소 좌표를 가운데 두고 지도 조각(타일)을 이어 붙임. 불러오지 못하면 아래 그림이 그대로 보임
+const MAP_Z = 15;
+function mapTiles(lat, lng) {
+  const n = 2 ** MAP_Z * 256;
+  const px = ((lng + 180) / 360) * n;
+  const r = (lat * Math.PI) / 180;
+  const py = ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n;
+  const tx = Math.floor(px / 256), ty = Math.floor(py / 256);
+  const imgs = [];
+  for (let dx = -2; dx <= 2; dx++) for (let dy = -1; dy <= 1; dy++) {
+    const x = tx + dx, y = ty + dy, s = "abcd"[(x + y) & 3];
+    // 지도 위치: 상자 가운데(50%)에 좌표가 오도록
+    imgs.push(`<img alt="" loading="lazy" referrerpolicy="no-referrer" src="https://${s}.basemaps.cartocdn.com/rastertiles/voyager/${MAP_Z}/${x}/${y}.png" style="left:calc(50% + ${Math.round(x * 256 - px)}px);top:calc(50% + ${Math.round(y * 256 - py)}px)" onerror="this.remove()">`);
+  }
+  return `<div class="one-map-tiles">${imgs.join("")}</div><span class="one-map-attr">© OpenStreetMap © CARTO</span>`;
+}
+function miniMapSVG(v, pl) {
   const roads = v ? [[0, 30, 320, 30], [0, 78, 320, 78], [70, 0, 70, 110], [210, 0, 210, 110], [140, 0, 140, 110]] : [[0, 22, 320, 22], [0, 70, 320, 70], [95, 0, 95, 110], [245, 0, 245, 110], [40, 0, 40, 110]];
   const river = v ? "M0 92 L320 62 L320 80 L0 110 Z" : "M0 44 L320 30 L320 48 L0 62 Z";
   return `<div class="one-map" aria-hidden="true"><svg viewBox="0 0 320 110" preserveAspectRatio="xMidYMid slice"><rect width="320" height="110" fill="#eef1ea"/>` +
     `<path d="${river}" fill="#c9dcf2"/>` + roads.map(([a, b, c, d]) => `<line x1="${a}" y1="${b}" x2="${c}" y2="${d}" stroke="#fff" stroke-width="7"/>`).join("") +
-    `<g transform="translate(160 56)"><circle r="12" fill="#e8453c" opacity=".18"/><path d="M0 4 C-7 -4 -8 -7 -8 -10 A8 8 0 1 1 8 -10 C8 -7 7 -4 0 4 Z" fill="#e8453c"/><circle cy="-10" r="3" fill="#fff"/></g></svg></div>`;
+    `</svg>${pl?.lat ? mapTiles(pl.lat, pl.lng) : ""}<span class="one-map-pin"><svg viewBox="-12 -24 24 30"><circle r="9" cy="0" fill="#e8453c" opacity=".2"/><path d="M0 4 C-7 -4 -8 -7 -8 -10 A8 8 0 1 1 8 -10 C8 -7 7 -4 0 4 Z" fill="#e8453c"/><circle cy="-10" r="3" fill="#fff"/></svg></span></div>`;
 }
 
 // 흐리게 남기기: 지난 말은 작고 흐리게, 지금 말은 크게. 새 말이 오면 지금 말이 보이게 아래로 (위로 올리면 지난 말을 읽을 수 있음)
