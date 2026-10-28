@@ -128,17 +128,52 @@ function mapTiles(lat, lng) {
   for (let dx = -2; dx <= 2; dx++) for (let dy = -1; dy <= 1; dy++) {
     const x = tx + dx, y = ty + dy, s = "abcd"[(x + y) & 3];
     // 지도 위치: 상자 가운데(50%)에 좌표가 오도록
-    imgs.push(`<img alt="" loading="lazy" referrerpolicy="no-referrer" src="https://${s}.basemaps.cartocdn.com/rastertiles/voyager/${MAP_Z}/${x}/${y}.png" style="left:calc(50% + ${Math.round(x * 256 - px)}px);top:calc(50% + ${Math.round(y * 256 - py)}px)" onerror="this.remove()">`);
+    imgs.push(`<img alt="" loading="lazy" referrerpolicy="no-referrer" src="https://${s}.basemaps.cartocdn.com/rastertiles/voyager/${MAP_Z}/${x}/${y}.png" style="left:calc(50% + ${Math.round(x * 256 - px)}px);top:calc(50% + ${Math.round(y * 256 - py)}px)" onerror="this.remove()" onload="this.closest('.one-map')?.classList.add('tiles-ok')">`);
   }
   return `<div class="one-map-tiles">${imgs.join("")}</div><span class="one-map-attr">© OpenStreetMap © CARTO</span>`;
 }
 function miniMapSVG(v, pl) {
-  const roads = v ? [[0, 30, 320, 30], [0, 78, 320, 78], [70, 0, 70, 110], [210, 0, 210, 110], [140, 0, 140, 110]] : [[0, 22, 320, 22], [0, 70, 320, 70], [95, 0, 95, 110], [245, 0, 245, 110], [40, 0, 40, 110]];
-  const river = v ? "M0 92 L320 62 L320 80 L0 110 Z" : "M0 44 L320 30 L320 48 L0 62 Z";
-  return `<div class="one-map" aria-hidden="true"><svg viewBox="0 0 320 110" preserveAspectRatio="xMidYMid slice"><rect width="320" height="110" fill="#eef1ea"/>` +
-    `<path d="${river}" fill="#c9dcf2"/>` + roads.map(([a, b, c, d]) => `<line x1="${a}" y1="${b}" x2="${c}" y2="${d}" stroke="#fff" stroke-width="7"/>`).join("") +
-    `</svg>${pl?.lat ? mapTiles(pl.lat, pl.lng) : ""}<span class="one-map-pin"><svg viewBox="-12 -24 24 30"><circle r="9" cy="0" fill="#e8453c" opacity=".2"/><path d="M0 4 C-7 -4 -8 -7 -8 -10 A8 8 0 1 1 8 -10 C8 -7 7 -4 0 4 Z" fill="#e8453c"/><circle cy="-10" r="3" fill="#fff"/></svg></span></div>`;
+  return `<div class="one-map" aria-hidden="true">${v ? MAP_GANGNAM : MAP_WONJU}${pl?.lat ? mapTiles(pl.lat, pl.lng) : ""}<span class="one-map-pin"><svg viewBox="-12 -24 24 30"><ellipse cx="0" cy="4" rx="5" ry="1.8" fill="#000" opacity=".18"/><path d="M0 4 C-7 -4 -8 -7 -8 -10 A8 8 0 1 1 8 -10 C8 -7 7 -4 0 4 Z" fill="#e8453c" stroke="#fff" stroke-width="1.2"/><circle cy="-10" r="3" fill="#fff"/></svg></span></div>`;
 }
+// 지도를 불러오지 못할 때 보이는 그림 (실제 위치를 본떠 그림: 지도 앱처럼 땅·숲·물·길·건물·이름)
+const MAP_TXT = (x, y, t, o = "") => `<text x="${x}" y="${y}" ${o} font-family="Noto Sans KR, Apple SD Gothic Neo, sans-serif">${t}</text>`;
+// 원주 연세대 미래캠퍼스: 산과 숲 사이 캠퍼스, 매지호수, 굽은 연세대길
+const MAP_WONJU = `<svg viewBox="0 0 320 110" preserveAspectRatio="xMidYMid slice">
+<rect width="320" height="110" fill="#f3f1ea"/>
+<path d="M0 0 H120 C100 18 70 30 40 34 C20 37 8 48 0 60 Z" fill="#d6e8cc"/>
+<path d="M238 0 H320 V70 C300 62 286 50 268 46 C250 42 236 26 238 0 Z" fill="#d6e8cc"/>
+<path d="M0 86 C30 80 52 92 70 110 H0 Z" fill="#d6e8cc"/>
+<path d="M262 110 C268 96 286 88 320 90 V110 Z" fill="#dcebd3"/>
+<path d="M196 70 C206 58 228 56 244 64 C258 71 262 86 250 96 C236 106 212 104 200 94 C190 86 189 78 196 70 Z" fill="#b8d6ee"/>
+<path d="M120 40 h56 v38 h-56 z" fill="#ebe7dd"/>
+<g fill="#e0dbd0"><rect x="126" y="46" width="16" height="9" rx="1.5"/><rect x="146" y="44" width="22" height="7" rx="1.5"/><rect x="146" y="55" width="10" height="12" rx="1.5"/><rect x="160" y="57" width="12" height="9" rx="1.5"/><rect x="126" y="60" width="14" height="12" rx="1.5"/><rect x="104" y="58" width="10" height="8" rx="1.5"/><rect x="182" y="40" width="12" height="9" rx="1.5"/></g>
+<path d="M0 72 C40 66 70 70 98 60 C122 52 140 50 170 50 C200 50 214 40 236 30 C260 20 290 18 320 22" fill="none" stroke="#e2ddd2" stroke-width="7" stroke-linecap="round"/>
+<path d="M0 72 C40 66 70 70 98 60 C122 52 140 50 170 50 C200 50 214 40 236 30 C260 20 290 18 320 22" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+<path d="M150 50 C152 64 160 76 176 82 C188 86 194 92 196 110" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+<path d="M98 60 C96 76 88 92 80 110" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+<g font-size="7.5" fill="#8a8578">${MAP_TXT(18, 64, "연세대길", 'transform="rotate(-6 18 64)"')}</g>
+<g font-size="8" fill="#4a7fb0" font-weight="500">${MAP_TXT(206, 84, "매지호수")}</g>
+<g font-size="8" fill="#6b6655" font-weight="700">${MAP_TXT(108, 92, "연세대학교 미래캠퍼스")}</g>
+<g font-size="7" fill="#7f9a72">${MAP_TXT(270, 40, "매봉산")}${MAP_TXT(14, 20, "백운산 자락")}</g>
+</svg>`;
+// 강남 테헤란로 152: 동서로 지나는 테헤란로, 역삼역(2호선), 네모난 블록과 건물
+const MAP_GANGNAM = `<svg viewBox="0 0 320 110" preserveAspectRatio="xMidYMid slice">
+<rect width="320" height="110" fill="#f1efea"/>
+<g fill="#e3dfd6">
+<rect x="6" y="6" width="44" height="30" rx="2"/><rect x="62" y="4" width="50" height="32" rx="2"/><rect x="124" y="6" width="40" height="30" rx="2"/><rect x="186" y="4" width="46" height="32" rx="2"/><rect x="244" y="6" width="34" height="30" rx="2"/><rect x="290" y="4" width="28" height="32" rx="2"/>
+<rect x="6" y="76" width="44" height="30" rx="2"/><rect x="62" y="76" width="34" height="30" rx="2"/><rect x="124" y="76" width="40" height="30" rx="2"/><rect x="186" y="76" width="46" height="30" rx="2"/><rect x="244" y="76" width="34" height="30" rx="2"/><rect x="290" y="76" width="28" height="30" rx="2"/></g>
+<g fill="#d8d3c8"><rect x="12" y="12" width="14" height="18" rx="1"/><rect x="70" y="10" width="20" height="20" rx="1"/><rect x="132" y="12" width="12" height="16" rx="1"/><rect x="194" y="10" width="18" height="18" rx="1"/><rect x="250" y="12" width="14" height="16" rx="1"/><rect x="12" y="82" width="18" height="16" rx="1"/><rect x="132" y="82" width="16" height="18" rx="1"/><rect x="196" y="82" width="22" height="16" rx="1"/><rect x="250" y="82" width="16" height="18" rx="1"/></g>
+<rect x="100" y="76" width="18" height="30" rx="2" fill="#d6e8cc"/>
+<g stroke="#fff" stroke-width="5"><line x1="56" y1="0" x2="56" y2="110"/><line x1="118" y1="0" x2="118" y2="110"/><line x1="238" y1="0" x2="238" y2="110"/><line x1="284" y1="0" x2="284" y2="110"/></g>
+<line x1="176" y1="0" x2="176" y2="110" stroke="#e2ddd2" stroke-width="10"/><line x1="176" y1="0" x2="176" y2="110" stroke="#fff" stroke-width="8"/>
+<line x1="0" y1="56" x2="320" y2="56" stroke="#efd58c" stroke-width="16"/><line x1="0" y1="56" x2="320" y2="56" stroke="#fde9a6" stroke-width="13"/>
+<line x1="0" y1="56" x2="320" y2="56" stroke="#e8c96f" stroke-width=".8" stroke-dasharray="6 5"/>
+<g transform="translate(206 56)"><circle r="6.5" fill="#fff" stroke="#3cb44a" stroke-width="2.4"/><text y="2.6" text-anchor="middle" font-size="7" font-weight="700" fill="#3cb44a" font-family="sans-serif">2</text></g>
+<g font-size="8" fill="#8a7a3c" font-weight="500">${MAP_TXT(22, 59, "테헤란로")}${MAP_TXT(250, 59, "테헤란로")}</g>
+<g font-size="7.5" fill="#2e8a3a" font-weight="700">${MAP_TXT(214, 49, "역삼역")}</g>
+<g font-size="7" fill="#8a8578">${MAP_TXT(179, 22, "논현로", 'transform="rotate(90 179 22)"')}${MAP_TXT(121, 98, "역삼로", 'transform="rotate(-90 121 98)"')}</g>
+<g font-size="7" fill="#7f9a72">${MAP_TXT(98, 102, "공원")}</g>
+</svg>`;
 
 // 흐리게 남기기: 지난 말은 작고 흐리게, 지금 말은 크게. 새 말이 오면 지금 말이 보이게 아래로 (위로 올리면 지난 말을 읽을 수 있음)
 let oneFadeCur = null;
@@ -589,7 +624,7 @@ function oneUndo(c, show, past) {
     const pz = document.createElement("button");
     pz.type = "button"; pz.id = "one-pause"; pz.className = "one-pill";
     pz.onclick = () => onePause(!one.userPaused);
-    row.append(pz, u); // 왼쪽 일시정지, 오른쪽 취소
+    row.append(u, pz); // 왼쪽 「수정」(최종 확인의 수정과 같은 자리·모양), 오른쪽 「일시정지」
   }
   if (one.userPaused && S && !S.paused) one.userPaused = false; // 다른 곳(되돌리기 등)에서 다시 시작된 경우
   // 지금 세트의 마지막 AI 말(진행 카드나 AI 말풍선). 「~하는 중…」만 보일 때(진행 카드에 아직 할 말이 없을 때)는 두 버튼을 숨김
