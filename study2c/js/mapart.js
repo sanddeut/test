@@ -14,6 +14,9 @@ const maRoad = (d, w = 9, main = false) =>
 const maDot = (x, y) => `<circle cx="${x}" cy="${y}" r="22" fill="#2f7cf6" opacity=".16"/><circle cx="${x}" cy="${y}" r="8" fill="#2f7cf6" stroke="#fff" stroke-width="3.5"/>`;
 const maPin = (x, y) => `<g transform="translate(${x} ${y})"><ellipse cx="0" cy="2" rx="7" ry="2.5" fill="#000" opacity=".18"/><path d="M0 2 C-11 -11 -13 -16 -13 -21 A13 13 0 1 1 13 -21 C13 -16 11 -11 0 2 Z" fill="#e8453c" stroke="#fff" stroke-width="2"/><circle cy="-21" r="5" fill="#fff"/></g>`;
 const maSubway = (x, y, n = "2", c = "#3cb44a") => `<g transform="translate(${x} ${y})"><circle r="9" fill="#fff" stroke="${c}" stroke-width="3"/><text y="4" text-anchor="middle" font-size="10" font-weight="700" fill="${c}" font-family="sans-serif">${n}</text></g>`;
+// 경로 지도는 아래쪽이 카드에 가려지므로 지형을 세로로 줄여 위쪽에 모음 (선 굵기는 그대로)
+const RY = (y) => Math.round(0.55 * y + 27);
+const maSquish = (geo) => `<g transform="matrix(1 0 0 0.55 0 27)">${geo.replace(/<path /g, '<path vector-effect="non-scaling-stroke" ')}</g>`;
 const maSvg = (body) => `<svg class="ma-svg" viewBox="0 0 390 780" preserveAspectRatio="xMidYMid slice"><rect width="390" height="780" fill="${MA.land}"/>${body}</svg>`;
 
 // 원주 연세대 미래캠퍼스 주변 (산·숲, 매지호수, 연세대길)
@@ -69,7 +72,7 @@ ${dot ? maDot(dot[0], dot[1]) : ""}`);
 // 원주 → 강남 경로 (영동고속도로를 따라 약 108km)
 function maRouteWonju() {
   const route = "M330 372 C318 360 300 352 282 338 C262 322 246 312 226 300 C206 288 188 270 168 250 C152 234 140 214 124 196 C110 180 98 166 88 154";
-  return maSvg(`
+  return maSvg(`${maSquish(`
 <path d="M0 0 H180 C160 40 120 60 70 70 C40 76 18 90 0 100 Z" fill="${MA.block}"/>
 <path d="M150 230 C190 210 230 220 250 250 C262 268 244 286 220 286 C190 286 160 266 150 230 Z" fill="${MA.park}"/>
 <path d="M260 120 C300 100 360 110 390 130 V250 C360 240 320 220 300 200 C276 180 250 150 260 120 Z" fill="${MA.park}"/>
@@ -82,23 +85,24 @@ ${maRoad("M88 154 C100 220 110 300 120 420", 6, true)}
 ${maRoad("M20 160 C60 150 76 154 88 154 C130 150 170 160 210 150", 5)}
 <path d="${route}" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round"/>
 <path d="${route}" fill="none" stroke="#2f7cf6" stroke-width="6.5" stroke-linecap="round"/>
-${maT(52, 98, "서울", { size: 15, weight: 700, fill: "#5d584b" })}
-${maT(72, 186, "강남", { size: 13, weight: 700, fill: "#5d584b" })}
-${maT(120, 258, "성남", { size: 12 })}
-${maT(146, 300, "용인", { size: 12 })}
-${maT(214, 330, "이천", { size: 12 })}
-${maT(270, 376, "여주", { size: 12 })}
-${maT(346, 404, "원주", { size: 15, weight: 700, fill: "#5d584b" })}
-${maT(150, 88, "한강", { size: 12, fill: "#3f78ad" })}
-${maT(318, 182, "남한강", { size: 11, fill: "#3f78ad", rot: 50 })}
-${maT(232, 296, "영동고속도로", { size: 11, fill: "#8a7a3c", rot: 34 })}
-${maDot(330, 372)}${maPin(88, 154)}`);
+`)}
+${maT(52, RY(98), "서울", { size: 15, weight: 700, fill: "#5d584b" })}
+${maT(72, RY(186), "강남", { size: 13, weight: 700, fill: "#5d584b" })}
+${maT(120, RY(258), "성남", { size: 12 })}
+${maT(146, RY(300), "용인", { size: 12 })}
+${maT(214, RY(330), "이천", { size: 12 })}
+${maT(270, RY(376), "여주", { size: 12 })}
+${maT(346, RY(404), "원주", { size: 15, weight: 700, fill: "#5d584b" })}
+${maT(150, RY(88), "한강", { size: 12, fill: "#3f78ad" })}
+${maT(318, RY(182), "남한강", { size: 11, fill: "#3f78ad", rot: 33 })}
+${maT(232, RY(296), "영동고속도로", { size: 11, fill: "#8a7a3c", rot: 20 })}
+${maDot(330, RY(372))}${maPin(88, RY(154))}`);
 }
 
 // 신촌 → 강남 경로 (한강을 건너 약 12km)
 function maRouteSinchon() {
   const route = "M86 150 C110 170 130 190 150 214 C170 238 186 252 206 262 C226 272 246 290 262 312 C276 330 290 344 304 356";
-  return maSvg(`
+  return maSvg(`${maSquish(`
 <g fill="${MA.block}"><rect x="0" y="0" width="390" height="190" /><rect x="0" y="300" width="390" height="480"/></g>
 <path d="M-10 220 C60 210 130 236 200 250 C270 264 330 244 400 236 V300 C330 304 270 322 200 312 C130 300 60 280 -10 286 Z" fill="${MA.water}"/>
 <path d="M40 40 C80 30 120 50 130 80 C136 100 110 116 80 112 C50 108 30 80 40 40 Z" fill="${MA.park}"/>
@@ -109,11 +113,12 @@ ${maRoad("M196 120 C200 200 206 260 210 340 C212 400 214 480 216 790", 7)}
 ${maRoad("M150 214 C170 238 186 252 206 262", 5)}
 <path d="${route}" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round"/>
 <path d="${route}" fill="none" stroke="#2f7cf6" stroke-width="6.5" stroke-linecap="round"/>
-${maT(80, 128, "신촌", { size: 15, weight: 700, fill: "#5d584b" })}
-${maT(318, 394, "강남", { size: 15, weight: 700, fill: "#5d584b" })}
-${maT(110, 262, "한강", { size: 13, fill: "#3f78ad" })}
-${maT(230, 230, "한남대교", { size: 11 })}
-${maDot(86, 150)}${maPin(304, 356)}`);
+`)}
+${maT(80, RY(128), "신촌", { size: 15, weight: 700, fill: "#5d584b" })}
+${maT(318, RY(394), "강남", { size: 15, weight: 700, fill: "#5d584b" })}
+${maT(110, RY(262), "한강", { size: 13, fill: "#3f78ad" })}
+${maT(230, RY(230), "한남대교", { size: 11 })}
+${maDot(86, RY(150))}${maPin(304, RY(356))}`);
 }
 
 // 지금 화면에 맞는 그림 지도를 고름
