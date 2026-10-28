@@ -753,8 +753,9 @@ setInterval(() => {
 // =====================================================================
 // 호출이 끝나면 「AI가 한 일」 요약 (이유는 넣지 않음). 참가자가 고른 것은 「내가 고름」
 // =====================================================================
+const ONE_SUM = false; // 요약은 쓰지 않음 (true로 바꾸면 다시 보임)
 setInterval(() => {
-  if (!S?.unified) return;
+  if (!S?.unified || !ONE_SUM) return;
   let box = $("#one-sum");
   if (!S.rideDone) { if (box) box.remove(); one.sumAt = null; return; }
   if (box) return;
