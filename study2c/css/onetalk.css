@@ -326,3 +326,20 @@
 /* 실행화면 아래 패널: 「AI가 ~하고 있어요」가 패널 가운데 오게 (빈 상태 줄 자리는 비움) */
 .pv-panel:has(.pv-wait:not([hidden])) #pv-status { display: none !important; }
 .pv-panel:has(.pv-wait:not([hidden])) .pv-wait { padding: 26px 16px 30px; }
+
+/* 출발지·목적지 카드: 아이콘 없이 이름·작은 주소, 그 아래 가로로 긴 작은 지도 */
+.rc-body .pv-place.one-place { flex-wrap: wrap; gap: 10px; }
+.rc-body .pv-place.one-place > span:first-child { flex: 1 1 100%; min-width: 0; }
+.rc-body .pv-place.one-place small, .rc-body .pv-origin.one-place small { display: block; font-size: 13px !important; color: #6b6f7a !important; font-weight: 400 !important; margin-top: 2px; }
+.one-map { flex: 1 1 100%; height: 92px; border-radius: 12px; overflow: hidden; border: 1px solid #e3e6ea; }
+.one-map svg { width: 100%; height: 100%; display: block; }
+
+/* 예상 금액 카드: 「적용 안 함」도 금액과 같은 크기 */
+.rc-body .pv-fare .pv-cpn b { font-size: 17px; }
+.rc-body .pv-fare .pv-cpn b small { font-size: 13px; }
+
+/* 결제 비밀번호 카드: 카드 모양 아이콘 + 카드 이름 한 줄 */
+.pw-open .pw-head { align-items: center; }
+.one-paycard { width: 44px; height: 30px; border-radius: 6px; background: linear-gradient(135deg, #f5b400, #f08c00); position: relative; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
+.one-paycard i { position: absolute; left: 6px; top: 9px; width: 10px; height: 8px; border-radius: 2px; background: #fde9a8; }
+.one-paycard::after { content: ""; position: absolute; left: 0; right: 0; bottom: 6px; height: 3px; background: rgba(255,255,255,.35); }
