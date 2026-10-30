@@ -6,8 +6,11 @@
 // 기존안(2c): 단계마다 넘어가는 시간을 절반으로 (화면 조작 속도 배율 0.5 + 문구를 읽는 시간 2.5초)
 PACE = 0.5;
 
+// 기존안: 지난 대화를 숨기지 않고 모두 남김 (단계마다 오간 말이 대화 기록으로 이어짐)
+const BRIEF_HIDE = false;
 function briefUpdate() {
   const c = chat();
+  if (!BRIEF_HIDE) { [...c.children].forEach((el) => el.classList.contains("bb-hide") && el.classList.remove("bb-hide")); const e = $("#rc-echo"); if (e && !e.hidden) e.hidden = true; return; }
   const card = $("#run-card");
   const kids = [...c.children];
   if (!card) { kids.forEach((el) => el.classList.contains("bb-hide") && el.classList.remove("bb-hide")); return; }
