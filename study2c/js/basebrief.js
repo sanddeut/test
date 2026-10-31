@@ -3,8 +3,8 @@
 // - 카드 안 질문이 비어 있을 때는 바로 앞 AI 말을 카드 안에 보여 줌 (카드 밖 말풍선 대신)
 "use strict";
 
-// 기존안(2c): 단계마다 넘어가는 시간을 절반으로 (화면 조작 속도 배율 0.5 + 문구를 읽는 시간 2.5초)
-PACE = 0.5;
+// 기존안(2c): 단계마다 넘어가는 시간 배율 0.8 (원래 1 → 조금 빠르게. 이전에는 0.5)
+PACE = 0.8;
 
 // 기존안: 지난 대화 중 승인을 물은 지점(AI 질문 + 내 답, 결제 비밀번호 안내 + 「비밀번호 입력 완료」 포함)만 남기고 나머지 AI 말은 숨김
 const isB = (el, who) => el?.classList.contains("bubble") && el.classList.contains(who) && !el.classList.contains("typing");
