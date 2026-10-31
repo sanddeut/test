@@ -802,7 +802,9 @@ $("#composer").onsubmit = (e) => onSubmit(e);
 // =====================================================================
 // 막대가 차는 시간에는 읽을 시간 + 실제로 앱을 조작하는 시간이 함께 들어감:
 // 읽는 동안 앞부분이 차고, 남은 부분은 AI가 앱을 조작하는 동안 차서 그 단계가 끝날 때 꽉 참
-const OP_EST_MS = 3500; // 조작 시간 어림값 (실제로 끝나는 때에 맞춰 마지막에 꽉 채움, 「~하는 중」 속도 0.7배에 맞춤)
+// 조작 시간 어림값 (단계마다 실제로 걸리는 시간에 맞춤, 「~하는 중」 속도 0.7배 기준). 실제로 끝나는 때에 맞춰 마지막에 꽉 채움
+const OP_EST = { taxi_open: 4900, origin: 3400, dest: 4300, coupon: 1000 };
+let OP_EST_MS = 3500;
 // 「AI가 ~하는 중」(읽을 시간이 끝나고 AI가 앱을 조작하는 동안)에는 조금 빠르게: 속도 배율 0.7 (읽을 시간·답을 기다리는 동안은 그대로)
 const ONE_PACE = PACE, ONE_DOING_PACE = 0.7;
 setInterval(() => {
@@ -816,7 +818,8 @@ function opEnd() { if (S?.opBar && !S.opBar.done) { S.opBar.done = true; const o
 setInterval(() => {
   if (!S?.unified) return;
   const p = S.readProg;
-  if (p && p.t >= p.total && !S.opBar) S.opBar = { read: p.total, t: 0, step: S.stepIdx }; // 읽을 시간이 끝남 → 조작 시작
+  OP_EST_MS = OP_EST[S.steps?.[S.stepIdx]?.id] || 3500;
+  if (p && p.t >= p.total && !S.opBar) S.opBar = { read: p.total, t: 0, step: S.stepIdx, est: OP_EST_MS }; // 읽을 시간이 끝남 → 조작 시작
   const o = S.opBar;
   if (!o || o.done) return;
   if (!S.paused) o.t += 80;
@@ -828,9 +831,10 @@ function barFrac() {
   const o = S.opBar;
   if (!o) return null;
   if (o.done) return 1;
-  const k = o.t / OP_EST_MS; // 어림 시간을 넘기면 끝 직전에서 천천히
+  const est = o.est || OP_EST_MS;
+  const k = o.t / est; // 어림 시간을 넘기면 끝 직전에서 천천히
   const f = k < 0.85 ? k : 0.85 + 0.12 * (1 - Math.exp(-(k - 0.85) * 2));
-  return (o.read + f * OP_EST_MS) / (o.read + OP_EST_MS);
+  return (o.read + f * est) / (o.read + est);
 }
 setInterval(() => {
   const p = S?.unified && !S.finished && (S.readProg || S.opBar) ? barFrac() : null;
@@ -909,11 +913,16 @@ doApply = async function (step, choice, opts) {
   const prev = [S.automation, S.cond];
   S.automation = "high"; S.cond = "B2";
   const card = $("#run-card");
-  card?.classList.add("one-plain"); // 카드 안 택시 종류 줄·수정/일시정지 없이 말만
-  try {
-    try { await agentSay(`${CAR_TYPES[S.form.car]?.label || label}로 설정했어요.`); } finally { [S.automation, S.cond] = prev; }
-    await sleep(2500);
-  } finally { card?.classList.remove("one-plain"); }
+  const said = `${CAR_TYPES[S.form.car]?.label || label}로 설정했어요.`;
+  card?.classList.add("one-plain"); // 카드 안 택시 종류 줄·수정/일시정지 없이 말만 (다음 말이 뜰 때까지)
+  const idx = S.stepIdx;
+  // 다음 단계로 넘어가도 새 말이 뜰 때까지는 말만 보이게 (그 사이 다음 단계 카드가 먼저 비치지 않게)
+  const w = setInterval(() => {
+    const q = $("#rc-q");
+    if (!S || S.finished || (q && !q.hidden && q.textContent.trim() && q.textContent.trim() !== said) || (S.waiter && S.stepIdx !== idx)) { card?.classList.remove("one-plain"); clearInterval(w); }
+  }, 100);
+  try { await agentSay(said); } finally { [S.automation, S.cond] = prev; }
+  await sleep(2500);
   return r;
 };
 
