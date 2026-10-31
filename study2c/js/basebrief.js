@@ -81,6 +81,18 @@ renderPhone = function () {
   const r = _renderPhoneBrief.apply(this, arguments);
   // 앱 화면 아래 버튼은 「○○택시 호출하기」 대신 「호출하기」
   document.querySelectorAll("#screen .tx-call").forEach((x) => { if (/택시 호출하기$/.test(x.textContent.trim())) x.textContent = "호출하기"; });
+  // 앱에서 직접 호출할 때: 요약 확인 시트 없이 [호출하기]로 바로 호출, 대신 쿠폰 아래에 예상 요금 행
+  const call = document.querySelector("#screen .tx-call[data-man-call]");
+  if (call && S?.manual) {
+    call.onclick = () => { manualConfirmCall(); S.phone.sheet = null; renderPhone(); };
+    const after = document.querySelector("#screen .tx-coupon") || document.querySelector("#screen .tx-pay");
+    if (after && !document.querySelector("#screen .bb-fare-row")) {
+      const row = document.createElement("div");
+      row.className = "tx-row bb-fare-row";
+      row.innerHTML = `<span>예상 요금</span><b>${esc(won0(fareOf(S.form)))}</b>`;
+      after.after(row);
+    }
+  }
   const list = document.querySelector("#screen .tx-cars");
   if (list && S?.manual) {
     list.classList.add("bb-fold");
