@@ -107,6 +107,8 @@ function originLabel(key, geo) {
 
 // 참가자가 말한 출발지(동천역·현재 위치 외)를 그대로 출발지로 등록. 좌표는 현재 위치 근처로 두고, 지도 검색이 되면 그 위치로 옮김
 function setCustomOrigin(name, geo) {
+  // "서울 용산역"·"1호선 용산역"처럼 과업 출발지 이름이 들어 있으면 새 장소로 만들지 않고 과업 출발지로 (처음 한 번은 오류② 대구 용산역으로 감)
+  if (SPOT.word.test(name || "") && !SPOT.far.test(name || "")) return TARGET_ORIGIN;
   const g = geo || GEO_FALLBACK;
   ORIGINS.custom = { name, addr: "", lat: g.lat, lng: g.lng };
   try {

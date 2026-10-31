@@ -106,7 +106,7 @@ const OUTPUT_FORMAT = `# 출력 형식
 항상 지정된 JSON 스키마로만 답해.
 - intent: 사용자 발화가 "분류할 의도" 목록 중 무엇에 해당하는지 id로 골라. 어느 것에도 맞지 않으면 other.
 - request: 사용자가 말한 기사님 요청사항. 요청사항 없이·빼줘 → none, 기사님과 이야기하며 가기 → chat, 조용히 가주세요 → quiet. 그 외는 null.
-- origin: 사용자가 말한 출발지. ${SPOT.query}(${SPOT.target.name}) → dongcheon, 현재 위치(여기, 지금 있는 곳) → current. 그 외는 null.
+- origin: 사용자가 말한 출발지. ${SPOT.query}(${SPOT.target.name}, 앞에 서울·1호선 같은 말이 붙어도 같음) → dongcheon, 현재 위치(여기, 지금 있는 곳) → current. 그 외는 null.
 - origin_name: 사용자가 ${SPOT.query}·현재 위치가 아닌 다른 장소를 출발지로 말했으면 그 장소 이름(조사·서술어 빼고, 예: "판교역으로 해줘" → "판교역"). 아니면 null.
 - place: 사용자가 말한 목적지 지점. 강남점 → gangnam, 강남구청점 → gucheong, 역삼점 → yeoksam. 구어체, 맞춤법 오류, 음성인식 오류(예: "강남 구청점", "강남쩜")는 너그럽게 해석해. 세 곳이 아니면 null.
 - place_name: 사용자가 담소한정식 세 지점이 아닌 다른 장소를 목적지로 말했으면 그 장소 이름(조사·서술어 빼고, 예: "롯데월드로 가줘" → "롯데월드"). 아니면 null.
@@ -118,7 +118,7 @@ const OUTPUT_FORMAT = `# 출력 형식
 
 const LLM_TASKS = {
   request:
-    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 목적지를 말했으면 담소한정식 강남점 → place=gangnam, 강남구청점 → gucheong, 역삼점 → yeoksam, 그 외 장소면 place=null, place_name=장소 이름(틀린 장소라도 말한 그대로). 사용자가 실제로 말한 정보만 채워: 출발지를 말했으면 " + SPOT.query + " → origin=dongcheon, 현재 위치(여기) → origin=current, 그 외 장소 → origin=null, origin_name=장소 이름. 출발지를 말하지 않았으면 둘 다 null. 택시 종류도 말했을 때만 car_type을 채우고, 과업 설명으로 짐작해서 채우지 마. 택시 호출 요청이면 clarification은 null로 둬. 택시 호출 요청인데 목적지를 알 수 없을 때만 목적지를 되물어. " +
+    "사용자가 처음으로 과업을 요청했어. 요청을 해석해. 목적지를 말했으면 담소한정식 강남점 → place=gangnam, 강남구청점 → gucheong, 역삼점 → yeoksam, 그 외 장소면 place=null, place_name=장소 이름(틀린 장소라도 말한 그대로). 사용자가 실제로 말한 정보만 채워: 출발지를 말했으면 " + SPOT.query + "(앞에 서울·1호선 같은 말이 붙어도) → origin=dongcheon, 현재 위치(여기) → origin=current, 그 외 장소 → origin=null, origin_name=장소 이름. 출발지를 말하지 않았으면 둘 다 null. 택시 종류도 말했을 때만 car_type을 채우고, 과업 설명으로 짐작해서 채우지 마. 택시 호출 요청이면 clarification은 null로 둬. 택시 호출 요청인데 목적지를 알 수 없을 때만 목적지를 되물어. " +
     "택시 호출 요청이 아니면(인사, 잡담, 의미 없는 말, 다른 부탁 등) 먼저 택시를 꺼내지 말고, 발화를 짧게 받아준 뒤 휴대폰 앱을 대신 조작해서 할 수 있는 일(예: 택시 호출, 앱 실행)을 알려주고 무엇을 도와드릴지 물어. clarification은 해요체 2문장 이내.",
   turn: "현재 상태에서 사용자가 말했어. 의도를 분류하고 필요한 값을 채운 뒤, reply를 써.",
 };
