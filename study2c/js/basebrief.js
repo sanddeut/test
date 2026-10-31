@@ -42,39 +42,6 @@ function briefUpdate() {
   setInterval(briefUpdate, 300);
 })();
 
-// =====================================================================
-// 기존안: 호출 내용 최종 확인부터는 앱에서 직접 (대화창에는 안내와 「화면 열기」만)
-// - 「화면 열기」 → 앱 화면에서 직접 [○○택시 호출하기] → [호출] → 결제 비밀번호
-// =====================================================================
-const _runStepAtBrief = runStepAt;
-runStepAt = async function (i, step) {
-  if (step.id === "final" && S && !S.finished && S.manualDone?.final === undefined) {
-    S.baseHandoff = true;
-    await agentSay("택시 호출 설정을 완료했어요. 앱에서 직접 결제해주세요.", { gated: true });
-    const box = $("#rc-choices");
-    if (box) {
-      box.innerHTML = "";
-      const b = document.createElement("button");
-      b.type = "button"; b.className = "pw-go bb-open";
-      b.innerHTML = '<span class="ms">open_in_new</span> 화면 열기';
-      b.onclick = () => { logEvent("base_handoff_open"); S.phone.sheet = null; startManual(); };
-      box.appendChild(b);
-      $("#run-card")?.classList.add("asking");
-    }
-    logEvent("base_handoff");
-    // 참가자가 앱에서 [호출]을 누를 때까지 기다림 (누르면 최종 호출까지 직접 끝낸 것으로 처리됨)
-    while (S && !S.finished && S.manualDone?.final === undefined) await sleep(200);
-    $("#run-card")?.classList.remove("asking");
-    if (box) box.innerHTML = "";
-  }
-  return _runStepAtBrief(i, step);
-};
-// 호출한 뒤 결제 비밀번호도 대화창을 거치지 않고 바로 앱 화면에서
-setInterval(() => {
-  if (!S?.baseHandoff || S.finished || S.pinOpen) return;
-  if (S.waiter?.pin) $(".pw-card .pw-go")?.click();
-}, 200);
-
 // 기존안 직접 조작 화면: 택시 종류는 고른 것 하나만 접어 두고, 누르면 세 가지가 펼쳐져 고를 수 있음
 const _renderPhoneBrief = renderPhone;
 renderPhone = function () {
