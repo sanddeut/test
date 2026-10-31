@@ -1158,17 +1158,17 @@ async function handleStop(via, { back = false } = {}) {
   syncControls();
 
   resetStatus(); // 진행 문구를 새로 시작
-  let said = await sayKey(S.guide ? "stop.ask" : stepIdNow() === "reserve" ? "stop.ask.reserve" : "stop.ask");
+  let said = await sayKey((S.guide || (back && S.unified)) ? "stop.ask" : stepIdNow() === "reserve" ? "stop.ask.reserve" : "stop.ask");
   // 개선안: 멈춘 뒤 고를 수 있는 것 (계속하기 · 방금 한 일 취소 · 내가 조작하기 / 뒤로 가기는 앱 종료) (가이드라인 12·16·25)
   const guideOpts = back
     ? [{ id: "resume", label: "계속하기" }, { id: "undo", label: "방금 한 일 취소" }, { id: "exit", label: "앱 종료" }]
     : [{ id: "undo", label: "방금 한 일 취소" }, { id: "manual", label: "내가 앱 조작하기" }, { id: "resume", label: "계속하기" }];
   for (;;) {
-    setChips(S.guide ? guideOpts : [...(stepIdNow() === "request" ? requestOptions() : []), { id: "manual", label: "직접 조작" }, { id: "resume", label: "계속하기" }], (o) => {
+    setChips((S.guide || (back && S.unified)) ? guideOpts : [...(stepIdNow() === "request" ? requestOptions() : []), { id: "manual", label: "직접 조작" }, { id: "resume", label: "계속하기" }], (o) => {
       if (!S.ivWaiter) return;
       const w = S.ivWaiter; S.ivWaiter = null;
       freezeQuestion(); // 질문을 먼저 대화 기록으로 남긴 뒤 답 말풍선 (순서가 뒤바뀌지 않게)
-      appendBubble("user", o.label, { ctx: S.guide ? (back ? "뒤로 가기" : "멈추기") : undefined });
+      appendBubble("user", o.label, { ctx: (S.guide || (back && S.unified)) ? (back ? "뒤로 가기" : "멈추기") : undefined });
       logEvent("user_button", { choice: o.id, label: o.label });
       replyPause().then(() => w(REQUESTS[o.id] ? { req: o.id } : { [o.id]: true }));
     });
@@ -1217,14 +1217,14 @@ async function handleStop(via, { back = false } = {}) {
     setChips([]);
     const o = await turn(r, {
       said,
-      intents: [...changeIntents(), "continue", ...(S.rideDone ? ["cancel_reserve"] : []), ...(S.guide ? ["undo"] : []), "cancel", "other"],
+      intents: [...changeIntents(), "continue", ...(S.rideDone ? ["cancel_reserve"] : []), ...((S.guide || (back && S.unified)) ? ["undo"] : []), "cancel", "other"],
       hint: STOP_HINT,
       fallback: "계속하기를 누르시면 이어서 진행할게요.",
       freePlace: "any",
     });
     if (await applyHighChange(o, `stop_${via}`)) { said = S.log.filter((e) => e.type === "agent_message").at(-1)?.text || said; continue; }
     if (o.intent === "cancel" || o.intent === "cancel_reserve") { S.stopped = false; return cancelRide(); }
-    if (o.intent === "undo" && S.guide && lastUndoable() != null) { S.stopped = false; setChips([]); resume(); return requestUndo(lastUndoable(), "stop_text"); }
+    if (o.intent === "undo" && (S.guide || (back && S.unified)) && lastUndoable() != null) { S.stopped = false; setChips([]); resume(); return requestUndo(lastUndoable(), "stop_text"); }
     if (o.intent === "continue") break;
     said = o.reply;
     await agentSay(o.reply, { talk: true });
@@ -3221,7 +3221,7 @@ function onScreenTap() {
 function onDeviceBack() {
   if (!S || $("#stage").hidden) return;
   S.m.backs++;
-  if (!S.guide) { logEvent("device_back"); return; }
+  if (!S.guide && !S.unified) { logEvent("device_back"); return; } // 개선안(2c)도 뒤로 가기 창을 띄움 (가이드라인 표 6번)
   gLog("G25", "device_back");
   if (!$("#help").hidden) return closeHelp();
   if (S.manual) return endManual();
