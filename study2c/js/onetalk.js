@@ -803,7 +803,8 @@ $("#composer").onsubmit = (e) => onSubmit(e);
 // 막대가 차는 시간에는 읽을 시간 + 실제로 앱을 조작하는 시간이 함께 들어감:
 // 읽는 동안 앞부분이 차고, 남은 부분은 AI가 앱을 조작하는 동안 차서 그 단계가 끝날 때 꽉 참
 // 조작 시간 어림값 (단계마다 실제로 걸리는 시간에 맞춤, 「~하는 중」 속도 0.7배 기준). 실제로 끝나는 때에 맞춰 마지막에 꽉 채움
-const OP_EST = { taxi_open: 4900, origin: 3400, dest: 4300, coupon: 1000 };
+// 어림값은 실제보다 조금 짧게 두어 막대가 끝까지 찬 뒤 다음 단계로 넘어가게 함 (다 차면 꽉 찬 채로 기다림)
+const OP_EST = { taxi_open: 4300, origin: 2900, dest: 3800, coupon: 850 };
 let OP_EST_MS = 3500;
 // 「AI가 ~하는 중」(읽을 시간이 끝나고 AI가 앱을 조작하는 동안)에는 조금 빠르게: 속도 배율 0.7 (읽을 시간·답을 기다리는 동안은 그대로)
 const ONE_PACE = PACE, ONE_DOING_PACE = 0.7;
@@ -832,8 +833,8 @@ function barFrac() {
   if (!o) return null;
   if (o.done) return 1;
   const est = o.est || OP_EST_MS;
-  const k = o.t / est; // 어림 시간을 넘기면 끝 직전에서 천천히
-  const f = k < 0.85 ? k : 0.85 + 0.12 * (1 - Math.exp(-(k - 0.85) * 2));
+  const k = o.t / est; // 어림 시간이 지나면 꽉 찬 채로 다음 단계를 기다림
+  const f = Math.min(1, k);
   return (o.read + f * est) / (o.read + est);
 }
 setInterval(() => {

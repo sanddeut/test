@@ -1903,7 +1903,9 @@ async function runHighStep(step) {
   // 단계 간격(S.cfg.delay)은 "문구를 읽는 시간"으로 씀: 문구가 나온 뒤 기다렸다가 다음 조작으로
   // 출발지 설정 안내(「말씀하신 ‘…’로 출발지를 설정했어요」)는 다른 단계보다 오래 보여 줌 (잘못된 출발지를 알아챌 시간)
   const read = async () => {
-    const ms = S.cfg.delay * (step.id === "origin" ? 2 : 1) + (S.unified ? 2000 : 0); // 개선안 막대는 2초 더 길게
+    // 기존안(2c): 출발지 안내는 다음(목적지 검색) 조작 동안에도 계속 보이므로 짧게, 목적지 안내는 바로 다음 질문이 떠서 길게 → 두 문구가 보이는 시간을 비슷하게(각 약 8초)
+    const baseMs = { origin: 750, dest: S.cfg.delay * 3 };
+    const ms = S.unified ? S.cfg.delay * (step.id === "origin" ? 2 : 1) + 2000 : baseMs[step.id] ?? S.cfg.delay; // 개선안 막대는 2초 더 길게
     // 개선안: 읽을 시간을 말풍선 맨 위 막대로 (예상 금액·앱 여는 단계 등)
     if (S.unified) {
       for (let t = 0; t < ms; t += 250) { S.readProg = { t, total: ms }; await sleep(250); await gate(); }
