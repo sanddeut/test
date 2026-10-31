@@ -1159,3 +1159,18 @@ function oneWhyToggle() {
 }
 setInterval(oneWhy, 150);
 
+
+// [실행화면 AI 패널] 대화창과 같은 입력창을 패널 맨 아래에 (실행화면을 보는 동안만 옮겨 두고, 대화창으로 오면 제자리로)
+// - 패널에 고를 선택지가 있을 때는 입력창을 넣지 않음
+(function () {
+  const comp = $("#composer");
+  if (!comp) return;
+  const home = document.createComment("composer-home");
+  comp.parentNode.insertBefore(home, comp);
+  setInterval(() => {
+    const panel = $(".pv-panel");
+    const run = S?.unified && document.querySelector(".phone")?.dataset.view === "progress" && panel && !$("#pv-chips")?.querySelector("button");
+    if (run && comp.parentNode !== panel) panel.appendChild(comp);
+    else if (!run && comp.parentNode !== home.parentNode) home.parentNode.insertBefore(comp, home.nextSibling);
+  }, 150);
+})();
