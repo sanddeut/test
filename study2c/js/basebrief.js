@@ -1,16 +1,20 @@
-// 기존안 간결하게: 대화 기록을 남기지 않고, AI 회색 카드(진행 카드) 안의 내용만 계속 바뀜
-// - 진행 카드가 처음 나오기 전의 대화(인사·첫 요청 등)는 그대로 두고, 그 뒤에 생긴 말풍선(지난 질문·「승인」 답 등)만 숨김
+// 기존안 간결하게: AI 회색 카드(진행 카드) 안의 내용이 계속 바뀌고, 지난 대화는 승인을 물은 지점만 남김
+// - 진행 카드가 처음 나오기 전의 대화(인사·첫 요청 등)는 그대로 두고, 그 뒤에 생긴 AI 말 중 내 답이 이어지지 않은 것만 숨김
 // - 카드 안 질문이 비어 있을 때는 바로 앞 AI 말을 카드 안에 보여 줌 (카드 밖 말풍선 대신)
 "use strict";
 
 // 기존안(2c): 단계마다 넘어가는 시간을 절반으로 (화면 조작 속도 배율 0.5 + 문구를 읽는 시간 2.5초)
 PACE = 0.5;
 
-// 기존안: 지난 대화를 숨기지 않고 모두 남김 (단계마다 오간 말이 대화 기록으로 이어짐)
-const BRIEF_HIDE = false;
+// 기존안: 지난 대화 중 승인을 물은 지점(AI 질문 + 내 답, 결제 비밀번호 안내 + 「비밀번호 입력 완료」 포함)만 남기고 나머지 AI 말은 숨김
+const isB = (el, who) => el?.classList.contains("bubble") && el.classList.contains(who) && !el.classList.contains("typing");
+function nextBubble(el) {
+  let n = el.nextElementSibling;
+  while (n && (n.id === "chips" || n.id === "chat-spacer" || n.classList.contains("typing"))) n = n.nextElementSibling;
+  return n;
+}
 function briefUpdate() {
   const c = chat();
-  if (!BRIEF_HIDE) { [...c.children].forEach((el) => el.classList.contains("bb-hide") && el.classList.remove("bb-hide")); const e = $("#rc-echo"); if (e && !e.hidden) e.hidden = true; return; }
   const card = $("#run-card");
   const kids = [...c.children];
   if (!card) { kids.forEach((el) => el.classList.contains("bb-hide") && el.classList.remove("bb-hide")); return; }
@@ -22,7 +26,8 @@ function briefUpdate() {
   const lastAgent = before.filter((el) => !el.dataset.bbKeep && el.classList.contains("bubble") && el.classList.contains("agent") && !el.classList.contains("typing")).at(-1);
   for (const el of before) {
     if (el.id === "chips" || el.id === "chat-spacer" || el.dataset.bbKeep) continue;
-    if (!el.classList.contains("bb-hide")) el.classList.add("bb-hide");
+    const keep = isB(el, "user") || (isB(el, "agent") && isB(nextBubble(el), "user"));
+    if (el.classList.contains("bb-hide") === keep) el.classList.toggle("bb-hide", !keep);
   }
   let echo = card.querySelector("#rc-echo");
   if (!echo) {
@@ -30,7 +35,7 @@ function briefUpdate() {
     echo.id = "rc-echo"; echo.className = "rc-q rc-echo"; echo.hidden = true;
     q.before(echo);
   }
-  const text = qEmpty && lastAgent ? lastAgent.textContent : "";
+  const text = qEmpty && lastAgent?.classList.contains("bb-hide") ? lastAgent.textContent : ""; // 남겨 둔 질문은 카드에 다시 쓰지 않음
   if (echo.textContent !== text) echo.textContent = text;
   if (echo.hidden === Boolean(text)) echo.hidden = !text; // 값이 바뀔 때만 (대화창 감시가 무한 반복되지 않게)
 }
