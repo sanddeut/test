@@ -10,3 +10,5 @@
 /* 직접 조작 화면 택시 종류: 접어 두면 고른 것 하나만 + 펼치기 표시 */
 /* 접혀 있으면 택시 목록은 숨기고 한 줄 행만 */
 .tx-cars.bb-fold:not(.open) { display: none !important; }
+/* 출발지 카드의 「현재 위치에서 ○km」는 보이지 않음 */
+.run-card .pv-here { display: none !important; }
