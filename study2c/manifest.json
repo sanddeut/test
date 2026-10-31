@@ -3,7 +3,7 @@
   "short_name": "AI 택시 2c",
   "start_url": "./index.html",
   "scope": "./",
-  "display": "fullscreen",
+  "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f7f8fa",
   "theme_color": "#f7f8fa",
