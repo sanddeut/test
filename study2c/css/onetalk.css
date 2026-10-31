@@ -406,3 +406,9 @@
 .pv-panel > .composer #one-run-fab { display: none !important; }
 /* 실행화면 AI 패널 아래 여백 넉넉히 */
 .phone[data-view="progress"] .pv-panel { padding-bottom: 32px !important; }
+/* 실행화면 AI 패널: 「AI가 ~하는 중」은 스피너와 한 줄로 작게, 「잠시만 기다려 주세요」는 뺌 */
+.pv-wait { flex-direction: row !important; justify-content: center; gap: 8px !important; }
+.pv-wait b { font-size: 15px !important; font-weight: 500; color: #3c4048 !important; }
+.pv-wait small { display: none !important; }
+.pv-wait .wait-spin { width: 16px; height: 16px; border-width: 2.5px; }
+.pv-panel:has(.pv-wait:not([hidden])) .pv-wait { padding: 14px 16px 12px !important; }
