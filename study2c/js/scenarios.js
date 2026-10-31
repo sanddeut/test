@@ -187,7 +187,7 @@ const AGENT_REQUEST = "chat";
 // 참가자에게 보여주는 선택지 ("요청사항 없음"은 기본값이라 목록에는 넣지 않음)
 const REQUEST_CHOICES = ["chat", "quiet"];
 // 세션2: 최근 3개월 이용내역 (매주 토요일 담소한정식 강남점)
-const RIDE_HISTORY = ["09.26", "09.19", "09.12", "09.05", "08.29", "08.22"].map((d) => ({ date: `2026.${d} (토)`, time: "오후 6:20", to: "담소한정식 강남점", fare: 16000 }));
+const RIDE_HISTORY = ["09.26", "09.19", "09.12", "09.05", "08.29", "08.22"].map((d) => ({ date: `2026.${d} (토)`, time: "오후 6:20", to: "담소한정식 강남점", fare: 15200 }));
 const RESERVE = { when: "10월 10일 토요일 오후 6:20", short: "다음 주 토요일(10월 10일) 오후 6시 20분" };
 
 // 예상 요금(동천역 → 강남점): 일반택시 16,000원 / 모범택시 18,000원 / 대형택시 20,000원
@@ -250,12 +250,12 @@ const SITUATION = {
 
 const won0 = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
 
-// 예상 요금: 거리 요금(기본 4,800원 + 1.6km 이후 km당 약 571원 → 동천역~강남점 21.2km = 16,000원) + 택시 종류 추가 요금 − 쿠폰
+// 예상 요금: 거리·시간 요금(기본 4,800원 + 1.6km 이후 km당 약 763원 + 막히는 시간 어림 km당 350원 → 용산역~강남점 10.4km ≈ 15,200원) + 택시 종류 추가 요금 − 쿠폰
 function fareOf(f, destKey = f.dest) {
   const km = distKm(f.origin || "current", destKey || TARGET_PLACE, typeof S !== "undefined" ? S?.geo : null);
-  const base = 4800 + Math.max(0, km - 1.6) * (11200 / 19.6);
-  // 잘못 고른 출발지(대구 용산역)에서는 요금이 26만 원대 (먼 거리임을 알아차릴 수 있게)
-  const fare = (f.origin === WRONG_ORIGIN ? 263900 : Math.round(base / 100) * 100) + CAR_TYPES[f.car].extra;
+  const base = 4800 + Math.max(0, km - 1.6) * 763 + km * 350; // 서울 택시: 기본 4,800원(1.6km) + 131m당 100원 + 막히는 시간 요금 어림
+  // 잘못 고른 출발지(대구 용산역)에서는 요금이 29만 원대 (대구→서울 강남 약 297km, 시계외 할증 포함 실제 택시 요금 수준)
+  const fare = (f.origin === WRONG_ORIGIN ? 290800 : Math.round(base / 100) * 100) + CAR_TYPES[f.car].extra;
   return Math.max(0, fare * (f.count || 1) - (f.coupon ? COUPON.amount : 0)); // 호출 대수만큼 (쿠폰은 한 번)
 }
 

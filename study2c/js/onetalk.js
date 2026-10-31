@@ -133,28 +133,44 @@ function mapTiles(lat, lng) {
   return `<div class="one-map-tiles">${imgs.join("")}</div><span class="one-map-attr">© OpenStreetMap © CARTO</span>`;
 }
 function miniMapSVG(v, pl) {
-  return `<div class="one-map" aria-hidden="true">${v ? MAP_GANGNAM : MAP_WONJU}${pl?.lat ? mapTiles(pl.lat, pl.lng) : ""}<span class="one-map-pin"><svg viewBox="-12 -24 24 30"><ellipse cx="0" cy="4" rx="5" ry="1.8" fill="#000" opacity=".18"/><path d="M0 4 C-7 -4 -8 -7 -8 -10 A8 8 0 1 1 8 -10 C8 -7 7 -4 0 4 Z" fill="#e8453c" stroke="#fff" stroke-width="1.2"/><circle cy="-10" r="3" fill="#fff"/></svg></span></div>`;
+  return `<div class="one-map" aria-hidden="true">${v ? MAP_GANGNAM : pl?.lat && pl.lat < 36.5 ? MAP_DAEGU : MAP_YONGSAN}${pl?.lat ? mapTiles(pl.lat, pl.lng) : ""}<span class="one-map-pin"><svg viewBox="-12 -24 24 30"><ellipse cx="0" cy="4" rx="5" ry="1.8" fill="#000" opacity=".18"/><path d="M0 4 C-7 -4 -8 -7 -8 -10 A8 8 0 1 1 8 -10 C8 -7 7 -4 0 4 Z" fill="#e8453c" stroke="#fff" stroke-width="1.2"/><circle cy="-10" r="3" fill="#fff"/></svg></span></div>`;
 }
 // 지도를 불러오지 못할 때 보이는 그림 (실제 위치를 본떠 그림: 지도 앱처럼 땅·숲·물·길·건물·이름)
 const MAP_TXT = (x, y, t, o = "") => `<text x="${x}" y="${y}" ${o} font-family="Noto Sans KR, Apple SD Gothic Neo, sans-serif">${t}</text>`;
-// 원주 연세대 미래캠퍼스: 산과 숲 사이 캠퍼스, 매지호수, 굽은 연세대길
-const MAP_WONJU = `<svg viewBox="60 18 200 68" preserveAspectRatio="xMidYMid slice">
-<rect width="320" height="110" fill="#f3f1ea"/>
-<path d="M0 0 H120 C100 18 70 30 40 34 C20 37 8 48 0 60 Z" fill="#d6e8cc"/>
-<path d="M238 0 H320 V70 C300 62 286 50 268 46 C250 42 236 26 238 0 Z" fill="#d6e8cc"/>
-<path d="M0 86 C30 80 52 92 70 110 H0 Z" fill="#d6e8cc"/>
-<path d="M262 110 C268 96 286 88 320 90 V110 Z" fill="#dcebd3"/>
-<path d="M196 70 C206 58 228 56 244 64 C258 71 262 86 250 96 C236 106 212 104 200 94 C190 86 189 78 196 70 Z" fill="#b8d6ee"/>
-<path d="M120 40 h56 v38 h-56 z" fill="#ebe7dd"/>
-<g fill="#e0dbd0"><rect x="126" y="46" width="16" height="9" rx="1.5"/><rect x="146" y="44" width="22" height="7" rx="1.5"/><rect x="146" y="55" width="10" height="12" rx="1.5"/><rect x="160" y="57" width="12" height="9" rx="1.5"/><rect x="126" y="60" width="14" height="12" rx="1.5"/><rect x="104" y="58" width="10" height="8" rx="1.5"/><rect x="182" y="40" width="12" height="9" rx="1.5"/></g>
-<path d="M0 72 C40 66 70 70 98 60 C122 52 140 50 170 50 C200 50 214 40 236 30 C260 20 290 18 320 22" fill="none" stroke="#e2ddd2" stroke-width="7" stroke-linecap="round"/>
-<path d="M0 72 C40 66 70 70 98 60 C122 52 140 50 170 50 C200 50 214 40 236 30 C260 20 290 18 320 22" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
-<path d="M150 50 C152 64 160 76 176 82 C188 86 194 92 196 110" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-<path d="M98 60 C96 76 88 92 80 110" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-<g font-size="7.5" fill="#8a8578">${MAP_TXT(18, 64, "연세대길", 'transform="rotate(-6 18 64)"')}</g>
-<g font-size="8" fill="#4a7fb0" font-weight="500">${MAP_TXT(206, 84, "매지호수")}</g>
-<g font-size="8" fill="#6b6655" font-weight="700">${MAP_TXT(108, 92, "연세대학교 미래캠퍼스")}</g>
-<g font-size="7" fill="#7f9a72">${MAP_TXT(270, 40, "매봉산")}${MAP_TXT(14, 20, "백운산 자락")}</g>
+// 대구 용산역(2호선): 동서로 지나는 달구벌대로, 북쪽 와룡산 자락, 아파트 단지
+const MAP_DAEGU = `<svg viewBox="60 18 200 68" preserveAspectRatio="xMidYMid slice">
+<rect width="320" height="110" fill="#f1efea"/>
+<path d="M0 0 H190 C170 14 130 22 80 24 C40 26 14 30 0 36 Z" fill="#d6e8cc"/>
+<g fill="#e3dfd6"><rect x="8" y="34" width="60" height="16" rx="2"/><rect x="80" y="30" width="70" height="20" rx="2"/><rect x="162" y="30" width="62" height="20" rx="2"/><rect x="236" y="30" width="78" height="20" rx="2"/>
+<rect x="8" y="68" width="60" height="36" rx="2"/><rect x="80" y="68" width="70" height="36" rx="2"/><rect x="162" y="68" width="62" height="36" rx="2"/><rect x="236" y="68" width="78" height="36" rx="2"/></g>
+<g fill="#d8d3c8"><rect x="88" y="34" width="8" height="13" rx="1"/><rect x="100" y="34" width="8" height="13" rx="1"/><rect x="112" y="34" width="8" height="13" rx="1"/><rect x="124" y="34" width="8" height="13" rx="1"/><rect x="170" y="74" width="8" height="18" rx="1"/><rect x="182" y="74" width="8" height="18" rx="1"/><rect x="194" y="74" width="8" height="18" rx="1"/><rect x="244" y="74" width="8" height="18" rx="1"/><rect x="256" y="74" width="8" height="18" rx="1"/><rect x="268" y="74" width="8" height="18" rx="1"/><rect x="92" y="74" width="22" height="14" rx="1"/></g>
+<g stroke="#fff" stroke-width="5"><line x1="74" y1="20" x2="74" y2="110"/><line x1="156" y1="20" x2="156" y2="110"/><line x1="230" y1="20" x2="230" y2="110"/></g>
+<line x1="0" y1="59" x2="320" y2="59" stroke="#efd58c" stroke-width="16"/><line x1="0" y1="59" x2="320" y2="59" stroke="#fde9a6" stroke-width="13"/>
+<line x1="0" y1="59" x2="320" y2="59" stroke="#e8c96f" stroke-width=".8" stroke-dasharray="6 5"/>
+<g transform="translate(176 59)"><circle r="6.5" fill="#fff" stroke="#3cb44a" stroke-width="2.4"/><text y="2.6" text-anchor="middle" font-size="7" font-weight="700" fill="#3cb44a" font-family="sans-serif">2</text></g>
+<g font-size="8" fill="#8a7a3c" font-weight="500">${MAP_TXT(88, 62, "달구벌대로")}</g>
+<g font-size="7.5" fill="#2e8a3a" font-weight="700">${MAP_TXT(186, 52, "용산역")}</g>
+<g font-size="7" fill="#7f9a72">${MAP_TXT(110, 14, "와룡산")}</g>
+<g font-size="7" fill="#8a8578">${MAP_TXT(244, 100, "용산동")}</g>
+</svg>`;
+// 서울 용산역(1호선): 남북으로 지나는 철길과 한강대로, 아이파크몰, 신용산역(4호선)
+const MAP_YONGSAN = `<svg viewBox="60 18 200 68" preserveAspectRatio="xMidYMid slice">
+<rect width="320" height="110" fill="#f1efea"/>
+<path d="M240 0 H320 V46 C296 44 270 34 256 20 C248 12 242 6 240 0 Z" fill="#d6e8cc"/>
+<g fill="#e3dfd6"><rect x="8" y="6" width="80" height="40" rx="2"/><rect x="8" y="58" width="80" height="46" rx="2"/><rect x="190" y="6" width="44" height="40" rx="2"/><rect x="190" y="58" width="60" height="46" rx="2"/><rect x="262" y="58" width="52" height="46" rx="2"/></g>
+<g fill="#d8d3c8"><rect x="16" y="12" width="22" height="16" rx="1"/><rect x="48" y="14" width="30" height="20" rx="1"/><rect x="16" y="66" width="30" height="18" rx="1"/><rect x="196" y="12" width="20" height="22" rx="1"/><rect x="198" y="66" width="18" height="26" rx="1"/><rect x="270" y="64" width="34" height="20" rx="1"/></g>
+<rect x="134" y="36" width="34" height="40" rx="3" fill="#e9e1d2"/>
+<g stroke="#b9b4aa" stroke-width="1.2"><line x1="110" y1="0" x2="110" y2="110"/><line x1="118" y1="0" x2="118" y2="110"/><line x1="126" y1="0" x2="126" y2="110"/></g>
+<line x1="118" y1="0" x2="118" y2="110" stroke="#b9b4aa" stroke-width="7" stroke-dasharray="1 5"/>
+<line x1="0" y1="52" x2="104" y2="52" stroke="#fff" stroke-width="5"/>
+<line x1="180" y1="0" x2="180" y2="110" stroke="#efd58c" stroke-width="15"/><line x1="180" y1="0" x2="180" y2="110" stroke="#fde9a6" stroke-width="12"/>
+<line x1="250" y1="52" x2="320" y2="52" stroke="#fff" stroke-width="4"/>
+<g transform="translate(118 56)"><circle r="6.5" fill="#fff" stroke="#0d3692" stroke-width="2.4"/><text y="2.6" text-anchor="middle" font-size="7" font-weight="700" fill="#0d3692" font-family="sans-serif">1</text></g>
+<g transform="translate(200 52)"><circle r="5.5" fill="#fff" stroke="#00a2d1" stroke-width="2"/><text y="2.4" text-anchor="middle" font-size="6.5" font-weight="700" fill="#00a2d1" font-family="sans-serif">4</text></g>
+<g font-size="7.5" fill="#0d3692" font-weight="700">${MAP_TXT(128, 34, "용산역")}</g>
+<g font-size="6.5" fill="#8a8578">${MAP_TXT(136, 86, "아이파크몰")}${MAP_TXT(208, 46, "신용산역")}</g>
+<g font-size="7" fill="#8a7a3c">${MAP_TXT(183, 98, "한강대로", 'transform="rotate(-90 183 98)"')}</g>
+<g font-size="7" fill="#7f9a72">${MAP_TXT(270, 20, "용산공원")}</g>
 </svg>`;
 // 강남 테헤란로 152: 동서로 지나는 테헤란로, 역삼역(2호선), 네모난 블록과 건물
 const MAP_GANGNAM = `<svg viewBox="60 18 200 68" preserveAspectRatio="xMidYMid slice">
