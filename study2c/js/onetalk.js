@@ -116,7 +116,7 @@ stepPreview = function () {
   return el;
 };
 // 작은 지도 그림 (앱 지도와 같은 색: 옅은 바탕, 흰 길, 파란 강, 가운데 빨간 핀)
-// 실제 지도: 그 장소 좌표를 가운데 두고 지도 조각(타일)을 이어 붙임. 불러오지 못하면 아래 그림이 그대로 보임
+// (지금은 쓰지 않음: 카드 안 지도도 늘 그림) 실제 지도: 그 장소 좌표를 가운데 두고 지도 조각(타일)을 이어 붙임
 const MAP_Z = 16;
 function mapTiles(lat, lng) {
   const n = 2 ** MAP_Z * 256;
@@ -133,7 +133,7 @@ function mapTiles(lat, lng) {
   return `<div class="one-map-tiles">${imgs.join("")}</div><span class="one-map-attr">© OpenStreetMap © CARTO</span>`;
 }
 function miniMapSVG(v, pl) {
-  return `<div class="one-map" aria-hidden="true">${v ? MAP_GANGNAM : pl?.lat && pl.lat < 36.5 ? MAP_DAEGU : MAP_YONGSAN}${pl?.lat ? mapTiles(pl.lat, pl.lng) : ""}<span class="one-map-pin"><svg viewBox="-12 -24 24 30"><ellipse cx="0" cy="4" rx="5" ry="1.8" fill="#000" opacity=".18"/><path d="M0 4 C-7 -4 -8 -7 -8 -10 A8 8 0 1 1 8 -10 C8 -7 7 -4 0 4 Z" fill="#e8453c" stroke="#fff" stroke-width="1.2"/><circle cy="-10" r="3" fill="#fff"/></svg></span></div>`;
+  return `<div class="one-map" aria-hidden="true">${v ? MAP_GANGNAM : pl?.lat && pl.lat < 36.5 ? MAP_DAEGU : MAP_YONGSAN}<span class="one-map-pin"><svg viewBox="-12 -24 24 30"><ellipse cx="0" cy="4" rx="5" ry="1.8" fill="#000" opacity=".18"/><path d="M0 4 C-7 -4 -8 -7 -8 -10 A8 8 0 1 1 8 -10 C8 -7 7 -4 0 4 Z" fill="#e8453c" stroke="#fff" stroke-width="1.2"/><circle cy="-10" r="3" fill="#fff"/></svg></span></div>`;
 }
 // 지도를 불러오지 못할 때 보이는 그림 (실제 위치를 본떠 그림: 지도 앱처럼 땅·숲·물·길·건물·이름)
 const MAP_TXT = (x, y, t, o = "") => `<text x="${x}" y="${y}" ${o} font-family="Noto Sans KR, Apple SD Gothic Neo, sans-serif">${t}</text>`;
