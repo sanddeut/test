@@ -912,7 +912,7 @@ doApply = async function (step, choice, opts) {
   card?.classList.add("one-plain"); // 카드 안 택시 종류 줄·수정/일시정지 없이 말만
   try {
     try { await agentSay(`${CAR_TYPES[S.form.car]?.label || label}로 설정했어요.`); } finally { [S.automation, S.cond] = prev; }
-    await sleep(1500);
+    await sleep(2500);
   } finally { card?.classList.remove("one-plain"); }
   return r;
 };
