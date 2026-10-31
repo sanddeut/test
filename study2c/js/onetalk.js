@@ -802,7 +802,16 @@ $("#composer").onsubmit = (e) => onSubmit(e);
 // =====================================================================
 // 막대가 차는 시간에는 읽을 시간 + 실제로 앱을 조작하는 시간이 함께 들어감:
 // 읽는 동안 앞부분이 차고, 남은 부분은 AI가 앱을 조작하는 동안 차서 그 단계가 끝날 때 꽉 참
-const OP_EST_MS = 5000; // 조작 시간 어림값 (실제로 끝나는 때에 맞춰 마지막에 꽉 채움)
+const OP_EST_MS = 3500; // 조작 시간 어림값 (실제로 끝나는 때에 맞춰 마지막에 꽉 채움, 「~하는 중」 속도 0.7배에 맞춤)
+// 「AI가 ~하는 중」(읽을 시간이 끝나고 AI가 앱을 조작하는 동안)에는 조금 빠르게: 속도 배율 0.7 (읽을 시간·답을 기다리는 동안은 그대로)
+const ONE_PACE = PACE, ONE_DOING_PACE = 0.7;
+setInterval(() => {
+  if (!S?.unified) return;
+  const reading = S.readProg && S.readProg.t < S.readProg.total;
+  const doing = S.running && !S.finished && !S.paused && !S.waiter && !reading;
+  const want = doing ? Math.min(ONE_PACE, ONE_DOING_PACE) : ONE_PACE;
+  if (PACE !== want && !(doing && PACE < want)) PACE = want; // 택시 종류를 바꾸는 중처럼 이미 더 빠르면 그대로
+}, 100);
 function opEnd() { if (S?.opBar && !S.opBar.done) { S.opBar.done = true; const o = S.opBar; setTimeout(() => { if (S?.opBar === o) S.opBar = null; }, 350); } }
 setInterval(() => {
   if (!S?.unified) return;
@@ -887,21 +896,25 @@ renderBubble = function (role, text) {
 const _doApplyOne = doApply;
 doApply = async function (step, choice, opts) {
   if (!S?.unified || step?.id !== "car" || !S.userSet?.car) return _doApplyOne(step, choice, opts);
-  // 목록에서 고른 뒤 「○○택시로 할게요」에도 읽을 시간 막대 (이미 막대를 보여 준 경우는 건너뜀)
-  if (!S.carReadDone) {
-    // 알리고 진행하는 단계처럼 카드에 보이게 (낮은 자동화로 두면 숨겨진 줄로 감)
-    const prev = [S.automation, S.cond];
-    S.automation = "high"; S.cond = "B2";
-    try { await agentSay(`${CAR_TYPES[S.form.car]?.label || "고르신 택시"}로 할게요.`, { gated: true }); } finally { [S.automation, S.cond] = prev; }
-    S.carSaidOne = true; // 뒤에 오는 「○○택시로 할게요」(car.set)는 다시 말하지 않음
-    for (let t = 0; t < READ_MS; t += 250) { S.readProg = { t, total: READ_MS }; await sleep(250 * PACE); await gate(); }
-    S.readProg = { t: READ_MS, total: READ_MS }; setTimeout(() => { if (S) S.readProg = null; }, 400);
-  }
+  // 목록에서 고른 뒤: 읽을 시간·대기 화면 없이 바로 바꾸고, 「○○택시로 설정했어요.」 말풍선을 띄운 뒤 넘어감
   S.carReadDone = false;
+  S.carSaidOne = true; // 뒤에 오는 「○○택시로 할게요」(car.set)는 말하지 않음
   const pace = PACE;
-  one.doing = `${CAR_TYPES[S.form.car]?.label || "고르신 택시"}로 바꾸는 중…`;
+  const label = CAR_TYPES[S.form.car]?.label || "고르신 택시";
+  one.doing = `${label}로 바꾸는 중…`;
   PACE = Math.min(PACE, 0.5);
-  try { return await _doApplyOne(step, choice, opts); } finally { PACE = pace; one.doing = null; }
+  let r;
+  try { r = await _doApplyOne(step, choice, opts); } finally { PACE = pace; one.doing = null; }
+  // 알리고 진행하는 말처럼 카드에 보이게 (낮은 자동화로 두면 숨겨진 줄로 감)
+  const prev = [S.automation, S.cond];
+  S.automation = "high"; S.cond = "B2";
+  const card = $("#run-card");
+  card?.classList.add("one-plain"); // 카드 안 택시 종류 줄·수정/일시정지 없이 말만
+  try {
+    try { await agentSay(`${CAR_TYPES[S.form.car]?.label || label}로 설정했어요.`); } finally { [S.automation, S.cond] = prev; }
+    await sleep(1500);
+  } finally { card?.classList.remove("one-plain"); }
+  return r;
 };
 
 // 「~하는 중」 깜빡임 줄이기: 카드에 할 말이 없으면 늘 「~하는 중」 (잠깐씩 켜졌다 꺼지는 진행 표시와 상관없이)

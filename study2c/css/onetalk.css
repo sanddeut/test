@@ -399,3 +399,5 @@
 
 .chat.one-page > #run-card .rc-body { position: relative; overflow: visible; }
 .one-why { z-index: 3; }
+/* 택시 종류를 고른 뒤 「○○택시로 설정했어요.」: 카드 안 다른 것 없이 말만 */
+#run-card.one-plain .rc-body > :not(#rc-q), #run-card.one-plain #one-why, #run-card.one-plain #one-ctrl, #run-card.one-plain .one-ctrl { display: none !important; }
